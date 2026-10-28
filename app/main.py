@@ -303,7 +303,7 @@ class MeetingCreate(BaseModel):
     meeting_date: str = Field(min_length=1, max_length=40)
     notes: str = Field(min_length=1, max_length=10000)
     meeting_type: str = Field(default="phone", pattern=r"^(phone|visit)$")
-    topic: str = Field(min_length=1, max_length=200)
+    topic: str = Field(default="Genel görüşme", min_length=1, max_length=200)
 
     @field_validator("meeting_date")
     @classmethod

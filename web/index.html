@@ -32,8 +32,8 @@ body:not(.authenticated) .app,body:not(.authenticated) .mobile-nav{display:none}
 .repeat-row .btn{font-size:22px;padding:5px;min-height:44px}
 .company-detail{display:block;color:var(--muted);font-size:12px;margin-top:4px;overflow-wrap:anywhere}
 .quote-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.quote-line{display:grid;grid-template-columns:minmax(160px,1fr) minmax(80px,.3fr) minmax(100px,.4fr) auto;gap:10px;align-items:end;margin:12px 0}
-@media(max-width:640px){.quote-fields{grid-template-columns:1fr}.quote-line{grid-template-columns:1fr 1fr}.quote-line>div:first-child{grid-column:1/-1}}
+.quote-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,.28fr) minmax(95px,.38fr) auto;gap:10px;align-items:end;margin:12px 0}.quote-line .line-product-wrap{grid-column:1/-1}.quote-totals{display:grid;gap:8px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:14px;margin:8px 0 4px}.quote-total-row{display:flex;justify-content:space-between;gap:12px;font-size:13px}.quote-total-row strong{font-variant-numeric:tabular-nums}.quote-total-grand{border-top:1px solid var(--line);padding-top:10px;margin-top:3px;font-size:16px;font-weight:750;color:var(--ink)}.quote-total-grand strong{font-size:20px}.quote-product-empty{font-size:12px;color:var(--muted);margin:0}
+@media(max-width:640px){.quote-fields{grid-template-columns:1fr}.quote-line{grid-template-columns:1fr 1fr}.quote-line>div:first-child{grid-column:1/-1}.quote-line .line-product-wrap{grid-column:1/-1}.quote-line .remove-line{grid-column:2;grid-row:3}.quote-line>div:nth-child(2){grid-column:1/-1}}
 
 /* Sade, lacivert-beyaz ve telefon öncelikli görünüm */
 :root{
@@ -223,8 +223,9 @@ h1{color:var(--ink)}
     </div>
     <div class="panel-head"><h3>Teklif kalemleri</h3><button class="btn" id="add-quote-line" type="button">＋ Kalem ekle</button></div>
     <div id="quote-lines">
-      <div class="quote-line"><div><label>Açıklama</label><input class="line-description" maxlength="500" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" step="0.0001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
+      <div class="quote-line"><div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" max="999999999" step="0.001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
     </div>
+    <div class="quote-totals" aria-live="polite" aria-label="Teklif toplamları"><div class="quote-total-row"><span>Ara toplam</span><strong id="quote-subtotal">0,00 TRY</strong></div><div class="quote-total-row"><span>İndirim</span><strong id="quote-discount-total">− 0,00 TRY</strong></div><div class="quote-total-row"><span>Vergi</span><strong id="quote-tax-total">0,00 TRY</strong></div><div class="quote-total-row quote-total-grand"><span>Genel toplam</span><strong id="quote-grand-total">0,00 TRY</strong></div><p class="quote-product-empty">Tutarlar anlık tahmindir; kaydederken sunucu tarafından yeniden hesaplanır.</p></div>
     <p id="quote-message" role="status" aria-live="polite" class="footer-note"></p>
     <button class="btn primary" type="submit" id="save-quote">Teklifi kaydet ve belge oluştur</button>
   </form>
@@ -518,14 +519,55 @@ async function loadQuotes(){
     }
   }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message;tr.append(td);rows.append(tr);}
 }
+let quoteProducts=[];
+function populateProductSelect(select){
+  const selected=select.value;select.replaceChildren(new Option("Serbest ürün / hizmet",""));
+  const currency=document.getElementById("quote-currency").value;
+  quoteProducts.filter(product=>product.currency===currency).forEach(product=>{
+    select.add(new Option(product.name+" · "+product.sku+" · "+formatMoney(product.unit_price,product.currency),product.id));
+  });
+  if([...select.options].some(option=>option.value===selected))select.value=selected;
+}
 function addQuoteLine(){
   const container=document.getElementById("quote-lines");const row=document.createElement("div");row.className="quote-line";
-  row.innerHTML='<div><label>Açıklama</label><input class="line-description" maxlength="500" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" step="0.0001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
-  container.append(row);updateLineButtons();
+  row.innerHTML='<div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" max="999999999" step="0.001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
+  container.append(row);populateProductSelect(row.querySelector(".line-product"));updateLineButtons();updateQuoteTotals();
 }
 function updateLineButtons(){const buttons=[...document.querySelectorAll(".remove-line")];buttons.forEach(button=>button.disabled=buttons.length===1);}
+function formatMoney(value,currency){try{return new Intl.NumberFormat("tr-TR",{style:"currency",currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value)||0);}catch(_error){return (Number(value)||0).toFixed(2)+" "+currency;}}
+function updateQuoteTotals(){
+  const currency=document.getElementById("quote-currency").value;
+  const subtotal=[...document.querySelectorAll(".quote-line")].reduce((sum,row)=>sum+(Math.max(0,Number(row.querySelector(".line-quantity").value)||0)*Math.max(0,Number(row.querySelector(".line-price").value)||0)),0);
+  const discountRate=Math.min(100,Math.max(0,Number(document.getElementById("quote-discount").value)||0))/100;
+  const taxRate=Math.min(100,Math.max(0,Number(document.getElementById("quote-tax").value)||0))/100;
+  const discount=subtotal*discountRate;const tax=(subtotal-discount)*taxRate;const total=subtotal-discount+tax;
+  document.getElementById("quote-subtotal").textContent=formatMoney(subtotal,currency);
+  document.getElementById("quote-discount-total").textContent="− "+formatMoney(discount,currency);
+  document.getElementById("quote-tax-total").textContent=formatMoney(tax,currency);
+  document.getElementById("quote-grand-total").textContent=formatMoney(total,currency);
+}
+async function loadQuoteProducts(){
+  try{
+    const response=await fetch("/api/products",{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){showLogin();return;}
+    if(!response.ok)throw new Error("Ürün kataloğu yüklenemedi");
+    quoteProducts=await response.json();
+    document.querySelectorAll(".line-product").forEach(populateProductSelect);
+  }catch(error){document.getElementById("quote-message").textContent=error.message||"Ürün kataloğu yüklenemedi.";}
+}
 document.getElementById("add-quote-line").addEventListener("click",addQuoteLine);
-document.getElementById("quote-lines").addEventListener("click",event=>{const button=event.target.closest(".remove-line");if(button){button.closest(".quote-line").remove();updateLineButtons();}});
+document.getElementById("quote-lines").addEventListener("click",event=>{const button=event.target.closest(".remove-line");if(button){button.closest(".quote-line").remove();updateLineButtons();updateQuoteTotals();}});
+document.getElementById("quote-lines").addEventListener("change",event=>{
+  if(!event.target.matches(".line-product"))return;
+  const row=event.target.closest(".quote-line");const product=quoteProducts.find(item=>item.id===event.target.value);
+  if(product){row.querySelector(".line-description").value=product.name;row.querySelector(".line-price").value=product.unit_price;}
+  updateQuoteTotals();
+});
+document.getElementById("quote-lines").addEventListener("input",event=>{if(event.target.matches(".line-quantity,.line-price"))updateQuoteTotals();});
+["quote-currency","quote-tax","quote-discount"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{
+  if(id==="quote-currency")document.querySelectorAll(".line-product").forEach(select=>{select.value="";populateProductSelect(select);});
+  updateQuoteTotals();
+}));
 document.getElementById("refresh-quotes").addEventListener("click",loadQuotes);
 document.getElementById("quote-form").addEventListener("submit",async event=>{
   event.preventDefault();const message=document.getElementById("quote-message");const button=document.getElementById("save-quote");button.disabled=true;message.textContent="Teklif kaydediliyor…";
@@ -647,7 +689,7 @@ document.getElementById("refresh-templates").addEventListener("click",loadTempla
 async function initializeAuth(){
   try{
     const response=await fetch("/api/session",{credentials:"same-origin",cache:"no-store"});
-    if(response.ok&&(await response.json()).authenticated){await readCsrf();showAuthenticated();await loadCompanies();await loadQuoteCompanies();await loadQuotes();await loadTemplates();await loadFollowUpCompanies();await loadFollowUps();}
+    if(response.ok&&(await response.json()).authenticated){await readCsrf();showAuthenticated();await loadCompanies();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();await loadTemplates();await loadFollowUpCompanies();await loadFollowUps();}
   }catch(_error){loginError.textContent="Yerel sunucuya bağlanılamadı.";}
 }
 initializeAuth();

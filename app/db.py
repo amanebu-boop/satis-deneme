@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 from pathlib import Path
@@ -26,7 +27,14 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS companies (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
+                authorized_people TEXT NOT NULL DEFAULT '[]',
+                phone_numbers TEXT NOT NULL DEFAULT '[]',
+                address TEXT,
                 website TEXT,
+                email TEXT,
+                tax_office TEXT,
+                tax_number TEXT,
+                mersis_number TEXT,
                 notes TEXT
             );
             CREATE TABLE IF NOT EXISTS contacts (
@@ -88,77 +96,116 @@ def init_db() -> None:
                 ON contacts(company_id, name);
             """
         )
+        # Safe in-place migration for existing SQLite databases.
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(companies)")}
+        additions = {
+            "authorized_people": "TEXT NOT NULL DEFAULT '[]'",
+            "phone_numbers": "TEXT NOT NULL DEFAULT '[]'",
+            "address": "TEXT",
+            "email": "TEXT",
+            "tax_office": "TEXT",
+            "tax_number": "TEXT",
+            "mersis_number": "TEXT",
+        }
+        for column, definition in additions.items():
+            if column not in columns:
+                connection.execute(f"ALTER TABLE companies ADD COLUMN {column} {definition}")
 
 
-def create_company(record: dict[str, Any]) -> dict[str, Any]:
-    with connect() as connection:
-        connection.execute(
-            "INSERT INTO companies (id, name, website, notes) VALUES (?, ?, ?, ?)",
-            (record["id"], record["name"], record.get("website"), record.get("notes")),
-        )
+def _company_record(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+    record = dict(row)
+    for key in ("authorized_people", "phone_numbers"):
+        value = record.get(key, "[]")
+        try:
+            record[key] = json.loads(value) if isinstance(value, str) else (value or [])
+        except (TypeError, json.JSONDecodeError):
+            record[key] = []
     return record
 
 
+def create_company(record: dict[str, Any]) -> dict[str, Any]:
+    stored = {**record}
+    stored["authorized_people"] = json.dumps(record.get("authorized_people") or [], ensure_ascii=False)
+    stored["phone_numbers"] = json.dumps(record.get("phone_numbers") or [], ensure_ascii=False)
+    with connect() as connection:
+        connection.execute(
+            """INSERT INTO companies
+               (id, name, authorized_people, phone_numbers, address, website, email,
+                tax_office, tax_number, mersis_number, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (stored["id"], stored["name"], stored["authorized_people"], stored["phone_numbers"],
+             stored.get("address"), stored.get("website"), stored.get("email"),
+             stored.get("tax_office"), stored.get("tax_number"), stored.get("mersis_number"),
+             stored.get("notes")),
+        )
+    return {**record}
+
+
 def list_companies(search: str | None = None) -> list[dict[str, Any]]:
-    """List companies, optionally filtering by name or website using a bound parameter."""
+    """List companies with full details, optionally filtering by name or website."""
     with connect() as connection:
         if search and search.strip():
             term = f"%{search.strip()}%"
             rows = connection.execute(
-                """SELECT id, name, website, notes FROM companies
+                """SELECT * FROM companies
                    WHERE name LIKE ? COLLATE NOCASE OR website LIKE ? COLLATE NOCASE
+                   OR email LIKE ? COLLATE NOCASE OR tax_number LIKE ? COLLATE NOCASE
                    ORDER BY name, id""",
-                (term, term),
+                (term, term, term, term),
             ).fetchall()
         else:
-            rows = connection.execute(
-                "SELECT id, name, website, notes FROM companies ORDER BY name, id"
-            ).fetchall()
-    return [dict(row) for row in rows]
+            rows = connection.execute("SELECT * FROM companies ORDER BY name, id").fetchall()
+    return [_company_record(row) for row in rows]
 
 
 def list_companies_page(
     search: str | None = None, *, limit: int = 50, offset: int = 0
 ) -> list[dict[str, Any]]:
-    """Return a bounded page of company list fields using parameterized SQL."""
+    """Return a bounded page of company details using parameterized SQL."""
     with connect() as connection:
         if search and search.strip():
             term = f"%{search.strip()}%"
             rows = connection.execute(
-                """SELECT id, name, website FROM companies
+                """SELECT * FROM companies
                    WHERE name LIKE ? COLLATE NOCASE OR website LIKE ? COLLATE NOCASE
+                   OR email LIKE ? COLLATE NOCASE OR tax_number LIKE ? COLLATE NOCASE
                    ORDER BY name, id LIMIT ? OFFSET ?""",
-                (term, term, limit, offset),
+                (term, term, term, term, limit, offset),
             ).fetchall()
         else:
             rows = connection.execute(
-                """SELECT id, name, website FROM companies
-                   ORDER BY name, id LIMIT ? OFFSET ?""",
+                "SELECT * FROM companies ORDER BY name, id LIMIT ? OFFSET ?",
                 (limit, offset),
             ).fetchall()
-    return [dict(row) for row in rows]
+    return [_company_record(row) for row in rows]
 
 
 def get_company(company_id: str) -> dict[str, Any] | None:
-    """Fetch a company record by its primary key."""
+    """Fetch a full company record by its primary key."""
     with connect() as connection:
         row = connection.execute(
-            "SELECT id, name, website, notes FROM companies WHERE id = ?",
-            (company_id,),
+            "SELECT * FROM companies WHERE id = ?", (company_id,)
         ).fetchone()
-    return dict(row) if row is not None else None
+    return _company_record(row) if row is not None else None
 
 
 def update_company(company_id: str, record: dict[str, Any]) -> dict[str, Any] | None:
+    stored = {**record}
+    stored["authorized_people"] = json.dumps(record.get("authorized_people") or [], ensure_ascii=False)
+    stored["phone_numbers"] = json.dumps(record.get("phone_numbers") or [], ensure_ascii=False)
     with connect() as connection:
         cursor = connection.execute(
-            "UPDATE companies SET name = ?, website = ?, notes = ? WHERE id = ?",
-            (record["name"], record.get("website"), record.get("notes"), company_id),
+            """UPDATE companies SET name=?, authorized_people=?, phone_numbers=?, address=?,
+               website=?, email=?, tax_office=?, tax_number=?, mersis_number=?, notes=?
+               WHERE id=?""",
+            (stored["name"], stored["authorized_people"], stored["phone_numbers"],
+             stored.get("address"), stored.get("website"), stored.get("email"),
+             stored.get("tax_office"), stored.get("tax_number"), stored.get("mersis_number"),
+             stored.get("notes"), company_id),
         )
         if cursor.rowcount == 0:
             return None
     return {"id": company_id, **record}
-
 
 
 def company_exists(company_id: str) -> bool:

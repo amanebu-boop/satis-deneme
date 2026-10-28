@@ -302,6 +302,8 @@ class MeetingCreate(BaseModel):
     company_id: str
     meeting_date: str = Field(min_length=1, max_length=40)
     notes: str = Field(min_length=1, max_length=10000)
+    meeting_type: str = Field(default="phone", pattern=r"^(phone|visit)$")
+    topic: str = Field(min_length=1, max_length=200)
 
     @field_validator("meeting_date")
     @classmethod
@@ -346,6 +348,90 @@ def browser_update_meeting(meeting_id: str, payload: MeetingCreate, request: Req
     if updated is None:
         raise HTTPException(status_code=404, detail="Meeting not found")
     return updated
+
+
+class FollowUpCreate(BaseModel):
+    company_id: str
+    title: str = Field(min_length=1, max_length=300)
+    due_date: str = Field(min_length=1, max_length=40)
+
+    @field_validator("due_date")
+    @classmethod
+    def validate_due_date(cls, value: str) -> str:
+        from datetime import date, datetime
+        try:
+            if "T" in value or " " in value:
+                datetime.fromisoformat(value.replace("Z", "+00:00"))
+            else:
+                date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("due_date must be an ISO date or datetime") from exc
+        return value
+
+
+@app.get("/api/follow-ups")
+def browser_list_follow_ups(request: Request) -> list[dict]:
+    _require_browser_session(request)
+    return db.list_follow_ups()
+
+
+@app.post("/api/follow-ups", status_code=201)
+def browser_create_follow_up(payload: FollowUpCreate, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    if not db.company_exists(payload.company_id):
+        raise HTTPException(status_code=404, detail="Company not found; follow-up was not saved")
+    record = {"id": str(uuid4()), **payload.model_dump(), "status": "open",
+              "created_at": datetime.now(timezone.utc).isoformat()}
+    return db.create_follow_up(record)
+
+
+@app.post("/api/follow-ups/{task_id}/complete")
+def browser_complete_follow_up(task_id: str, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    record = db.complete_follow_up(task_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Follow-up task not found")
+    return record
+
+
+@app.get("/api/meeting-report", response_class=HTMLResponse)
+def browser_meeting_report(
+    request: Request,
+    date_from: str | None = Query(default=None, max_length=10),
+    date_to: str | None = Query(default=None, max_length=10),
+    meeting_type: str = Query(default="all", pattern=r"^(all|phone|visit)$"),
+) -> HTMLResponse:
+    _require_browser_session(request)
+    records = db.list_meetings()
+    if date_from:
+        records = [r for r in records if str(r["meeting_date"])[:10] >= date_from]
+    if date_to:
+        records = [r for r in records if str(r["meeting_date"])[:10] <= date_to]
+    if meeting_type != "all":
+        records = [r for r in records if r.get("meeting_type", "phone") == meeting_type]
+    import html
+    rows = []
+    for record in records:
+        kind = "Telefon görüşmesi" if record.get("meeting_type") == "phone" else "Ziyaret"
+        rows.append("<tr><td>" + html.escape(str(record.get("company_name") or "")) +
+                    "</td><td>" + html.escape(str(record.get("meeting_date") or "")) +
+                    "</td><td>" + kind + "</td><td>" +
+                    html.escape(str(record.get("topic") or "Genel görüşme")) + "</td></tr>")
+    table_rows = "".join(rows) or '<tr><td colspan="4">Seçilen filtrelerde görüşme bulunamadı.</td></tr>'
+    page = """<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+    <title>Görüşme Raporu</title><style>body{font:14px/1.5 system-ui,sans-serif;color:#172b45;margin:24px}
+    h1{font-size:22px}p{color:#66758a}.actions{display:flex;gap:8px;margin:18px 0}
+    button{padding:10px 14px;border:1px solid #ccd5e1;border-radius:8px;background:#fff;cursor:pointer}
+    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #e3e8ef}
+    th{color:#66758a}@media print{.actions{display:none}body{margin:0}}</style>
+    <h1>Görüşme Raporu</h1><p>Rapor yalnızca firma, tarih, görüşme şekli ve görüşme konusunu içerir. Görüşme notları dahil edilmez.</p>
+    <div class="actions"><button onclick="window.print()">Yazdır / PDF kaydet</button><button onclick="window.close()">Kapat</button></div>
+    <table><thead><tr><th>Firma</th><th>Tarih</th><th>Görüşme şekli</th><th>Görüşme konusu</th></tr></thead><tbody>""" + table_rows + """</tbody></table></html>"""
+    response = HTMLResponse(page)
+    response.headers["Cache-Control"] = "no-store, private"
+    return response
 
 
 

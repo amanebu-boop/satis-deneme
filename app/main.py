@@ -451,6 +451,13 @@ class QuoteRequest(BaseModel):
     discount_rate: float = Field(default=0, ge=0, le=1)
 
 
+@app.get("/api/products")
+def browser_list_products(request: Request) -> list[dict]:
+    """List catalog items for the authenticated quotation editor."""
+    _require_browser_session(request)
+    return db.list_products()
+
+
 @app.get("/api/quotes")
 def browser_list_quotes(request: Request) -> list[dict]:
     _require_browser_session(request)

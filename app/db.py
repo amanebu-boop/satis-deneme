@@ -49,7 +49,17 @@ def init_db() -> None:
                 id TEXT PRIMARY KEY,
                 company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
                 meeting_date TEXT NOT NULL,
-                notes TEXT NOT NULL
+                notes TEXT NOT NULL,
+                meeting_type TEXT NOT NULL DEFAULT 'phone',
+                topic TEXT NOT NULL DEFAULT 'Genel görüşme'
+            );
+            CREATE TABLE IF NOT EXISTS follow_up_tasks (
+                id TEXT PRIMARY KEY,
+                company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                due_date TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'done')),
+                created_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS products (
                 id TEXT PRIMARY KEY,
@@ -97,6 +107,12 @@ def init_db() -> None:
             """
         )
         # Safe in-place migration for existing SQLite databases.
+        meeting_columns = {row["name"] for row in connection.execute("PRAGMA table_info(meetings)")}
+        if "meeting_type" not in meeting_columns:
+            connection.execute("ALTER TABLE meetings ADD COLUMN meeting_type TEXT NOT NULL DEFAULT 'phone'")
+        if "topic" not in meeting_columns:
+            connection.execute("ALTER TABLE meetings ADD COLUMN topic TEXT NOT NULL DEFAULT 'Genel görüşme'")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_follow_up_due ON follow_up_tasks(status, due_date)")
         columns = {row["name"] for row in connection.execute("PRAGMA table_info(companies)")}
         additions = {
             "authorized_people": "TEXT NOT NULL DEFAULT '[]'",
@@ -240,8 +256,11 @@ def list_company_contacts(company_id: str) -> list[dict[str, Any]]:
 def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
-            "INSERT INTO meetings (id, company_id, meeting_date, notes) VALUES (?, ?, ?, ?)",
-            (record["id"], record["company_id"], record["meeting_date"], record["notes"]),
+            """INSERT INTO meetings
+               (id, company_id, meeting_date, notes, meeting_type, topic)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (record["id"], record["company_id"], record["meeting_date"], record["notes"],
+             record.get("meeting_type", "phone"), record.get("topic", "Genel görüşme")),
         )
     return record
 
@@ -249,13 +268,16 @@ def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
 def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | None:
     with connect() as connection:
         cursor = connection.execute(
-            "UPDATE meetings SET company_id = ?, meeting_date = ?, notes = ? WHERE id = ?",
-            (record["company_id"], record["meeting_date"], record["notes"], meeting_id),
+            """UPDATE meetings SET company_id = ?, meeting_date = ?, notes = ?,
+               meeting_type = ?, topic = ? WHERE id = ?""",
+            (record["company_id"], record["meeting_date"], record["notes"],
+             record.get("meeting_type", "phone"), record.get("topic", "Genel görüşme"), meeting_id),
         )
         if cursor.rowcount == 0:
             return None
         row = connection.execute(
-            """SELECT m.id, m.company_id, c.name AS company_name, m.meeting_date, m.notes
+            """SELECT m.id, m.company_id, c.name AS company_name, m.meeting_date,
+                      m.notes, m.meeting_type, m.topic
                FROM meetings AS m JOIN companies AS c ON c.id = m.company_id
                WHERE m.id = ?""",
             (meeting_id,),
@@ -266,7 +288,7 @@ def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | 
 def list_company_meetings(company_id: str) -> list[dict[str, Any]]:
     with connect() as connection:
         rows = connection.execute(
-            """SELECT id, company_id, meeting_date, notes
+            """SELECT id, company_id, meeting_date, notes, meeting_type, topic
                FROM meetings WHERE company_id = ?
                ORDER BY meeting_date DESC, id""",
             (company_id,),
@@ -278,11 +300,50 @@ def list_meetings() -> list[dict[str, Any]]:
     """List persisted meetings with their company names for the authenticated browser UI."""
     with connect() as connection:
         rows = connection.execute(
-            """SELECT m.id, m.company_id, c.name AS company_name, m.meeting_date, m.notes
+            """SELECT m.id, m.company_id, c.name AS company_name, m.meeting_date,
+                      m.notes, m.meeting_type, m.topic
                FROM meetings AS m JOIN companies AS c ON c.id = m.company_id
                ORDER BY m.meeting_date DESC, m.id DESC"""
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def create_follow_up(record: dict[str, Any]) -> dict[str, Any]:
+    with connect() as connection:
+        connection.execute(
+            """INSERT INTO follow_up_tasks (id, company_id, title, due_date, status, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (record["id"], record["company_id"], record["title"], record["due_date"],
+             record.get("status", "open"), record["created_at"]),
+        )
+    return record
+
+
+def list_follow_ups() -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """SELECT t.id, t.company_id, c.name AS company_name, t.title, t.due_date,
+                      t.status, t.created_at
+               FROM follow_up_tasks AS t JOIN companies AS c ON c.id = t.company_id
+               ORDER BY CASE t.status WHEN 'open' THEN 0 ELSE 1 END, t.due_date, t.id"""
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def complete_follow_up(task_id: str) -> dict[str, Any] | None:
+    with connect() as connection:
+        cursor = connection.execute(
+            "UPDATE follow_up_tasks SET status = 'done' WHERE id = ?", (task_id,)
+        )
+        if cursor.rowcount == 0:
+            return None
+        row = connection.execute(
+            """SELECT t.id, t.company_id, c.name AS company_name, t.title, t.due_date,
+                      t.status, t.created_at
+               FROM follow_up_tasks AS t JOIN companies AS c ON c.id = t.company_id
+               WHERE t.id = ?""", (task_id,)
+        ).fetchone()
+    return dict(row) if row is not None else None
 
 
 

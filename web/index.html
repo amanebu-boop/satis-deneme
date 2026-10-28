@@ -25,7 +25,12 @@ body:not(.authenticated) .app,body:not(.authenticated) .mobile-nav{display:none}
 [hidden]{display:none!important}
  
 .quote-form{display:grid;gap:12px}.quote-form label{display:block;font-size:13px;font-weight:650;margin:0 0 5px}
-.quote-form input,.quote-form select{width:100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.quote-form input,.quote-form select,.quote-form textarea{width:100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.quote-form textarea{font:inherit;resize:vertical}
+.repeat-list{display:grid;gap:8px}
+.repeat-row{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px}
+.repeat-row .btn{font-size:22px;padding:5px;min-height:44px}
+.company-detail{display:block;color:var(--muted);font-size:12px;margin-top:4px;overflow-wrap:anywhere}
 .quote-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .quote-line{display:grid;grid-template-columns:minmax(160px,1fr) minmax(80px,.3fr) minmax(100px,.4fr) auto;gap:10px;align-items:end;margin:12px 0}
 @media(max-width:640px){.quote-fields{grid-template-columns:1fr}.quote-line{grid-template-columns:1fr 1fr}.quote-line>div:first-child{grid-column:1/-1}}
@@ -179,7 +184,28 @@ h1{color:var(--ink)}
 </div></div>
 </div>
 </section>
-<section class="page" id="page-companies"><div class="panel"><div class="panel-head"><h2>Firmalar</h2><span class="pill blue">Örnek veri</span></div><form id="company-form" class="quote-form" style="margin:16px 0"><div><label for="company-name">Firma adı</label><input id="company-name" maxlength="200" required placeholder="Firma adı"></div><div><label for="company-website">Web sitesi</label><input id="company-website" maxlength="300" type="url" placeholder="https://…"></div><div><label for="company-notes">Firma notları</label><input id="company-notes" maxlength="5000" placeholder="Sektör, ihtiyaçlar, önemli bilgiler"></div><p id="company-message" class="footer-note" role="status" aria-live="polite"></p><button class="btn primary" id="save-company" type="submit">Firmayı kaydet</button></form><input class="search" id="company-search" placeholder="Firma adı veya sektör ara…" aria-label="Firma ara"><div class="table-wrap"><table><thead><tr><th>Firma</th><th>Sektör</th><th>Son temas</th><th>Durum</th></tr></thead><tbody id="company-rows"><tr><td colspan="4">Firmalar yükleniyor…</td></tr></tbody></table></div><p class="footer-note">Gerçek sürümde firma detayında kişiler, tüm görüşme geçmişi ve ilişkilendirilmiş teklifler bulunacak.</p></div></section>
+<section class="page" id="page-companies"><div class="panel">
+<div class="panel-head"><h2>Firma kaydı</h2><span class="pill blue">Kalıcı kayıt</span></div>
+<form id="company-form" class="quote-form" style="margin:16px 0">
+<input id="company-id" type="hidden">
+<div><label for="company-name">Firma unvanı *</label><input id="company-name" maxlength="200" required placeholder="Resmî firma unvanı"></div>
+<div><label>Yetkili kişi</label><div id="company-people" class="repeat-list"><div class="repeat-row"><input class="company-person" maxlength="200" placeholder="Yetkili kişinin adı"><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div></div></div>
+<div><label>Telefon numarası</label><div id="company-phones" class="repeat-list"><div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" placeholder="Telefon numarası"><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div></div></div>
+<div><label for="company-address">Adres</label><textarea id="company-address" maxlength="3000" rows="3" placeholder="Açık adres"></textarea></div>
+<div><label for="company-website">Web sitesi</label><input id="company-website" maxlength="300" type="url" placeholder="https://ornek.com"></div>
+<div><label for="company-email">Mail adresi</label><input id="company-email" maxlength="320" type="email" placeholder="ornek@firma.com"></div>
+<div class="quote-fields">
+<div><label for="company-tax-office">Vergi dairesi</label><input id="company-tax-office" maxlength="200" placeholder="Vergi dairesi"></div>
+<div><label for="company-tax-number">Vergi numarası</label><input id="company-tax-number" maxlength="50" inputmode="numeric" placeholder="Vergi numarası"></div>
+<div><label for="company-mersis">MERSİS numarası</label><input id="company-mersis" maxlength="50" inputmode="numeric" placeholder="MERSİS numarası"></div>
+</div>
+<div><label for="company-notes">Notlar</label><textarea id="company-notes" maxlength="5000" rows="3" placeholder="Firma hakkında notlar"></textarea></div>
+<p id="company-message" class="footer-note" role="status" aria-live="polite"></p>
+<div class="actions"><button class="btn primary" id="save-company" type="submit">Firmayı kaydet</button><button class="btn" id="cancel-company-edit" type="button" hidden>Vazgeç</button></div>
+</form>
+<input class="search" id="company-search" placeholder="Firma unvanı, web sitesi, e-posta veya vergi no ara…" aria-label="Firma ara">
+<div class="table-wrap"><table><thead><tr><th>Firma</th><th>Yetkili kişiler</th><th>Telefonlar</th><th>Vergi bilgisi</th><th>İşlem</th></tr></thead><tbody id="company-rows"><tr><td colspan="5">Firmalar yükleniyor…</td></tr></tbody></table></div>
+</div></section>
 <section class="page" id="page-meetings"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div><label for="meeting-company">Firma</label><select id="meeting-company" required><option value="">Firma seç</option></select></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><input id="meeting-date" type="datetime-local" required></div><div><label for="meeting-notes">Görüşme notları ve sonraki adım</label><input id="meeting-notes" maxlength="10000" required placeholder="İhtiyaçlar, kararlar, takip işleri"></div><p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></section>
 <section class="page" id="page-products"><div class="panel"><div class="panel-head"><h2>Ürünler ve fiyatlar</h2><span class="pill blue">Örnek veri</span></div><div class="table-wrap"><table><thead><tr><th>Ürün</th><th>SKU</th><th>Birim fiyat</th><th>Para birimi</th></tr></thead><tbody><tr><td><strong>Danışmanlık saati</strong></td><td>SRV-001</td><td>₺1.250,00</td><td>TRY</td></tr><tr><td><strong>Kurulum paketi</strong></td><td>SET-002</td><td>₺18.500,00</td><td>TRY</td></tr><tr><td><strong>Destek yıllık</strong></td><td>SUP-003</td><td>₺9.900,00</td><td>TRY</td></tr></tbody></table></div><p class="footer-note">Fiyatların geçerlilik tarihi ve kaynağı gerçek sürümde ayrıca tutulmalı. Bu örnek fiyatlar gerçek fiyat değildir.</p></div></section>
 <section class="page" id="page-quotes">
@@ -260,23 +286,26 @@ async function loadCompanies(){
   const rows=document.getElementById("company-rows");
   const query=document.getElementById("company-search").value.trim();
   rows.replaceChildren();
-  const loading=document.createElement("tr");loading.innerHTML="<td colspan='4'>Firmalar yükleniyor…</td>";rows.append(loading);
+  const loading=document.createElement("tr");loading.innerHTML="<td colspan='5'>Firmalar yükleniyor…</td>";rows.append(loading);
   try{
     const response=await fetch("/api/companies?q="+encodeURIComponent(query)+"&limit=50",{credentials:"same-origin",cache:"no-store"});
-    if(response.status===401){document.body.classList.remove("authenticated");loginScreen.hidden=false;return;}
+    if(response.status===401){showLogin();return;}
     if(!response.ok)throw new Error("Firma listesi alınamadı ("+response.status+")");
     const companies=await response.json();rows.replaceChildren();
-    if(!companies.length){const empty=document.createElement("tr");empty.innerHTML="<td colspan='4'>Eşleşen firma bulunamadı.</td>";rows.append(empty);return;}
+    if(!companies.length){const empty=document.createElement("tr");empty.innerHTML="<td colspan='5'>Eşleşen firma bulunamadı.</td>";rows.append(empty);return;}
     for(const company of companies){
       const row=document.createElement("tr");
       const nameCell=document.createElement("td");const name=document.createElement("strong");name.textContent=company.name;nameCell.append(name);
-      const website=document.createElement("div");website.className="item-sub";website.textContent=company.website||"Web adresi eklenmemiş";nameCell.append(website);
-      const sector=document.createElement("td");sector.textContent="—";
-      const touched=document.createElement("td");touched.textContent="—";
-      const status=document.createElement("td");const pill=document.createElement("span");pill.className="pill blue";pill.textContent="Kayıtlı";status.append(pill);
-      row.append(nameCell,sector,touched,status);rows.append(row);
+      if(company.address){const address=document.createElement("div");address.className="company-detail";address.textContent=company.address;nameCell.append(address);}
+      if(company.website){const website=document.createElement("div");website.className="company-detail";website.textContent=company.website;nameCell.append(website);}
+      if(company.email){const email=document.createElement("div");email.className="company-detail";email.textContent=company.email;nameCell.append(email);}
+      const people=document.createElement("td");people.textContent=(company.authorized_people||[]).filter(Boolean).join(", ")||"—";
+      const phones=document.createElement("td");phones.textContent=(company.phone_numbers||[]).filter(Boolean).join(", ")||"—";
+      const tax=document.createElement("td");tax.textContent=[company.tax_office,company.tax_number,company.mersis_number].filter(Boolean).join(" · ")||"—";
+      const actions=document.createElement("td");const edit=document.createElement("button");edit.className="btn";edit.type="button";edit.textContent="Düzenle";edit.addEventListener("click",()=>fillCompanyForm(company));actions.append(edit);
+      row.append(nameCell,people,phones,tax,actions);rows.append(row);
     }
-  }catch(error){rows.replaceChildren();const row=document.createElement("tr");const cell=document.createElement("td");cell.colSpan=4;cell.textContent=error.message||"Beklenmeyen hata";row.append(cell);rows.append(row);}
+  }catch(error){rows.replaceChildren();const row=document.createElement("tr");const cell=document.createElement("td");cell.colSpan=5;cell.textContent=error.message||"Beklenmeyen hata";row.append(cell);rows.append(row);}
 }
 loginForm.addEventListener("submit",async event=>{
   event.preventDefault();loginError.textContent="";
@@ -289,17 +318,61 @@ loginForm.addEventListener("submit",async event=>{
   }catch(error){loginError.textContent=error.message||"Giriş yapılamadı.";}
 });
 document.getElementById("company-search").addEventListener("input",()=>loadCompanies());
+function repeatedValues(selector){return [...document.querySelectorAll(selector)].map(input=>input.value.trim()).filter(Boolean);}
+function resetCompanyForm(){
+  document.getElementById("company-form").reset();document.getElementById("company-id").value="";
+  document.getElementById("company-people").innerHTML='<div class="repeat-row"><input class="company-person" maxlength="200" placeholder="Yetkili kişinin adı"><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div>';
+  document.getElementById("company-phones").innerHTML='<div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" placeholder="Telefon numarası"><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div>';
+  document.getElementById("save-company").textContent="Firmayı kaydet";document.getElementById("cancel-company-edit").hidden=true;
+}
+function fillRepeat(containerId,values,cls,placeholder,type="text"){
+  const container=document.getElementById(containerId);container.replaceChildren();
+  const items=values&&values.length?values:[""];
+  items.forEach((value,index)=>{const row=document.createElement("div");row.className="repeat-row";const input=document.createElement("input");input.className=cls;input.type=type;input.maxLength=type==="tel"?50:200;input.placeholder=placeholder;input.value=value||"";const button=document.createElement("button");button.className="btn repeat-add";button.type="button";button.dataset.repeat=containerId;button.setAttribute("aria-label",index===0?"Yeni satır ekle":"Satırı kaldır");button.textContent=index===0?"＋":"−";if(index>0)button.classList.add("repeat-remove");row.append(input,button);container.append(row);});
+  updateRepeatButtons(containerId);
+}
+function updateRepeatButtons(containerId){
+  const rows=[...document.querySelectorAll("#"+containerId+" .repeat-row")];
+  rows.forEach((row,index)=>{const button=row.querySelector("button");button.textContent=index===0?"＋":"−";button.setAttribute("aria-label",index===0?"Yeni satır ekle":"Satırı kaldır");button.classList.toggle("repeat-remove",index>0);});
+}
+function fillCompanyForm(company){
+  document.getElementById("company-id").value=company.id||"";
+  document.getElementById("company-name").value=company.name||"";
+  fillRepeat("company-people",company.authorized_people||[],"company-person","Yetkili kişinin adı");
+  fillRepeat("company-phones",company.phone_numbers||[],"company-phone","Telefon numarası","tel");
+  for(const [id,key] of [["company-address","address"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
+  document.getElementById("save-company").textContent="Değişiklikleri kaydet";document.getElementById("cancel-company-edit").hidden=false;
+  document.getElementById("company-message").textContent="Firma düzenleniyor.";
+  document.getElementById("company-form").scrollIntoView({behavior:"smooth",block:"start"});
+}
+document.getElementById("company-form").addEventListener("click",event=>{
+  const button=event.target.closest("[data-repeat]");if(!button)return;
+  const containerId=button.dataset.repeat;const row=button.closest(".repeat-row");
+  if(button.classList.contains("repeat-remove")){row.remove();updateRepeatButtons(containerId);return;}
+  const clone=row.cloneNode(true);clone.querySelector("input").value="";button.closest(".repeat-list").append(clone);updateRepeatButtons(containerId);clone.querySelector("input").focus();
+});
+document.getElementById("cancel-company-edit").addEventListener("click",()=>{resetCompanyForm();document.getElementById("company-message").textContent="Düzenleme iptal edildi.";});
 document.getElementById("company-form").addEventListener("submit",async event=>{
   event.preventDefault();const message=document.getElementById("company-message");const button=document.getElementById("save-company");button.disabled=true;message.textContent="Firma kaydediliyor…";
   try{
     if(!csrfToken)await readCsrf();
-    const payload={name:document.getElementById("company-name").value.trim(),website:document.getElementById("company-website").value.trim()||null,notes:document.getElementById("company-notes").value.trim()||null};
-    if(!payload.name)throw new Error("Firma adı gerekli.");
-    const response=await fetch("/api/companies",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
+    const payload={
+      name:document.getElementById("company-name").value.trim(),
+      authorized_people:repeatedValues(".company-person"),phone_numbers:repeatedValues(".company-phone"),
+      address:document.getElementById("company-address").value.trim()||null,
+      website:document.getElementById("company-website").value.trim()||null,
+      email:document.getElementById("company-email").value.trim()||null,
+      tax_office:document.getElementById("company-tax-office").value.trim()||null,
+      tax_number:document.getElementById("company-tax-number").value.trim()||null,
+      mersis_number:document.getElementById("company-mersis").value.trim()||null,
+      notes:document.getElementById("company-notes").value.trim()||null
+    };
+    if(!payload.name)throw new Error("Firma unvanı gerekli.");
+    const id=document.getElementById("company-id").value;
+    const response=await fetch(id?"/api/companies/"+encodeURIComponent(id):"/api/companies",{method:id?"PUT":"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
     if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
     if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Firma kaydedilemedi ("+response.status+")");}
-    document.getElementById("company-name").value="";document.getElementById("company-website").value="";document.getElementById("company-notes").value="";
-    message.textContent="Firma kaydedildi.";await loadCompanies();await loadMeetingCompanies();await loadQuoteCompanies();
+    message.textContent=id?"Firma değişiklikleri kaydedildi.":"Firma kaydedildi.";resetCompanyForm();await loadCompanies();await loadMeetingCompanies();await loadQuoteCompanies();
   }catch(error){message.textContent=error.message||"Firma kaydedilemedi.";}
   finally{button.disabled=false;}
 });

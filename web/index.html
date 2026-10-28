@@ -299,9 +299,6 @@ async function loadCompanies(){
     for(const company of companies){
       const card=document.createElement("article");card.className="company-card";
       const title=document.createElement("strong");title.className="company-card-title";title.textContent=company.name||"Firma adı yok";card.append(title);
-      const titleButton=document.createElement("button");titleButton.type="button";titleButton.className="company-card-title company-card-title-button";titleButton.textContent=company.name||"Firma adı yok";titleButton.setAttribute("aria-expanded","false");card.append(titleButton);
-      const meetingPanel=document.createElement("div");meetingPanel.className="company-meetings";meetingPanel.hidden=true;card.append(meetingPanel);
-      titleButton.addEventListener("click",async()=>{const opening=meetingPanel.hidden;meetingPanel.hidden=!opening;titleButton.setAttribute("aria-expanded",String(opening));if(opening){if(!allMeetings.length)await loadMeetings();renderCompanyMeetingPanel(company.id,meetingPanel);}});
       const contacts=document.createElement("div");contacts.className="company-card-line";const people=(company.authorized_people||[]).filter(Boolean).join(", ");const phoneValues=(company.phone_numbers||[]).filter(Boolean);contacts.textContent=people||"";
       phoneValues.forEach(phone=>{if(contacts.childNodes.length)contacts.append(document.createTextNode(" · "));const link=document.createElement("a");link.href="tel:"+phone.replace(/[^+\d]/g,"");link.className="company-card-link";link.textContent=formatPhoneDisplay(phone);contacts.append(link);});
       if(!contacts.textContent&&!contacts.childNodes.length)contacts.textContent="Yetkili kişi veya telefon belirtilmemiş";card.append(contacts);

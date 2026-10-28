@@ -336,6 +336,18 @@ def browser_create_meeting(payload: MeetingCreate, request: Request) -> dict:
     return {**saved, "company_name": company["name"] if company else "Firma bulunamadı"}
 
 
+@app.put("/api/meetings/{meeting_id}")
+def browser_update_meeting(meeting_id: str, payload: MeetingCreate, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    if not db.company_exists(payload.company_id):
+        raise HTTPException(status_code=404, detail="Company not found; meeting was not updated")
+    updated = db.update_meeting(meeting_id, payload.model_dump())
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    return updated
+
+
 
 class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=80)

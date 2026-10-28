@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#17202d">
+<meta name="description" content="Yetkili kullanıcılar için mobil öncelikli satış çalışma alanı önizlemesi.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<title>Satış — Kontrol Paneli</title>
+<style>
+:root{color-scheme:light;--ink:#17202d;--muted:#667085;--line:#e6e9ef;--paper:#fff;--bg:#f6f7f9;--nav:#17202d;--accent:#335cff;--soft:#edf1ff;--green:#16805d;--amber:#946200}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input{font:inherit}button{cursor:pointer}.app{min-height:100vh;display:grid;grid-template-columns:236px 1fr}.sidebar{background:var(--nav);color:#f8fafc;padding:24px 16px;display:flex;flex-direction:column;gap:28px}.brand{font-size:20px;font-weight:750;letter-spacing:-.5px;padding:0 10px}.brand span{color:#9eb1ff}.nav{display:grid;gap:6px}.nav button{background:transparent;border:0;color:#c5cbd5;text-align:left;padding:12px;border-radius:10px;display:flex;gap:12px;align-items:center}.nav button.active,.nav button:hover{background:#2b3545;color:white}.nav .symbol{width:20px;text-align:center}.side-note{margin-top:auto;color:#aab3c1;font-size:12px;padding:10px;line-height:1.6}.main{min-width:0}.topbar{height:72px;background:rgba(255,255,255,.85);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 32px;gap:16px}.crumb{color:var(--muted);font-size:13px}.topbar-actions{display:flex;align-items:center;gap:10px}.avatar{width:36px;height:36px;display:grid;place-items:center;background:#e7ebff;color:#2947bd;border-radius:50%;font-weight:700}#logout-button{padding:8px 11px;font-size:13px}.content{max-width:1280px;margin:0 auto;padding:30px 32px 48px}.welcome{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:24px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}h1{font-size:28px;letter-spacing:-.7px;margin:5px 0 4px}h2{font-size:16px;margin:0 0 16px}.subtitle{color:var(--muted);margin:0}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 14px;font-weight:650;color:var(--ink)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn:focus-visible,.nav button:focus-visible,input:focus-visible{outline:3px solid #a8b7ff;outline-offset:2px}.notice{background:#fff8e8;border:1px solid #f0dfb5;color:#75520c;border-radius:12px;padding:12px 14px;font-size:13px;margin-bottom:22px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px}.stat,.panel{background:var(--paper);border:1px solid var(--line);border-radius:15px}.stat{padding:18px}.stat-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}.stat-icon{background:#f0f2f7;border-radius:9px;padding:7px}.stat-value{font-size:29px;font-weight:750;letter-spacing:-.8px;margin:12px 0 4px}.stat-foot{font-size:12px;color:var(--muted)}.columns{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.9fr);gap:16px}.panel{padding:20px;min-width:0}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.panel-head h2{margin:0}.link{color:var(--accent);font-size:13px;font-weight:650;text-decoration:none;background:none;border:0;padding:0}.list{display:grid}.item{padding:14px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.item:first-child{border-top:0}.item-title{font-weight:650;margin-bottom:4px}.item-sub{font-size:13px;color:var(--muted)}.pill{display:inline-flex;align-items:center;white-space:nowrap;font-size:11px;font-weight:700;border-radius:99px;padding:5px 8px;background:#eef1f5;color:#505b6d}.pill.green{background:#e5f6ef;color:var(--green)}.pill.amber{background:#fff3d5;color:var(--amber)}.pill.blue{background:var(--soft);color:#2947bd}.search{width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 12px;margin:0 0 12px}.empty{color:var(--muted);font-size:13px;padding:22px 0}.page{display:none}.page.active{display:block}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}th{font-weight:600;color:var(--muted);padding:12px 10px;border-bottom:1px solid var(--line)}td{padding:14px 10px;border-bottom:1px solid var(--line)}.mobile-nav{display:none}.footer-note{font-size:12px;color:var(--muted);margin-top:20px}
+@media(max-width:980px){.app{grid-template-columns:200px 1fr}.content{padding:24px 20px}.topbar{padding:0 20px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}
+@media(max-width:640px){.app{display:block;padding-bottom:68px}.sidebar{display:none}.topbar{height:60px;padding:0 16px}.content{padding:22px 14px}.welcome{display:block}.welcome .actions{margin-top:16px}.welcome h1{font-size:25px}.stats{gap:9px}.stat{padding:14px}.stat-value{font-size:25px}.stat-top{font-size:12px}.panel{padding:16px}.mobile-nav{position:fixed;z-index:10;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}.mobile-nav button{border:0;background:transparent;color:var(--muted);font-size:10px;display:grid;gap:3px;justify-items:center;padding:5px 1px}.mobile-nav button.active{color:var(--accent);font-weight:700}.mobile-nav .symbol{font-size:18px}.crumb{display:none}.stats .stat-foot{font-size:11px}}
+
+#login-screen{max-width:420px;margin:10vh auto;padding:28px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px #17202d12}
+#login-screen h1{font-size:24px;margin:0 0 8px}#login-screen p{color:var(--muted);font-size:14px}
+#login-screen label{display:block;font-size:13px;font-weight:650;margin:18px 0 6px}
+#login-password{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px}
+#login-error{color:#a12b2b;min-height:1.4em;font-size:13px}
+body:not(.authenticated) .app,body:not(.authenticated) .mobile-nav{display:none}
+[hidden]{display:none!important}
+ 
+.quote-form{display:grid;gap:12px}.quote-form label{display:block;font-size:13px;font-weight:650;margin:0 0 5px}
+.quote-form input,.quote-form select{width:100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.quote-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.quote-line{display:grid;grid-template-columns:minmax(160px,1fr) minmax(80px,.3fr) minmax(100px,.4fr) auto;gap:10px;align-items:end;margin:12px 0}
+@media(max-width:640px){.quote-fields{grid-template-columns:1fr}.quote-line{grid-template-columns:1fr 1fr}.quote-line>div:first-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<section id="login-screen" aria-labelledby="login-title">
+  <div class="brand">satış<span>.</span></div>
+  <h1 id="login-title">Güvenli giriş</h1>
+  <p>Yerel satış çalışma alanına devam etmek için parolanı gir.</p>
+  <form id="login-form">
+    <label for="login-password">Parola</label>
+    <input id="login-password" name="password" type="password" autocomplete="current-password" required minlength="1" maxlength="1024">
+    <p id="login-error" role="alert" aria-live="polite"></p>
+    <button class="btn primary" type="submit">Giriş yap</button>
+  </form>
+</section>
+<div class="app">
+<aside class="sidebar">
+<div class="brand">satış<span>.</span></div>
+<nav class="nav" aria-label="Ana menü">
+<button class="active" data-page="dashboard"><span class="symbol">⌂</span>Genel Bakış</button>
+<button data-page="companies"><span class="symbol">▤</span>Firmalar</button>
+<button data-page="meetings"><span class="symbol">◷</span>Görüşmeler</button>
+<button data-page="products"><span class="symbol">◇</span>Ürünler ve Fiyatlar</button>
+<button data-page="quotes"><span class="symbol">▧</span>Teklifler</button>
+<button data-page="templates"><span class="symbol">▣</span>Belge Şablonları</button>
+</nav>
+<div class="side-note">Satış çalışma alanı<br>Mobil uyumlu uygulama önizlemesi</div>
+</aside>
+<main class="main">
+<header class="topbar"><div class="crumb">Satış çalışma alanı / <strong id="crumb-current">Genel Bakış</strong></div><div class="topbar-actions"><button class="btn" id="logout-button" type="button">Çıkış yap</button><div class="avatar" aria-label="Yerel kullanıcı">S</div></div></header>
+<div class="content">
+<section class="welcome">
+<div><div class="eyebrow">Çarşamba · Satış çalışma alanı</div><h1 id="page-title">Günaydın, satış ekibi</h1><p class="subtitle" id="page-subtitle">İşlerin, görüşmelerin ve tekliflerin tek yerde.</p></div>
+<div class="actions"><button class="btn" data-go="meetings">＋ Görüşme kaydet</button><button class="btn primary" data-go="quotes">＋ Teklif oluştur</button></div>
+</section>
+<div class="notice"><strong>Veri durumu:</strong> Firma listesi oturum doğrulamasıyla yerel SQLite verisinden yüklenir. Genel bakış, görüşmeler, ürünler ve teklifler bu aşamada örnek veridir; bunları gerçek kayıt gibi kullanmayın.</div>
+<section class="page active" id="page-dashboard">
+<div class="stats">
+<div class="stat"><div class="stat-top">Aktif firma <span class="stat-icon">▤</span></div><div class="stat-value">24</div><div class="stat-foot">Demo kayıtları</div></div>
+<div class="stat"><div class="stat-top">Bu hafta görüşme <span class="stat-icon">◷</span></div><div class="stat-value">8</div><div class="stat-foot">2 takip bekliyor</div></div>
+<div class="stat"><div class="stat-top">Taslak teklif <span class="stat-icon">▧</span></div><div class="stat-value">5</div><div class="stat-foot">Henüz onaylanmadı</div></div>
+<div class="stat"><div class="stat-top">Teklif toplamı <span class="stat-icon">₺</span></div><div class="stat-value">₺186 B</div><div class="stat-foot">Örnek tutar · tahmini</div></div>
+</div>
+<div class="columns">
+<div class="panel"><div class="panel-head"><h2>Son görüşmeler</h2><button class="link" data-go="meetings">Tümünü gör →</button></div><div class="list">
+<div class="item"><div><div class="item-title">Anadolu Endüstri</div><div class="item-sub">Bugün, 10:30 · Ürün demosu</div><div class="item-sub">Teknik ekipten ihtiyaç listesi beklenecek.</div></div><span class="pill amber">Takip et</span></div>
+<div class="item"><div><div class="item-title">Mavi Teknoloji</div><div class="item-sub">Dün, 14:00 · Fiyat görüşmesi</div><div class="item-sub">Revize teklif hazırlanacak.</div></div><span class="pill blue">Teklif</span></div>
+<div class="item"><div><div class="item-title">Kuzey Lojistik</div><div class="item-sub">Pazartesi, 11:00 · İlk görüşme</div><div class="item-sub">Karar vericiyle ikinci toplantı planlanacak.</div></div><span class="pill green">Tamamlandı</span></div>
+</div></div>
+<div class="panel"><div class="panel-head"><h2>Takip listesi</h2><span class="pill amber">2 bekliyor</span></div><div class="list">
+<div class="item"><div><div class="item-title">Anadolu Endüstri</div><div class="item-sub">İhtiyaç listesini iste</div><div class="item-sub">Son tarih: 29 Ekim</div></div><span>→</span></div>
+<div class="item"><div><div class="item-title">Mavi Teknoloji</div><div class="item-sub">Teklif revizyonu gönder</div><div class="item-sub">Son tarih: 30 Ekim</div></div><span>→</span></div>
+<div class="item"><div><div class="item-title">Kuzey Lojistik</div><div class="item-sub">Toplantı tarihi belirle</div><div class="item-sub">Son tarih: 2 Kasım</div></div><span>→</span></div>
+</div></div>
+</div>
+</section>
+<section class="page" id="page-companies"><div class="panel"><div class="panel-head"><h2>Firmalar</h2><span class="pill blue">Örnek veri</span></div><form id="company-form" class="quote-form" style="margin:16px 0"><div><label for="company-name">Firma adı</label><input id="company-name" maxlength="200" required placeholder="Firma adı"></div><div><label for="company-website">Web sitesi</label><input id="company-website" maxlength="300" type="url" placeholder="https://…"></div><div><label for="company-notes">Firma notları</label><input id="company-notes" maxlength="5000" placeholder="Sektör, ihtiyaçlar, önemli bilgiler"></div><p id="company-message" class="footer-note" role="status" aria-live="polite"></p><button class="btn primary" id="save-company" type="submit">Firmayı kaydet</button></form><input class="search" id="company-search" placeholder="Firma adı veya sektör ara…" aria-label="Firma ara"><div class="table-wrap"><table><thead><tr><th>Firma</th><th>Sektör</th><th>Son temas</th><th>Durum</th></tr></thead><tbody id="company-rows"><tr><td colspan="4">Firmalar yükleniyor…</td></tr></tbody></table></div><p class="footer-note">Gerçek sürümde firma detayında kişiler, tüm görüşme geçmişi ve ilişkilendirilmiş teklifler bulunacak.</p></div></section>
+<section class="page" id="page-meetings"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div><label for="meeting-company">Firma</label><select id="meeting-company" required><option value="">Firma seç</option></select></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><input id="meeting-date" type="datetime-local" required></div><div><label for="meeting-notes">Görüşme notları ve sonraki adım</label><input id="meeting-notes" maxlength="10000" required placeholder="İhtiyaçlar, kararlar, takip işleri"></div><p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></section>
+<section class="page" id="page-products"><div class="panel"><div class="panel-head"><h2>Ürünler ve fiyatlar</h2><span class="pill blue">Örnek veri</span></div><div class="table-wrap"><table><thead><tr><th>Ürün</th><th>SKU</th><th>Birim fiyat</th><th>Para birimi</th></tr></thead><tbody><tr><td><strong>Danışmanlık saati</strong></td><td>SRV-001</td><td>₺1.250,00</td><td>TRY</td></tr><tr><td><strong>Kurulum paketi</strong></td><td>SET-002</td><td>₺18.500,00</td><td>TRY</td></tr><tr><td><strong>Destek yıllık</strong></td><td>SUP-003</td><td>₺9.900,00</td><td>TRY</td></tr></tbody></table></div><p class="footer-note">Fiyatların geçerlilik tarihi ve kaynağı gerçek sürümde ayrıca tutulmalı. Bu örnek fiyatlar gerçek fiyat değildir.</p></div></section>
+<section class="page" id="page-quotes">
+<div class="panel">
+  <div class="panel-head"><h2>Teklif taslağı oluştur</h2><span class="pill blue">Kaydedilebilir</span></div>
+  <form id="quote-form" class="quote-form">
+    <label for="quote-company">Firma</label><select id="quote-company"><option value="">Firma seç (isteğe bağlı)</option></select>
+    <div class="quote-fields">
+      <div><label for="quote-currency">Para birimi</label><select id="quote-currency"><option value="TRY">TRY – Türk lirası</option><option value="EUR">EUR – Euro</option><option value="USD">USD – ABD doları</option></select></div>
+      <div><label for="quote-tax">Vergi oranı (%)</label><input id="quote-tax" type="number" min="0" max="100" step="0.01" value="20" required></div>
+      <div><label for="quote-discount">İndirim oranı (%)</label><input id="quote-discount" type="number" min="0" max="100" step="0.01" value="0" required></div>
+    </div>
+    <div class="panel-head"><h3>Teklif kalemleri</h3><button class="btn" id="add-quote-line" type="button">＋ Kalem ekle</button></div>
+    <div id="quote-lines">
+      <div class="quote-line"><div><label>Açıklama</label><input class="line-description" maxlength="500" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" step="0.0001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
+    </div>
+    <p id="quote-message" role="status" aria-live="polite" class="footer-note"></p>
+    <button class="btn primary" type="submit" id="save-quote">Teklifi kaydet ve belge oluştur</button>
+  </form>
+</div>
+<div class="panel"><div class="panel-head"><h2>Kayıtlı teklifler</h2><button class="btn" id="refresh-quotes" type="button">Yenile</button></div>
+<div class="table-wrap"><table><thead><tr><th>Firma</th><th>Tarih</th><th>Tutar</th><th>Durum / çıktı</th></tr></thead><tbody id="quote-rows"><tr><td colspan="4">Teklifler yükleniyor…</td></tr></tbody></table></div></div>
+</section>
+</div>
+
+<section class="page" id="page-templates">
+  <div class="panel">
+    <div class="panel-head"><h2>Şablon yükle</h2><span class="pill blue">Özel saklama</span></div>
+    <p class="footer-note">DOCX, XLSX veya doldurulabilir PDF yükle. Word/Excel alanlarını <code>{{company_name}}</code> gibi işaretle. PDF için AcroForm alanları gerekir.</p>
+    <form id="template-upload-form" class="quote-form">
+      <div><label for="template-file">Şablon dosyası</label><input id="template-file" type="file" accept=".docx,.xlsx,.pdf" required></div>
+      <p id="template-upload-message" class="footer-note" role="status" aria-live="polite"></p>
+      <button class="btn primary" id="template-upload-button" type="submit">Şablonu yükle ve alanları tara</button>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Kayıtlı şablonlar</h2><button class="btn" id="refresh-templates" type="button">Yenile</button></div>
+    <div class="list" id="template-list"><div class="empty">Şablonlar yükleniyor…</div></div>
+  </div>
+  <div class="panel" id="template-generation-panel" hidden>
+    <div class="panel-head"><h2 id="template-generation-title">Belge oluştur</h2><span class="pill blue">Kaynağı korur</span></div>
+    <p class="footer-note">Alanları açıkça doldur. Boş veya eşleşmeyen alanlar otomatik tahmin edilmez; üretilen dosya kaynak şablonun ayrı bir kopyasıdır.</p>
+    <form id="template-generation-form" class="quote-form">
+      <div id="template-field-inputs"></div>
+      <p id="template-generation-message" class="footer-note" role="status" aria-live="polite"></p>
+      <button class="btn primary" id="template-generate-button" type="submit">Doldur ve dosyayı indir</button>
+    </form>
+  </div>
+</section>
+
+</main>
+</div>
+<nav class="mobile-nav" aria-label="Mobil menü">
+<button class="active" data-page="dashboard"><span class="symbol">⌂</span>Özet</button><button data-page="companies"><span class="symbol">▤</span>Firmalar</button><button data-page="meetings"><span class="symbol">◷</span>Görüşmeler</button><button data-page="products"><span class="symbol">◇</span>Ürünler</button><button data-page="quotes"><span class="symbol">▧</span>Teklifler</button><button data-page="templates"><span class="symbol">▣</span>Belgeler</button>
+</nav>
+<script>
+const titles={dashboard:["Genel Bakış","Günaydın, satış ekibi","İşlerin, görüşmelerin ve tekliflerin tek yerde."],companies:["Firmalar","Firma portföyü","Firmaları, ilgili kişileri ve son temasları takip et."],meetings:["Görüşmeler","Görüşme geçmişi","Notları ve sonraki adımları tek yerde tut."],products:["Ürünler ve Fiyatlar","Ürün kataloğu","Fiyatları ve para birimlerini gözden geçir."],quotes:["Teklifler","Teklif çalışma alanı","Taslakları incele; hesapları API doğrular."],templates:["Belgeler","Belge şablonları","Word, Excel ve doldurulabilir PDF şablonlarından kopya oluştur."]};
+function go(page){document.querySelectorAll(".page").forEach(el=>el.classList.toggle("active",el.id==="page-"+page));document.querySelectorAll("[data-page]").forEach(el=>el.classList.toggle("active",el.dataset.page===page));document.getElementById("crumb-current").textContent=titles[page][0];document.getElementById("page-title").textContent=titles[page][1];document.getElementById("page-subtitle").textContent=titles[page][2];window.scrollTo({top:0,behavior:"smooth"});}
+document.querySelectorAll("[data-page]").forEach(el=>el.addEventListener("click",()=>go(el.dataset.page)));document.querySelectorAll("[data-go]").forEach(el=>el.addEventListener("click",()=>go(el.dataset.go)));
+
+let csrfToken = "";
+const loginScreen = document.getElementById("login-screen");
+const loginForm = document.getElementById("login-form");
+const loginError = document.getElementById("login-error");
+function showAuthenticated(){document.body.classList.add("authenticated");loginScreen.hidden=true;}
+async function readCsrf(){const response=await fetch("/api/csrf",{credentials:"same-origin",cache:"no-store"});if(!response.ok)throw new Error("Oturum doğrulanamadı");csrfToken=(await response.json()).csrf_token;}
+function showLogin(){document.body.classList.remove("authenticated");loginScreen.hidden=false;csrfToken="";document.getElementById("login-password").focus();}
+document.getElementById("logout-button").addEventListener("click",async()=>{
+  const button=document.getElementById("logout-button");button.disabled=true;
+  try{
+    const response=await fetch("/api/logout",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"X-CSRF-Token":csrfToken}});
+    if(!response.ok)throw new Error(response.status===401?"Oturum zaten kapalı.":"Çıkış yapılamadı; tekrar deneyin.");
+    showLogin();loginError.textContent="Güvenli çıkış yapıldı.";
+  }catch(error){loginError.textContent=error.message||"Çıkış yapılamadı.";}
+  finally{button.disabled=false;}
+});
+async function loadCompanies(){
+  const rows=document.getElementById("company-rows");
+  const query=document.getElementById("company-search").value.trim();
+  rows.replaceChildren();
+  const loading=document.createElement("tr");loading.innerHTML="<td colspan='4'>Firmalar yükleniyor…</td>";rows.append(loading);
+  try{
+    const response=await fetch("/api/companies?q="+encodeURIComponent(query)+"&limit=50",{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){document.body.classList.remove("authenticated");loginScreen.hidden=false;return;}
+    if(!response.ok)throw new Error("Firma listesi alınamadı ("+response.status+")");
+    const companies=await response.json();rows.replaceChildren();
+    if(!companies.length){const empty=document.createElement("tr");empty.innerHTML="<td colspan='4'>Eşleşen firma bulunamadı.</td>";rows.append(empty);return;}
+    for(const company of companies){
+      const row=document.createElement("tr");
+      const nameCell=document.createElement("td");const name=document.createElement("strong");name.textContent=company.name;nameCell.append(name);
+      const website=document.createElement("div");website.className="item-sub";website.textContent=company.website||"Web adresi eklenmemiş";nameCell.append(website);
+      const sector=document.createElement("td");sector.textContent="—";
+      const touched=document.createElement("td");touched.textContent="—";
+      const status=document.createElement("td");const pill=document.createElement("span");pill.className="pill blue";pill.textContent="Kayıtlı";status.append(pill);
+      row.append(nameCell,sector,touched,status);rows.append(row);
+    }
+  }catch(error){rows.replaceChildren();const row=document.createElement("tr");const cell=document.createElement("td");cell.colSpan=4;cell.textContent=error.message||"Beklenmeyen hata";row.append(cell);rows.append(row);}
+}
+loginForm.addEventListener("submit",async event=>{
+  event.preventDefault();loginError.textContent="";
+  const password=document.getElementById("login-password").value;
+  try{
+    const response=await fetch("/api/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});
+    if(!response.ok)throw new Error(response.status===401?"Parola hatalı.":response.status===503?"Sunucu parolası yapılandırılmamış.":"Giriş başarısız.");
+    const result=await response.json();csrfToken=result.csrf_token;document.getElementById("login-password").value="";
+    showAuthenticated();await loadCompanies();await loadMeetingCompanies();await loadMeetings();await loadQuoteCompanies();await loadQuotes();
+  }catch(error){loginError.textContent=error.message||"Giriş yapılamadı.";}
+});
+document.getElementById("company-search").addEventListener("input",()=>loadCompanies());
+document.getElementById("company-form").addEventListener("submit",async event=>{
+  event.preventDefault();const message=document.getElementById("company-message");const button=document.getElementById("save-company");button.disabled=true;message.textContent="Firma kaydediliyor…";
+  try{
+    if(!csrfToken)await readCsrf();
+    const payload={name:document.getElementById("company-name").value.trim(),website:document.getElementById("company-website").value.trim()||null,notes:document.getElementById("company-notes").value.trim()||null};
+    if(!payload.name)throw new Error("Firma adı gerekli.");
+    const response=await fetch("/api/companies",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
+    if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
+    if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Firma kaydedilemedi ("+response.status+")");}
+    document.getElementById("company-name").value="";document.getElementById("company-website").value="";document.getElementById("company-notes").value="";
+    message.textContent="Firma kaydedildi.";await loadCompanies();await loadMeetingCompanies();await loadQuoteCompanies();
+  }catch(error){message.textContent=error.message||"Firma kaydedilemedi.";}
+  finally{button.disabled=false;}
+});
+
+
+async function loadMeetingCompanies(){
+  const select=document.getElementById("meeting-company");if(!select)return;
+  try{
+    const response=await fetch("/api/companies?limit=50",{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){showLogin();return;}
+    if(!response.ok)throw new Error("Firmalar yüklenemedi");
+    const companies=await response.json();select.replaceChildren(new Option("Firma seç",""));
+    for(const company of companies)select.add(new Option(company.name,company.id));
+  }catch(error){document.getElementById("meeting-message").textContent=error.message||"Firmalar yüklenemedi.";}
+}
+async function loadMeetings(){
+  const list=document.getElementById("meeting-list");if(!list)return;
+  try{
+    const response=await fetch("/api/meetings",{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){showLogin();return;}
+    if(!response.ok)throw new Error("Görüşmeler yüklenemedi");
+    const meetings=await response.json();list.replaceChildren();
+    if(!meetings.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="Henüz kaydedilmiş görüşme yok.";list.append(empty);return;}
+    for(const meeting of meetings){
+      const item=document.createElement("div");item.className="item";
+      const details=document.createElement("div");const title=document.createElement("div");title.className="item-title";title.textContent=meeting.company_name;details.append(title);
+      const date=document.createElement("div");date.className="item-sub";date.textContent=String(meeting.meeting_date||"").replace("T"," ");details.append(date);
+      const notes=document.createElement("p");notes.className="item-sub";notes.textContent=meeting.notes;details.append(notes);
+      const pill=document.createElement("span");pill.className="pill green";pill.textContent="Kaydedildi";item.append(details,pill);list.append(item);
+    }
+  }catch(error){list.replaceChildren();const empty=document.createElement("div");empty.className="empty";empty.textContent=error.message||"Görüşmeler yüklenemedi.";list.append(empty);}
+}
+document.getElementById("refresh-meetings").addEventListener("click",loadMeetings);
+document.getElementById("meeting-form").addEventListener("submit",async event=>{
+  event.preventDefault();const message=document.getElementById("meeting-message");const button=document.getElementById("save-meeting");button.disabled=true;message.textContent="Görüşme kaydediliyor…";
+  try{
+    if(!csrfToken)await readCsrf();
+    const payload={company_id:document.getElementById("meeting-company").value,meeting_date:document.getElementById("meeting-date").value,notes:document.getElementById("meeting-notes").value.trim()};
+    if(!payload.company_id||!payload.meeting_date||!payload.notes)throw new Error("Firma, tarih ve görüşme notları gerekli.");
+    const response=await fetch("/api/meetings",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
+    if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
+    if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Görüşme kaydedilemedi ("+response.status+")");}
+    document.getElementById("meeting-notes").value="";message.textContent="Görüşme kaydedildi.";await loadMeetings();
+  }catch(error){message.textContent=error.message||"Görüşme kaydedilemedi.";}
+  finally{button.disabled=false;}
+});
+async function loadQuoteCompanies(){
+  const select=document.getElementById("quote-company");if(!select)return;
+  try{const response=await fetch("/api/companies?limit=50",{credentials:"same-origin",cache:"no-store"});if(!response.ok)throw new Error("Firmalar yüklenemedi");
+    const companies=await response.json();select.replaceChildren(new Option("Firma seç (isteğe bağlı)",""));
+    for(const company of companies)select.add(new Option(company.name,company.id));
+  }catch(error){document.getElementById("quote-message").textContent=error.message;}
+}
+async function loadQuotes(){
+  const rows=document.getElementById("quote-rows");if(!rows)return;
+  try{const response=await fetch("/api/quotes",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Teklifler yüklenemedi");
+    const quotes=await response.json();rows.replaceChildren();
+    if(!quotes.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent="Henüz kayıtlı teklif yok.";tr.append(td);rows.append(tr);return;}
+    for(const quote of quotes){const tr=document.createElement("tr");
+      for(const value of [quote.company_name, String(quote.created_at||"").slice(0,10), quote.total+" "+quote.currency]){const td=document.createElement("td");td.textContent=value;tr.append(td);}
+      const action=document.createElement("td");const link=document.createElement("a");link.href="/api/quotes/"+encodeURIComponent(quote.id)+"/document";link.target="_blank";link.rel="noopener";link.textContent="Belgeyi aç / PDF";link.className="link";action.append(link);tr.append(action);rows.append(tr);
+    }
+  }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message;tr.append(td);rows.append(tr);}
+}
+function addQuoteLine(){
+  const container=document.getElementById("quote-lines");const row=document.createElement("div");row.className="quote-line";
+  row.innerHTML='<div><label>Açıklama</label><input class="line-description" maxlength="500" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" step="0.0001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
+  container.append(row);updateLineButtons();
+}
+function updateLineButtons(){const buttons=[...document.querySelectorAll(".remove-line")];buttons.forEach(button=>button.disabled=buttons.length===1);}
+document.getElementById("add-quote-line").addEventListener("click",addQuoteLine);
+document.getElementById("quote-lines").addEventListener("click",event=>{const button=event.target.closest(".remove-line");if(button){button.closest(".quote-line").remove();updateLineButtons();}});
+document.getElementById("refresh-quotes").addEventListener("click",loadQuotes);
+document.getElementById("quote-form").addEventListener("submit",async event=>{
+  event.preventDefault();const message=document.getElementById("quote-message");const button=document.getElementById("save-quote");button.disabled=true;message.textContent="Teklif kaydediliyor…";
+  try{
+    if(!csrfToken)await readCsrf();
+    const lines=[...document.querySelectorAll(".quote-line")].map(row=>({description:row.querySelector(".line-description").value.trim(),quantity:row.querySelector(".line-quantity").value,unit_price:row.querySelector(".line-price").value}));
+    if(lines.some(line=>!line.description||Number(line.quantity)<=0||Number(line.unit_price)<0))throw new Error("Kalem açıklamalarını, miktarları ve fiyatları kontrol et.");
+    const payload={company_id:document.getElementById("quote-company").value||null,currency:document.getElementById("quote-currency").value,tax_rate:Number(document.getElementById("quote-tax").value)/100,discount_rate:Number(document.getElementById("quote-discount").value)/100,lines};
+    const response=await fetch("/api/quotes",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
+    if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
+    if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Teklif kaydedilemedi ("+response.status+")");}
+    const quote=await response.json();message.textContent="Teklif taslağı kaydedildi. Belge yeni sekmede açılıyor.";
+    window.open("/api/quotes/"+encodeURIComponent(quote.id)+"/document","_blank","noopener");
+    await loadQuotes();
+  }catch(error){message.textContent=error.message||"Teklif kaydedilemedi.";}
+  finally{button.disabled=false;}
+});
+\n
+let selectedTemplateId = "";
+let selectedTemplateName = "";
+
+async function loadTemplates(){
+  const list=document.getElementById("template-list");
+  try{
+    const response=await fetch("/api/templates",{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){showLogin();return;}
+    if(!response.ok)throw new Error("Şablonlar yüklenemedi ("+response.status+")");
+    const templates=await response.json();
+    list.replaceChildren();
+    if(!templates.length){list.innerHTML='<div class="empty">Henüz şablon yüklenmedi.</div>';return;}
+    for(const template of templates){
+      const item=document.createElement("div");item.className="list-item";
+      const details=document.createElement("div");
+      const heading=document.createElement("strong");heading.textContent=template.name;
+      const meta=document.createElement("p");meta.className="footer-note";
+      meta.textContent=template.format.toUpperCase()+" · "+template.fields.length+" alan · "+Math.ceil(template.size/1024)+" KB";
+      const fields=document.createElement("p");fields.className="footer-note";
+      fields.textContent=template.fields.length?("Alanlar: "+template.fields.join(", ")):"Doldurulabilir alan bulunamadı";
+      details.append(heading,meta,fields);
+      const button=document.createElement("button");button.className="btn";button.type="button";button.textContent="Alanları doldur";
+      button.addEventListener("click",()=>selectTemplate(template));
+      item.append(details,button);list.append(item);
+    }
+  }catch(error){list.textContent=error.message||"Şablonlar yüklenemedi.";}
+}
+
+function selectTemplate(template){
+  selectedTemplateId=template.id;selectedTemplateName=template.name;
+  document.getElementById("template-generation-panel").hidden=false;
+  document.getElementById("template-generation-title").textContent=template.name+" — alanları doldur";
+  const inputs=document.getElementById("template-field-inputs");inputs.replaceChildren();
+  if(!template.fields.length){
+    const note=document.createElement("p");note.className="footer-note";
+    note.textContent="Bu dosyada otomatik bulunabilen alan yok. PDF ise doldurulabilir form alanlarını kontrol et.";
+    inputs.append(note);
+  }
+  for(const field of template.fields){
+    const wrapper=document.createElement("div");
+    const label=document.createElement("label");label.htmlFor="template-field-"+field;label.textContent=field;
+    const input=document.createElement("input");input.id=label.htmlFor;input.dataset.templateField=field;
+    input.maxLength=5000;input.required=true;input.placeholder=field+" değerini gir";
+    wrapper.append(label,input);inputs.append(wrapper);
+  }
+  document.getElementById("template-generation-message").textContent="";
+  document.getElementById("template-generation-panel").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+document.getElementById("template-upload-form").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const input=document.getElementById("template-file");
+  const message=document.getElementById("template-upload-message");
+  const button=document.getElementById("template-upload-button");
+  if(!input.files.length)return;
+  const file=input.files[0];button.disabled=true;message.textContent="Dosya doğrulanıyor…";
+  try{
+    const formData=new FormData();formData.append("file",file);
+    const response=await fetch("/api/templates",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"X-CSRF-Token":csrfToken},body:formData});
+    if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(typeof result.detail==="string"?result.detail:"Şablon yüklenemedi ("+response.status+")");
+    message.textContent="Şablon yüklendi. Bulunan alan sayısı: "+result.fields.length+".";
+    input.value="";await loadTemplates();selectTemplate(result);
+  }catch(error){message.textContent=error.message||"Şablon yüklenemedi.";}
+  finally{button.disabled=false;}
+});
+
+document.getElementById("template-generation-form").addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!selectedTemplateId)return;
+  const message=document.getElementById("template-generation-message");
+  const button=document.getElementById("template-generate-button");button.disabled=true;
+  try{
+    const values={};
+    document.querySelectorAll("[data-template-field]").forEach(input=>{values[input.dataset.templateField]=input.value;});
+    const response=await fetch("/api/templates/"+encodeURIComponent(selectedTemplateId)+"/generate",{
+      method:"POST",credentials:"same-origin",cache:"no-store",
+      headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},
+      body:JSON.stringify({values})
+    });
+    if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
+    if(!response.ok){
+      const body=await response.json().catch(()=>({}));
+      const detail=body.detail;
+      throw new Error(typeof detail==="string"?detail:(detail?.message||"Belge oluşturulamadı ("+response.status+")"));
+    }
+    const blob=await response.blob();const disposition=response.headers.get("Content-Disposition")||"";
+    const match=disposition.match(/filename="?([^";]+)"?/i);
+    const filename=match?match[1]:selectedTemplateName;
+    const url=URL.createObjectURL(blob);const link=document.createElement("a");
+    link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();URL.revokeObjectURL(url);
+    message.textContent="Belge oluşturuldu ve indirilmeye hazır.";
+  }catch(error){message.textContent=error.message||"Belge oluşturulamadı.";}
+  finally{button.disabled=false;}
+});
+document.getElementById("refresh-templates").addEventListener("click",loadTemplates);
+
+
+async function initializeAuth(){
+  try{
+    const response=await fetch("/api/session",{credentials:"same-origin",cache:"no-store"});
+    if(response.ok&&(await response.json()).authenticated){await readCsrf();showAuthenticated();await loadCompanies();await loadQuoteCompanies();await loadQuotes();await loadTemplates();}
+  }catch(_error){loginError.textContent="Yerel sunucuya bağlanılamadı.";}
+}
+initializeAuth();
+
+// Yalnızca statik uygulama kabuğunu önbelleğe alır. Kullanıcı verisi veya API yanıtı önbelleğe alınmaz.
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {
+    // Önizleme, service worker kurulamazsa da kullanılabilir.
+  }));
+}
+</script>
+</body>
+</html>

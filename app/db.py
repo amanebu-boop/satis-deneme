@@ -246,6 +246,23 @@ def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
     return record
 
 
+def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | None:
+    with connect() as connection:
+        cursor = connection.execute(
+            "UPDATE meetings SET company_id = ?, meeting_date = ?, notes = ? WHERE id = ?",
+            (record["company_id"], record["meeting_date"], record["notes"], meeting_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+        row = connection.execute(
+            """SELECT m.id, m.company_id, c.name AS company_name, m.meeting_date, m.notes
+               FROM meetings AS m JOIN companies AS c ON c.id = m.company_id
+               WHERE m.id = ?""",
+            (meeting_id,),
+        ).fetchone()
+    return dict(row) if row is not None else None
+
+
 def list_company_meetings(company_id: str) -> list[dict[str, Any]]:
     with connect() as connection:
         rows = connection.execute(

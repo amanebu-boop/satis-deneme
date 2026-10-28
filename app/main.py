@@ -234,9 +234,7 @@ def browser_list_companies(
     _require_browser_session(request)
     if q is not None and len(q) > 200:
         raise HTTPException(status_code=400, detail="Search query is too long")
-    rows = db.list_companies_page(q, limit=min(limit, 50), offset=offset)
-    # Return only fields required by the list view; notes and internal data stay server-side.
-    return [{"id": row["id"], "name": row["name"], "website": row["website"]} for row in rows]
+    return db.list_companies_page(q, limit=min(limit, 50), offset=offset)
 
 
 @app.get("/api/companies/{company_id}")
@@ -245,13 +243,33 @@ def browser_get_company(company_id: str, request: Request):
     row = db.get_company(company_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Company not found")
-    return {"id": row["id"], "name": row["name"], "website": row["website"]}
+    return row
 
 
 class CompanyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
+    authorized_people: list[str] = Field(default_factory=list, max_length=50)
+    phone_numbers: list[str] = Field(default_factory=list, max_length=50)
+    address: str | None = Field(default=None, max_length=3000)
     website: str | None = Field(default=None, max_length=300)
+    email: str | None = Field(default=None, max_length=320)
+    tax_office: str | None = Field(default=None, max_length=200)
+    tax_number: str | None = Field(default=None, max_length=50)
+    mersis_number: str | None = Field(default=None, max_length=50)
     notes: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("name")
+    @classmethod
+    def clean_company_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Firma unvanı boş olamaz")
+        return value
+
+    @field_validator("authorized_people", "phone_numbers")
+    @classmethod
+    def clean_repeated_values(cls, values: list[str]) -> list[str]:
+        return [value.strip() for value in values if value and value.strip()]
 
 
 @app.post("/api/companies", status_code=201)

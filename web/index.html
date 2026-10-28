@@ -33,7 +33,7 @@ body:not(.authenticated) .app,body:not(.authenticated) .mobile-nav{display:none}
 .company-detail{display:block;color:var(--muted);font-size:12px;margin-top:4px;overflow-wrap:anywhere}
 .quote-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .quote-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,.28fr) minmax(95px,.38fr) auto;gap:10px;align-items:end;margin:12px 0}.quote-line .line-product-wrap{grid-column:1/-1}.quote-totals{display:grid;gap:8px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:14px;margin:8px 0 4px}.quote-total-row{display:flex;justify-content:space-between;gap:12px;font-size:13px}.quote-total-row strong{font-variant-numeric:tabular-nums}.quote-total-grand{border-top:1px solid var(--line);padding-top:10px;margin-top:3px;font-size:16px;font-weight:750;color:var(--ink)}.quote-total-grand strong{font-size:20px}.quote-product-empty{font-size:12px;color:var(--muted);margin:0}
-@media(max-width:640px){.quote-fields{grid-template-columns:1fr}.quote-line{grid-template-columns:1fr 1fr}.quote-line>div:first-child{grid-column:1/-1}.quote-line .line-product-wrap{grid-column:1/-1}.quote-line .remove-line{grid-column:2;grid-row:3}.quote-line>div:nth-child(2){grid-column:1/-1}}
+@media(max-width:640px){.quote-fields{grid-template-columns:1fr}.quote-line{grid-template-columns:1fr 1fr}.quote-line>div:first-child{grid-column:1/-1}.quote-line .line-product-wrap{grid-column:1/-1}.quote-line .remove-line{grid-column:2;grid-row:4}.quote-line>div:nth-child(2){grid-column:1/-1}}
 
 /* Sade, lacivert-beyaz ve telefon öncelikli görünüm */
 :root{
@@ -564,10 +564,15 @@ document.getElementById("quote-lines").addEventListener("change",event=>{
   updateQuoteTotals();
 });
 document.getElementById("quote-lines").addEventListener("input",event=>{if(event.target.matches(".line-quantity,.line-price"))updateQuoteTotals();});
-["quote-currency","quote-tax","quote-discount"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{
-  if(id==="quote-currency")document.querySelectorAll(".line-product").forEach(select=>{select.value="";populateProductSelect(select);});
-  updateQuoteTotals();
-}));
+["quote-currency","quote-tax","quote-discount"].forEach(id=>{
+  const update=()=>{
+    if(id==="quote-currency")document.querySelectorAll(".line-product").forEach(select=>{select.value="";populateProductSelect(select);});
+    updateQuoteTotals();
+  };
+  document.getElementById(id).addEventListener("input",update);
+  document.getElementById(id).addEventListener("change",update);
+});
+updateQuoteTotals();
 document.getElementById("refresh-quotes").addEventListener("click",loadQuotes);
 document.getElementById("quote-form").addEventListener("submit",async event=>{
   event.preventDefault();const message=document.getElementById("quote-message");const button=document.getElementById("save-quote");button.disabled=true;message.textContent="Teklif kaydediliyor…";

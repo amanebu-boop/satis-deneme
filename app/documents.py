@@ -21,7 +21,7 @@ def render_quotation_html(quotation: dict[str, Any], company: dict[str, Any] | N
         )
     line_rows = "\n".join(rows)
     discount_rate = escape(str(quotation.get("discount_rate", "0")))
-    tax_rate = escape(str(quotation.get("tax_rate", "0")))
+    tax_rate = escape(str((float(quotation.get("tax_rate", 0) or 0) * 100)))
     subtotal = escape(str(quotation.get("subtotal", "0")))
     discount = escape(str(quotation.get("discount_amount", "0")))
     tax = escape(str(quotation.get("tax_amount", "0")))

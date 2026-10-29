@@ -1,0 +1,26 @@
+name: Quote template validation
+
+on:
+  push:
+    branches: [feature/quote-template-file]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install application and test dependencies
+        run: python -m pip install -e ".[test]"
+      - name: Run automated tests
+        run: python -m pytest -q

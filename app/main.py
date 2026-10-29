@@ -11,7 +11,7 @@ from threading import Lock
 from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
 
 from app import db
@@ -19,6 +19,7 @@ from app import session_store
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
+from app.quote_excel import render_quote_excel
 
 
 @asynccontextmanager
@@ -510,6 +511,23 @@ def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
         ],
     }
     return db.create_quotation(record)
+
+
+@app.get("/api/quotes/{quotation_id}/excel")
+def browser_quotation_excel(quotation_id: str, request: Request) -> Response:
+    _require_browser_session(request)
+    record = db.get_quotation(quotation_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    company = db.get_company(record["company_id"]) if record.get("company_id") else None
+    content = render_quote_excel(record, company)
+    response = Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="Teklif_{quotation_id[:8].upper()}.xlsx"'},
+    )
+    response.headers["Cache-Control"] = "no-store, private"
+    return response
 
 
 @app.get("/api/quotes/{quotation_id}/document", response_class=HTMLResponse)

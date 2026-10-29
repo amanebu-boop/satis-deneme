@@ -3,23 +3,18 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def _authenticated_client(tmp_path, monkeypatch):
+def test_company_structured_address_and_meeting_product_snapshot(tmp_path, monkeypatch):
     monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
     monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
-    client = TestClient(app, base_url="https://testserver")
-    login = client.post(
-        "/api/login",
-        json={"password": "a-secure-test-password-123"},
-        headers={"Origin": "https://testserver"},
-    )
-    assert login.status_code == 200
-    csrf = login.json()["csrf_token"]
-    return client, {"Origin": "https://testserver", "X-CSRF-Token": csrf}
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post(
+            "/api/login",
+            json={"password": "a-secure-test-password-123"},
+            headers={"Origin": "https://testserver"},
+        )
+        assert login.status_code == 200
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
 
-
-def test_company_structured_address_and_meeting_product_snapshot(tmp_path, monkeypatch):
-    client, headers = _authenticated_client(tmp_path, monkeypatch)
-    with client:
         company = client.post(
             "/api/companies",
             headers=headers,

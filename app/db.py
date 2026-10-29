@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+from uuid import uuid4
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,13 @@ def init_db() -> None:
                 authorized_people TEXT NOT NULL DEFAULT '[]',
                 phone_numbers TEXT NOT NULL DEFAULT '[]',
                 address TEXT,
+                city TEXT,
+                district TEXT,
+                neighborhood TEXT,
+                street TEXT,
+                building_number TEXT,
+                postal_code TEXT,
+                address_extra TEXT,
                 website TEXT,
                 email TEXT,
                 tax_office TEXT,
@@ -68,6 +76,16 @@ def init_db() -> None:
                 description TEXT,
                 currency TEXT NOT NULL CHECK(length(currency) = 3),
                 unit_price TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS meeting_products (
+                id TEXT PRIMARY KEY,
+                meeting_id TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+                product_id TEXT REFERENCES products(id) ON DELETE SET NULL,
+                sku TEXT,
+                name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                unit_price TEXT NOT NULL,
+                currency TEXT NOT NULL CHECK(length(currency) = 3)
             );
             CREATE TABLE IF NOT EXISTS quotations (
                 id TEXT PRIMARY KEY,
@@ -120,6 +138,13 @@ def init_db() -> None:
             "authorized_people": "TEXT NOT NULL DEFAULT '[]'",
             "phone_numbers": "TEXT NOT NULL DEFAULT '[]'",
             "address": "TEXT",
+            "city": "TEXT",
+            "district": "TEXT",
+            "neighborhood": "TEXT",
+            "street": "TEXT",
+            "building_number": "TEXT",
+            "postal_code": "TEXT",
+            "address_extra": "TEXT",
             "email": "TEXT",
             "tax_office": "TEXT",
             "tax_number": "TEXT",
@@ -148,13 +173,16 @@ def create_company(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
             """INSERT INTO companies
-               (id, name, authorized_people, phone_numbers, address, website, email,
-                tax_office, tax_number, mersis_number, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (id, name, authorized_people, phone_numbers, address, city, district,
+                neighborhood, street, building_number, postal_code, address_extra,
+                website, email, tax_office, tax_number, mersis_number, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (stored["id"], stored["name"], stored["authorized_people"], stored["phone_numbers"],
-             stored.get("address"), stored.get("website"), stored.get("email"),
-             stored.get("tax_office"), stored.get("tax_number"), stored.get("mersis_number"),
-             stored.get("notes")),
+             stored.get("address"), stored.get("city"), stored.get("district"),
+             stored.get("neighborhood"), stored.get("street"), stored.get("building_number"),
+             stored.get("postal_code"), stored.get("address_extra"), stored.get("website"),
+             stored.get("email"), stored.get("tax_office"), stored.get("tax_number"),
+             stored.get("mersis_number"), stored.get("notes")),
         )
     return {**record}
 
@@ -214,12 +242,15 @@ def update_company(company_id: str, record: dict[str, Any]) -> dict[str, Any] | 
     with connect() as connection:
         cursor = connection.execute(
             """UPDATE companies SET name=?, authorized_people=?, phone_numbers=?, address=?,
-               website=?, email=?, tax_office=?, tax_number=?, mersis_number=?, notes=?
+               city=?, district=?, neighborhood=?, street=?, building_number=?, postal_code=?,
+               address_extra=?, website=?, email=?, tax_office=?, tax_number=?, mersis_number=?, notes=?
                WHERE id=?""",
             (stored["name"], stored["authorized_people"], stored["phone_numbers"],
-             stored.get("address"), stored.get("website"), stored.get("email"),
-             stored.get("tax_office"), stored.get("tax_number"), stored.get("mersis_number"),
-             stored.get("notes"), company_id),
+             stored.get("address"), stored.get("city"), stored.get("district"),
+             stored.get("neighborhood"), stored.get("street"), stored.get("building_number"),
+             stored.get("postal_code"), stored.get("address_extra"), stored.get("website"),
+             stored.get("email"), stored.get("tax_office"), stored.get("tax_number"),
+             stored.get("mersis_number"), stored.get("notes"), company_id),
         )
         if cursor.rowcount == 0:
             return None
@@ -255,6 +286,27 @@ def list_company_contacts(company_id: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+def _save_meeting_products(connection: sqlite3.Connection, meeting_id: str, products: list[dict[str, Any]]) -> None:
+    connection.execute("DELETE FROM meeting_products WHERE meeting_id = ?", (meeting_id,))
+    for item in products:
+        connection.execute(
+            """INSERT INTO meeting_products
+               (id, meeting_id, product_id, sku, name, quantity, unit_price, currency)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (item.get("id") or str(uuid4()), meeting_id, item.get("product_id"), item.get("sku"),
+             item["name"], str(item["quantity"]), str(item["unit_price"]), item["currency"]),
+        )
+
+
+def _meeting_products(connection: sqlite3.Connection, meeting_id: str) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """SELECT id, meeting_id, product_id, sku, name, quantity, unit_price, currency
+           FROM meeting_products WHERE meeting_id = ? ORDER BY rowid""",
+        (meeting_id,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
@@ -264,7 +316,8 @@ def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
             (record["id"], record["company_id"], record["meeting_date"], record["notes"],
              record.get("meeting_type", "phone"), record.get("topic", "Genel görüşme")),
         )
-    return record
+        _save_meeting_products(connection, record["id"], record.get("product_lines") or [])
+    return {**record, "product_lines": record.get("product_lines") or []}
 
 
 def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | None:
@@ -277,6 +330,8 @@ def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | 
         )
         if cursor.rowcount == 0:
             return None
+        if record.get("product_lines") is not None:
+            _save_meeting_products(connection, meeting_id, record["product_lines"])
         row = connection.execute(
             """SELECT m.id, m.company_id, c.name AS company_name, m.meeting_date,
                       m.notes, m.meeting_type, m.topic
@@ -284,7 +339,12 @@ def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | 
                WHERE m.id = ?""",
             (meeting_id,),
         ).fetchone()
-    return dict(row) if row is not None else None
+        if row is not None:
+            result = dict(row)
+            result["product_lines"] = _meeting_products(connection, meeting_id)
+        else:
+            result = None
+    return result
 
 
 def list_company_meetings(company_id: str) -> list[dict[str, Any]]:
@@ -307,7 +367,12 @@ def list_meetings() -> list[dict[str, Any]]:
                FROM meetings AS m JOIN companies AS c ON c.id = m.company_id
                ORDER BY m.meeting_date DESC, m.id DESC"""
         ).fetchall()
-    return [dict(row) for row in rows]
+        records = []
+        for row in rows:
+            item = dict(row)
+            item["product_lines"] = _meeting_products(connection, item["id"])
+            records.append(item)
+    return records
 
 
 def create_follow_up(record: dict[str, Any]) -> dict[str, Any]:

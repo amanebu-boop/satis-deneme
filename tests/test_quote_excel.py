@@ -73,7 +73,7 @@ def test_excel_output_preserves_template_and_fills_quote_fields():
     assert sheet["J29"].value == 1
     assert sheet["K29"].value == 50
     assert sheet["L28"].value == "=K28*J28"
-    assert sheet["I44"].value == "=ara_toplam*0.2"
+    assert sheet["I44"].value == "=ara_toplam*20/100"
     assert sheet["I45"].value == "=ara_toplam+kdv_toplam"
     assert sheet["I46"].value == "üç yüz Avro"
     assert sheet["D49"].value == "Sipariş onayı ve avansın tahsilini takip eden ilk iş günü"

@@ -156,6 +156,9 @@ body{font-size:12.5px;line-height:1.4}
 .meeting-products-summary{font-size:11px;color:var(--muted);margin-top:6px}.address-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.address-grid>div{min-width:0}
 @media(max-width:640px){.app{grid-template-columns:1fr}.content{padding:12px 9px 24px}.panel{padding:10px}.welcome h1{font-size:20px}.welcome .actions .btn{min-height:34px;padding:7px}.company-search-tools{grid-template-columns:1fr 1fr}.company-search-tools .search-wrap{grid-column:1/-1}.address-grid{grid-template-columns:1fr 1fr}.meeting-product-row{grid-template-columns:1fr 1fr}.meeting-product-row>div:first-child{grid-column:1/-1}.meeting-product-row .remove-meeting-product{grid-column:2}.quote-form{gap:7px}.meeting-company-picker,.quote-company-picker{gap:7px}.table-wrap table{min-width:500px}}
 @media(max-width:380px){.address-grid{grid-template-columns:1fr}.company-search-tools{grid-template-columns:1fr}.company-search-tools .search-wrap{grid-column:auto}}
+
+.topbar{justify-content:space-between}.topbar-brand{font-size:16px;font-weight:850;letter-spacing:.08em;color:var(--ink);white-space:nowrap}.topbar-brand span{font-weight:550;color:#9a7745}.topbar .crumb{margin-right:auto;margin-left:22px}.profile-menu-wrap{position:relative}.profile-menu{position:absolute;right:0;top:calc(100% + 9px);z-index:30;min-width:190px;padding:6px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(23,43,69,.14)}.profile-menu button{display:block;width:100%;padding:10px 11px;border:0;border-radius:7px;background:transparent;text-align:left;color:var(--ink);font:inherit;font-size:12px}.profile-menu button:hover{background:#f2f5f8}.topbar-actions{margin-left:auto}.avatar{border:0;cursor:pointer}.topbar-brand{order:0}.topbar .crumb{order:1}.topbar-actions{order:2}
+@media(max-width:640px){.topbar{justify-content:space-between}.topbar-brand{font-size:14px}.topbar .crumb{display:none}.topbar-actions{margin-left:auto}}
 </style>
 </head>
 <body>
@@ -184,7 +187,7 @@ body{font-size:12.5px;line-height:1.4}
 <div class="side-note">Satış çalışma alanı<br>Mobil uyumlu uygulama önizlemesi</div>
 </aside>
 <main class="main">
-<header class="topbar"><div class="crumb">Satış çalışma alanı / <strong id="crumb-current">Genel Bakış</strong></div><div class="topbar-actions"><button class="btn" id="logout-button" type="button">Çıkış yap</button><div class="avatar" aria-label="Yerel kullanıcı">S</div></div></header>
+<header class="topbar"><div class="topbar-brand" aria-label="Erşen Makina">ERŞEN <span>MAKİNA</span></div><div class="crumb">Satış çalışma alanı / <strong id="crumb-current">Genel Bakış</strong></div><div class="topbar-actions"><div class="profile-menu-wrap"><button class="avatar" id="profile-menu-button" type="button" aria-label="Profil menüsünü aç" aria-expanded="false">S</button><div class="profile-menu" id="profile-menu" hidden><button type="button" id="profile-settings-button">Profil ve ayarlar</button><button type="button" id="profile-qr-button">QR kartvizit</button><button type="button" id="logout-button">Çıkış yap</button></div></div></div></header>
 <div class="content">
 <section class="welcome">
 <div><div class="eyebrow">Çarşamba · Satış çalışma alanı</div><h1 id="page-title">Günaydın, satış ekibi</h1><p class="subtitle" id="page-subtitle">İşlerin, görüşmelerin ve tekliflerin tek yerde.</p></div>
@@ -344,6 +347,7 @@ const loginError = document.getElementById("login-error");
 function showAuthenticated(){document.body.classList.add("authenticated");loginScreen.hidden=true;}
 async function readCsrf(){const response=await fetch("/api/csrf",{credentials:"same-origin",cache:"no-store"});if(!response.ok)throw new Error("Oturum doğrulanamadı");csrfToken=(await response.json()).csrf_token;}
 function showLogin(){document.body.classList.remove("authenticated");loginScreen.hidden=false;csrfToken="";document.getElementById("login-password").focus();}
+const profileMenuButton=document.getElementById("profile-menu-button");const profileMenu=document.getElementById("profile-menu");profileMenuButton.addEventListener("click",()=>{const open=profileMenu.hidden;profileMenu.hidden=!open;profileMenuButton.setAttribute("aria-expanded",String(open));});document.addEventListener("click",event=>{if(!event.target.closest(".profile-menu-wrap")){profileMenu.hidden=true;profileMenuButton.setAttribute("aria-expanded","false");}});document.getElementById("profile-settings-button").addEventListener("click",()=>{profileMenu.hidden=true;profileMenuButton.setAttribute("aria-expanded","false");document.getElementById("page-title").textContent="Profil ve ayarlar";document.getElementById("page-subtitle").textContent="Profil alanları bir sonraki geliştirme adımında etkinleştirilecek.";});document.getElementById("profile-qr-button").addEventListener("click",()=>{profileMenu.hidden=true;profileMenuButton.setAttribute("aria-expanded","false");document.getElementById("page-title").textContent="QR kartvizit";document.getElementById("page-subtitle").textContent="Dijital kartvizit ve kişi kaydetme özelliği hazırlanıyor.";});
 document.getElementById("logout-button").addEventListener("click",async()=>{
   const button=document.getElementById("logout-button");button.disabled=true;
   try{

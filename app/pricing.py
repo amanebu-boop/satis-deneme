@@ -16,7 +16,7 @@ def money(value: Decimal) -> Decimal:
 
 
 def calculate_quote(lines: list[QuoteLine], currency: str) -> dict:
-    """Calculate a no-discount quotation using the template's fixed 20% VAT."""
+    """Calculate a quotation using the template's fixed 20% VAT."""
     if not lines:
         raise ValueError("At least one line is required")
     if len(currency) != 3 or not currency.isalpha() or currency.upper() != currency:

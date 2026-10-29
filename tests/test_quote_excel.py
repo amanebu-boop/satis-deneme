@@ -3,6 +3,9 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
+
+from app.pricing import QuoteLine
 from fastapi import HTTPException
 from openpyxl import load_workbook
 
@@ -23,8 +26,6 @@ def sample_quote(**overrides):
         "created_at": "2026-10-29T10:30:00+00:00",
         "currency": "EUR",
         "subtotal": "250.00",
-        "discount_rate": 0,
-        "discount_amount": "0.00",
         "tax_rate": 0.20,
         "tax_amount": "50.00",
         "total": "300.00",
@@ -67,6 +68,7 @@ def test_excel_output_preserves_template_and_fills_quote_fields():
     assert sheet["D28"].value == "Deneme Makinesi"
     assert sheet["J28"].value == 2
     assert sheet["K28"].value == 100
+    assert sheet["D22"].value in (None, "")
     assert sheet["D29"].value == "Kurulum Hizmeti"
     assert sheet["J29"].value == 1
     assert sheet["K29"].value == 50
@@ -79,22 +81,19 @@ def test_excel_output_preserves_template_and_fills_quote_fields():
     workbook.close()
 
 
-def test_excel_output_applies_discount_before_tax_and_displays_it():
-    quote = sample_quote(
-        discount_amount="25.00", discount_rate=0.1,
-        tax_amount="45.00", total="270.00",
-    )
-    result = quote_excel.render_quote_excel(quote, sample_company())
-    workbook = load_workbook(BytesIO(result), data_only=False)
-    sheet = workbook["Teklif"]
+def test_excel_output_rejects_decimal_unit_price():
+    quote = sample_quote(lines=[
+        {"description": "Ondalıklı fiyat", "quantity": "1", "unit_price": "10.5"}
+    ])
+    with pytest.raises(HTTPException) as exc:
+        quote_excel.render_quote_excel(quote, sample_company())
+    assert exc.value.status_code == 422
+    assert "tam sayı" in str(exc.value.detail).lower()
 
-    assert sheet["D22"].value == "İndirim (%10): 25.00 EUR"
-    assert sheet["I44"].value == "=(ara_toplam-25.00)*0.2"
-    assert sheet["I45"].value == "=ara_toplam-25.00+kdv_toplam"
-    assert sheet["I46"].value == "iki yüz yetmiş Avro"
 
-    workbook.close()
-
+def test_quote_line_rejects_decimal_unit_price():
+    with pytest.raises(ValidationError):
+        QuoteLine(description="Ondalıklı fiyat", quantity=1, unit_price="10.5")
 
 def test_excel_output_rejects_more_than_fifteen_lines():
     quote = sample_quote(lines=[

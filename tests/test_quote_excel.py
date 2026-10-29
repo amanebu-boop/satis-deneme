@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 
@@ -56,8 +56,8 @@ def test_excel_output_preserves_template_and_fills_quote_fields():
     sheet = workbook["Teklif"]
 
     assert sheet["D13"].value == "ERS-12345678"
-    assert sheet["D14"].value == date(2026, 10, 29)
-    assert sheet["D15"].value == date(2026, 11, 13)
+    assert sheet["D14"].value == datetime(2026, 10, 29, 0, 0)
+    assert sheet["D15"].value == datetime(2026, 11, 13, 0, 0)
     assert sheet["J6"].value == "Örnek Sanayi A.Ş."
     assert sheet["J7"].value == "Organize Sanayi Bölgesi, Konya"
     assert sheet["J8"].value == "Selçuklu / 1234567890"

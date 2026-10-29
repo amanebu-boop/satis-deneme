@@ -79,12 +79,21 @@ def test_excel_output_preserves_template_and_fills_quote_fields():
     workbook.close()
 
 
-def test_excel_output_rejects_discount_instead_of_silently_dropping_it():
-    quote = sample_quote(discount_amount="25.00", discount_rate=0.1)
-    with pytest.raises(HTTPException) as exc:
-        quote_excel.render_quote_excel(quote, sample_company())
-    assert exc.value.status_code == 422
-    assert "indirim" in str(exc.value.detail).lower()
+def test_excel_output_applies_discount_before_tax_and_displays_it():
+    quote = sample_quote(
+        discount_amount="25.00", discount_rate=0.1,
+        tax_amount="45.00", total="270.00",
+    )
+    result = quote_excel.render_quote_excel(quote, sample_company())
+    workbook = load_workbook(BytesIO(result), data_only=False)
+    sheet = workbook["Teklif"]
+
+    assert sheet["D22"].value == "İndirim (%10): 25.00 EUR"
+    assert sheet["I44"].value == "=(ara_toplam-25.00)*0.2"
+    assert sheet["I45"].value == "=ara_toplam-25.00+kdv_toplam"
+    assert sheet["I46"].value == "iki yüz yetmiş Avro"
+
+    workbook.close()
 
 
 def test_excel_output_rejects_more_than_fifteen_lines():

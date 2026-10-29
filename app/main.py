@@ -457,6 +457,29 @@ def browser_list_products(request: Request) -> list[dict]:
     _require_browser_session(request)
     return db.list_products()
 
+@app.post("/api/products", status_code=201)
+def browser_create_product(payload: ProductCreate, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    sku = payload.sku.strip()
+    name = payload.name.strip()
+    if not sku or not name:
+        raise HTTPException(status_code=422, detail="Ürün kodu ve ürün adı boş olamaz")
+    record = {
+        **payload.model_dump(),
+        "id": str(uuid4()),
+        "sku": sku,
+        "name": name,
+        "description": payload.description.strip() if payload.description else None,
+        "unit_price": str(payload.unit_price),
+    }
+    try:
+        return db.create_product(record)
+    except Exception as exc:
+        if "UNIQUE constraint failed: products.sku" in str(exc):
+            raise HTTPException(status_code=409, detail="SKU already exists") from exc
+        raise
+
 
 @app.get("/api/quotes")
 def browser_list_quotes(request: Request) -> list[dict]:

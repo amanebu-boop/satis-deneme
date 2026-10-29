@@ -175,9 +175,13 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
 
         # The workbook intentionally has no discount row. Calculate tax using the
         # saved draft's rate instead of the template's original fixed 20% formula.
-        discount_for_formula = format(discount_amount, "f")
-        sheet["I44"] = f"=(ara_toplam-{discount_for_formula})*{format(tax_rate, '.8g')}"
-        sheet["I45"] = f"=ara_toplam-{discount_for_formula}+kdv_toplam"
+        if discount_amount:
+            discount_for_formula = format(discount_amount, "f")
+            sheet["I44"] = f"=(ara_toplam-{discount_for_formula})*{format(tax_rate, '.8g')}"
+            sheet["I45"] = f"=ara_toplam-{discount_for_formula}+kdv_toplam"
+        else:
+            sheet["I44"] = "=ara_toplam*" + format(tax_rate, ".8g")
+            sheet["I45"] = "=ara_toplam+kdv_toplam"
         currency = str(quote.get("currency") or "EUR").upper()
         subtotal = sum(
             (Decimal(str(line.get("quantity") or 0)) * Decimal(str(line.get("unit_price") or 0)) for line in lines),

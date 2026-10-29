@@ -77,6 +77,10 @@ def _amount_in_words(amount: Decimal, currency: str) -> str:
     return result
 
 
+def money_text(value: Decimal) -> str:
+    return format(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), ".2f")
+
+
 def render_quote_excel(quote: dict, company: dict | None) -> bytes:
     if not TEMPLATE_PATH.is_file():
         raise HTTPException(status_code=503, detail="Excel teklif şablonu uygulama paketinde bulunamadı.")
@@ -85,8 +89,16 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         raise HTTPException(status_code=422, detail="Excel teklifi için en az bir ürün/hizmet satırı gerekli.")
     if len(lines) > MAX_LINES:
         raise HTTPException(status_code=422, detail=f"Bu teklif şablonu en fazla {MAX_LINES} kalem destekliyor.")
-    if float(quote.get("discount_amount") or 0) != 0:
-        raise HTTPException(status_code=422, detail="Erşen Makina şablonunda indirim bölümü bulunmadığı için indirimli teklifler Excel olarak oluşturulamaz. Önce indirim oranını sıfırlayın.")
+    try:
+        discount_rate = Decimal(str(quote.get("discount_rate") or 0))
+        discount_amount = Decimal(str(quote.get("discount_amount") or 0))
+        tax_rate_decimal = Decimal(str(quote.get("tax_rate") or 0))
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="İndirim veya KDV oranı geçersiz.") from exc
+    if not (Decimal("0") <= discount_rate <= Decimal("1")):
+        raise HTTPException(status_code=422, detail="İndirim oranı 0 ile 1 arasında olmalıdır.")
+    if not (Decimal("0") <= tax_rate_decimal <= Decimal("1")):
+        raise HTTPException(status_code=422, detail="KDV oranı 0 ile 1 arasında olmalıdır.")
 
     customer = company or {}
     contact, phone = _company_contact(customer)
@@ -132,7 +144,15 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         descriptions = [str(line.get("description") or "").strip() for line in lines]
         sheet["B18"] = "Teklif kapsamında aşağıdaki ürün ve hizmetler sunulmaktadır: " + "; ".join(item for item in descriptions if item)
         sheet["D21"] = "; ".join(item for item in descriptions if item)
-        sheet["D22"] = ""
+        # D22 is an otherwise unused descriptive field in the supplied template.
+        # Surface the discount so the Excel output explains the reduced net total.
+        if discount_amount:
+            sheet["D22"] = (
+                f"İndirim (%{(discount_rate * Decimal('100')).normalize()}): "
+                f"{money_text(discount_amount)} {str(quote.get('currency') or 'EUR').upper()}"
+            )
+        else:
+            sheet["D22"] = ""
         sheet["D23"] = ""
         sheet["B80"] = ""
 
@@ -155,14 +175,18 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
 
         # The workbook intentionally has no discount row. Calculate tax using the
         # saved draft's rate instead of the template's original fixed 20% formula.
-        sheet["I44"] = "=ara_toplam*" + format(tax_rate, ".8g")
-        sheet["I45"] = "=ara_toplam+kdv_toplam"
+        discount_for_formula = format(discount_amount, "f")
+        sheet["I44"] = f"=(ara_toplam-{discount_for_formula})*{format(tax_rate, '.8g')}"
+        sheet["I45"] = f"=ara_toplam-{discount_for_formula}+kdv_toplam"
         currency = str(quote.get("currency") or "EUR").upper()
         subtotal = sum(
             (Decimal(str(line.get("quantity") or 0)) * Decimal(str(line.get("unit_price") or 0)) for line in lines),
             Decimal("0"),
         )
-        total = (subtotal * (Decimal("1") + Decimal(str(tax_rate)))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        taxable = subtotal - discount_amount
+        if taxable < 0:
+            raise HTTPException(status_code=422, detail="İndirim ara toplamı aşamaz.")
+        total = (taxable * (Decimal("1") + tax_rate_decimal)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         sheet["I46"] = _amount_in_words(total, currency)
         workbook.calculation.fullCalcOnLoad = True
         workbook.calculation.forceFullCalc = True

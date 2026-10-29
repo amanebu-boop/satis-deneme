@@ -211,7 +211,31 @@ h1{color:var(--ink)}
 <div id="company-rows" class="company-list"><div class="empty">Firmalar yükleniyor…</div></div>
 </div></section>
 <section class="page" id="page-meetings"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div><label for="meeting-company-search">Firma ara</label><input id="meeting-company-search" type="search" placeholder="Firma adını yazın…" autocomplete="off"></div><div><label for="meeting-company">Firma seçimi</label><select id="meeting-company" required><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><input id="meeting-date" type="datetime-local" required></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder="Örn. Ürün tanıtımı"></div></div><div><label for="meeting-notes">Görüşme notları (raporda gösterilmez)</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder="İhtiyaçlar, kararlar, detaylı notlar"></textarea></div><p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><select id="follow-up-company" required><option value="">Firma seç</option></select></div><div><label for="follow-up-date">Takip tarihi</label><input id="follow-up-date" type="date" required></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder="Örn. Teklif için cuma günü ara"></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div><div class="panel"><div class="panel-head"><h2>Yaklaşan görüşmeler</h2><button class="btn" type="button" id="refresh-upcoming">Yenile</button></div><div id="upcoming-meeting-list" class="list"><div class="empty">Görüşmeler yükleniyor…</div></div></div><div class="panel"><div class="panel-head"><h2>Görüşme raporu</h2><span class="pill">Notlar hariç</span></div><form id="meeting-report-form" class="quote-form"><div class="quote-fields"><div><label for="report-from">Başlangıç tarihi</label><input id="report-from" type="date"></div><div><label for="report-to">Bitiş tarihi</label><input id="report-to" type="date"></div><div><label for="report-type">Görüşme şekli</label><select id="report-type"><option value="all">Tümü</option><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div></div><p class="footer-note">Raporda firma, tarih, görüşme şekli ve konu görünür. Görüşme notları dahil edilmez.</p><button class="btn" type="submit">Raporu aç / PDF kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="Firma, tarih, şekil veya konuda ara…" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></section>
-<section class="page" id="page-products"><div class="panel"><div class="panel-head"><h2>Ürünler ve fiyatlar</h2><span class="pill blue">Örnek veri</span></div><div class="table-wrap"><table><thead><tr><th>Ürün</th><th>SKU</th><th>Birim fiyat</th><th>Para birimi</th></tr></thead><tbody><tr><td><strong>Danışmanlık saati</strong></td><td>SRV-001</td><td>₺1.250,00</td><td>TRY</td></tr><tr><td><strong>Kurulum paketi</strong></td><td>SET-002</td><td>₺18.500,00</td><td>TRY</td></tr><tr><td><strong>Destek yıllık</strong></td><td>SUP-003</td><td>₺9.900,00</td><td>TRY</td></tr></tbody></table></div><p class="footer-note">Fiyatların geçerlilik tarihi ve kaynağı gerçek sürümde ayrıca tutulmalı. Bu örnek fiyatlar gerçek fiyat değildir.</p></div></section>
+<section class="page" id="page-products">
+<div class="panel">
+  <div class="panel-head"><h2>Ürün kataloğu</h2><span class="pill blue">Kalıcı kayıt</span></div>
+  <p class="subtitle">Ürünleri ve güncel birim fiyatlarını yönetin. Kaydedilen ürünler görüşme ve teklif ekranlarında seçilebilir.</p>
+  <form id="product-form" class="quote-form" style="margin-top:18px">
+    <div class="quote-fields">
+      <div><label for="product-sku">Ürün kodu (SKU)</label><input id="product-sku" maxlength="80" required placeholder="Örn. URN-001"></div>
+      <div><label for="product-name">Ürün adı</label><input id="product-name" maxlength="200" required placeholder="Ürün veya hizmet adı"></div>
+    </div>
+    <div><label for="product-description">Açıklama (isteğe bağlı)</label><textarea id="product-description" maxlength="2000" rows="2" placeholder="Ürün hakkında kısa açıklama"></textarea></div>
+    <div class="quote-fields">
+      <div><label for="product-currency">Para birimi</label><select id="product-currency" required><option value="TRY">TRY – Türk lirası</option><option value="EUR">EUR – Euro</option><option value="USD">USD – ABD doları</option></select></div>
+      <div><label for="product-price">Birim fiyat (tam sayı)</label><input id="product-price" type="number" min="0" max="99999999" step="1" inputmode="numeric" required value="0"></div>
+    </div>
+    <p id="product-message" class="footer-note" role="status" aria-live="polite"></p>
+    <button class="btn primary" id="save-product" type="submit">Ürünü kaydet</button>
+  </form>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Kayıtlı ürünler</h2><button class="btn" id="refresh-products" type="button">Yenile</button></div>
+  <input class="search" id="product-search" type="search" placeholder="Ürün adı, ürün kodu veya açıklamada ara…" aria-label="Ürün kataloğunda ara">
+  <div class="table-wrap"><table><thead><tr><th>Ürün</th><th>Ürün kodu</th><th>Birim fiyat</th><th>Para birimi</th></tr></thead><tbody id="product-rows"><tr><td colspan="4">Ürünler yükleniyor…</td></tr></tbody></table></div>
+  <p id="product-count" class="footer-note"></p>
+</div>
+</section>
 <section class="page" id="page-quotes">
 <div class="panel">
   <div class="panel-head"><h2>Teklif taslağı oluştur</h2><span class="pill blue">Kaydedilebilir</span></div>
@@ -335,7 +359,7 @@ loginForm.addEventListener("submit",async event=>{
     const response=await fetch("/api/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});
     if(!response.ok)throw new Error(response.status===401?"Parola hatalı.":response.status===503?"Sunucu parolası yapılandırılmamış.":"Giriş başarısız.");
     const result=await response.json();csrfToken=result.csrf_token;document.getElementById("login-password").value="";
-    showAuthenticated();await loadCompanies();await loadMeetingCompanies();await loadMeetings();await loadQuoteCompanies();await loadQuotes();
+    showAuthenticated();await loadCompanies();await loadMeetingCompanies();await loadMeetings();await loadProducts();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();
   }catch(error){loginError.textContent=error.message||"Giriş yapılamadı.";}
 });
 document.getElementById("company-search").addEventListener("input",()=>loadCompanies());
@@ -535,6 +559,53 @@ async function loadQuotes(){
     }
   }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message;tr.append(td);rows.append(tr);}
 }
+let productCatalog=[];
+function renderProductCatalog(){
+  const rows=document.getElementById("product-rows");if(!rows)return;
+  const query=document.getElementById("product-search").value.trim().toLocaleLowerCase("tr-TR");
+  const filtered=productCatalog.filter(p=>[p.name,p.sku,p.description||""].some(v=>String(v).toLocaleLowerCase("tr-TR").includes(query)));
+  rows.replaceChildren();
+  if(!filtered.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=query?"Aramayla eşleşen ürün bulunamadı.":"Henüz kayıtlı ürün yok. Yukarıdaki formdan ürün ekleyebilirsiniz.";tr.append(td);rows.append(tr);}
+  for(const product of filtered){
+    const tr=document.createElement("tr");
+    const name=document.createElement("td");const strong=document.createElement("strong");strong.textContent=product.name;name.append(strong);
+    if(product.description){const description=document.createElement("div");description.className="item-sub";description.textContent=product.description;name.append(description);}
+    const sku=document.createElement("td");sku.textContent=product.sku;
+    const price=document.createElement("td");price.textContent=formatMoney(product.unit_price,product.currency);
+    const currency=document.createElement("td");currency.textContent=product.currency;
+    tr.append(name,sku,price,currency);rows.append(tr);
+  }
+  document.getElementById("product-count").textContent=filtered.length+" ürün gösteriliyor · "+productCatalog.length+" kayıtlı ürün";
+}
+async function loadProducts(){
+  const rows=document.getElementById("product-rows");if(!rows)return;
+  try{
+    const response=await fetch("/api/products",{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){showLogin();return;}
+    if(!response.ok)throw new Error("Ürün kataloğu yüklenemedi ("+response.status+")");
+    productCatalog=await response.json();renderProductCatalog();
+  }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message||"Ürünler yüklenemedi.";tr.append(td);rows.append(tr);}
+}
+document.getElementById("product-search").addEventListener("input",renderProductCatalog);
+document.getElementById("refresh-products").addEventListener("click",loadProducts);
+document.getElementById("product-form").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const button=document.getElementById("save-product"),message=document.getElementById("product-message");
+  button.disabled=true;message.textContent="Ürün kaydediliyor…";
+  const payload={sku:document.getElementById("product-sku").value.trim(),name:document.getElementById("product-name").value.trim(),description:document.getElementById("product-description").value.trim()||null,currency:document.getElementById("product-currency").value,unit_price:Number(document.getElementById("product-price").value)};
+  try{
+    const response=await fetch("/api/products",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
+    const result=await response.json().catch(()=>({}));
+    if(response.status===401){showLogin();return;}
+    if(response.status===409)throw new Error("Bu ürün kodu (SKU) zaten kayıtlı. Farklı bir kod girin.");
+    if(!response.ok)throw new Error(result.detail||"Ürün kaydedilemedi.");
+    productCatalog.push(result);productCatalog.sort((a,b)=>a.name.localeCompare(b.name,"tr"));
+    quoteProducts=productCatalog;renderProductCatalog();document.getElementById("product-form").reset();document.getElementById("product-price").value="0";document.getElementById("product-currency").value="TRY";
+    document.querySelectorAll(".line-product").forEach(populateProductSelect);
+    message.textContent="Ürün başarıyla kaydedildi.";
+  }catch(error){message.textContent=error.message||"Ürün kaydedilemedi.";}
+  finally{button.disabled=false;}
+});
 let quoteProducts=[];
 function populateProductSelect(select){
   const selected=select.value;select.replaceChildren(new Option("Serbest ürün / hizmet",""));
@@ -707,7 +778,7 @@ document.getElementById("refresh-templates").addEventListener("click",loadTempla
 async function initializeAuth(){
   try{
     const response=await fetch("/api/session",{credentials:"same-origin",cache:"no-store"});
-    if(response.ok&&(await response.json()).authenticated){await readCsrf();showAuthenticated();await loadCompanies();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();await loadTemplates();await loadFollowUpCompanies();await loadFollowUps();}
+    if(response.ok&&(await response.json()).authenticated){await readCsrf();showAuthenticated();await loadCompanies();await loadProducts();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();await loadTemplates();await loadFollowUpCompanies();await loadFollowUps();}
   }catch(_error){loginError.textContent="Yerel sunucuya bağlanılamadı.";}
 }
 initializeAuth();

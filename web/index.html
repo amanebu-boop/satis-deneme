@@ -32,8 +32,9 @@ body:not(.authenticated) .app,body:not(.authenticated) .mobile-nav{display:none}
 .repeat-row .btn{font-size:22px;padding:5px;min-height:44px}
 .company-detail{display:block;color:var(--muted);font-size:12px;margin-top:4px;overflow-wrap:anywhere}
 .quote-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.quote-company-picker{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:end}.quote-company-picker>div{min-width:0}
 .quote-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,.28fr) minmax(95px,.38fr) auto;gap:10px;align-items:end;margin:12px 0}.quote-line .line-product-wrap{grid-column:1/-1}.quote-totals{display:grid;gap:8px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:14px;margin:8px 0 4px}.quote-total-row{display:flex;justify-content:space-between;gap:12px;font-size:13px}.quote-total-row strong{font-variant-numeric:tabular-nums}.quote-total-grand{border-top:1px solid var(--line);padding-top:10px;margin-top:3px;font-size:16px;font-weight:750;color:var(--ink)}.quote-total-grand strong{font-size:20px}.quote-product-empty{font-size:12px;color:var(--muted);margin:0}
-@media(max-width:640px){.quote-fields{grid-template-columns:1fr}.quote-line{grid-template-columns:1fr 1fr}.quote-line>div:first-child{grid-column:1/-1}.quote-line .line-product-wrap{grid-column:1/-1}.quote-line .remove-line{grid-column:2;grid-row:4}.quote-line>div:nth-child(2){grid-column:1/-1}}
+@media(max-width:640px){.quote-company-picker{grid-template-columns:1fr}.quote-fields{grid-template-columns:1fr}.quote-line{grid-template-columns:1fr 1fr}.quote-line>div:first-child{grid-column:1/-1}.quote-line .line-product-wrap{grid-column:1/-1}.quote-line .remove-line{grid-column:2;grid-row:4}.quote-line>div:nth-child(2){grid-column:1/-1}}
 
 /* Sade, lacivert-beyaz ve telefon öncelikli görünüm */
 :root{
@@ -215,7 +216,7 @@ h1{color:var(--ink)}
 <div class="panel">
   <div class="panel-head"><h2>Teklif taslağı oluştur</h2><span class="pill blue">Kaydedilebilir</span></div>
   <form id="quote-form" class="quote-form">
-    <label for="quote-company">Firma</label><select id="quote-company"><option value="">Firma seç (isteğe bağlı)</option></select>
+    <div class="quote-company-picker"><div><label for="quote-company-search">Firma ara</label><input id="quote-company-search" type="search" placeholder="Firma adını yazın…" autocomplete="off"></div><div><label for="quote-company">Firma</label><select id="quote-company"><option value="">Firma seç (isteğe bağlı)</option></select></div></div>
     <div class="quote-fields">
       <div><label for="quote-currency">Para birimi</label><select id="quote-currency"><option value="TRY">TRY – Türk lirası</option><option value="EUR">EUR – Euro</option><option value="USD">USD – ABD doları</option></select></div>
       <div><label for="quote-tax">Vergi oranı (%)</label><input id="quote-tax" type="number" min="0" max="100" step="0.01" value="20" required></div>
@@ -223,7 +224,7 @@ h1{color:var(--ink)}
     </div>
     <div class="panel-head"><h3>Teklif kalemleri</h3><button class="btn" id="add-quote-line" type="button">＋ Kalem ekle</button></div>
     <div id="quote-lines">
-      <div class="quote-line"><div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" max="999999999" step="0.001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
+      <div class="quote-line"><div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
     </div>
     <div class="quote-totals" aria-live="polite" aria-label="Teklif toplamları"><div class="quote-total-row"><span>Ara toplam</span><strong id="quote-subtotal">0,00 TRY</strong></div><div class="quote-total-row"><span>İndirim</span><strong id="quote-discount-total">− 0,00 TRY</strong></div><div class="quote-total-row"><span>Vergi</span><strong id="quote-tax-total">0,00 TRY</strong></div><div class="quote-total-row quote-total-grand"><span>Genel toplam</span><strong id="quote-grand-total">0,00 TRY</strong></div><p class="quote-product-empty">Tutarlar anlık tahmindir; kaydederken sunucu tarafından yeniden hesaplanır.</p></div>
     <p id="quote-message" role="status" aria-live="polite" class="footer-note"></p>
@@ -501,13 +502,25 @@ document.getElementById("meeting-form").addEventListener("submit",async event=>{
   }catch(error){message.textContent=error.message||"Görüşme kaydedilemedi.";}
   finally{button.disabled=false;}
 });
+let quoteCompanyOptions=[];
+function filterQuoteCompanyOptions(){
+  const select=document.getElementById("quote-company"),search=document.getElementById("quote-company-search");
+  if(!select||!search)return;
+  const query=search.value.trim().toLocaleLowerCase("tr-TR"),previous=select.value;
+  const matches=quoteCompanyOptions.filter(company=>String(company.name||"").toLocaleLowerCase("tr-TR").includes(query));
+  select.replaceChildren(new Option(matches.length?"Firma seç (isteğe bağlı)":"Eşleşen firma yok",""));
+  for(const company of matches)select.add(new Option(company.name,company.id));
+  if(matches.some(company=>String(company.id)===previous))select.value=previous;
+}
 async function loadQuoteCompanies(){
   const select=document.getElementById("quote-company");if(!select)return;
-  try{const response=await fetch("/api/companies?limit=50",{credentials:"same-origin",cache:"no-store"});if(!response.ok)throw new Error("Firmalar yüklenemedi");
-    const companies=await response.json();select.replaceChildren(new Option("Firma seç (isteğe bağlı)",""));
-    for(const company of companies)select.add(new Option(company.name,company.id));
+  try{const response=await fetch("/api/companies?limit=50",{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){showLogin();return;}
+    if(!response.ok)throw new Error("Firmalar yüklenemedi");
+    quoteCompanyOptions=await response.json();filterQuoteCompanyOptions();
   }catch(error){document.getElementById("quote-message").textContent=error.message;}
 }
+document.getElementById("quote-company-search")?.addEventListener("input",filterQuoteCompanyOptions);
 async function loadQuotes(){
   const rows=document.getElementById("quote-rows");if(!rows)return;
   try{const response=await fetch("/api/quotes",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Teklifler yüklenemedi");
@@ -533,7 +546,7 @@ function populateProductSelect(select){
 }
 function addQuoteLine(){
   const container=document.getElementById("quote-lines");const row=document.createElement("div");row.className="quote-line";
-  row.innerHTML='<div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" max="999999999" step="0.001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
+  row.innerHTML='<div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
   container.append(row);populateProductSelect(row.querySelector(".line-product"));updateLineButtons();updateQuoteTotals();
 }
 function updateLineButtons(){const buttons=[...document.querySelectorAll(".remove-line")];buttons.forEach(button=>button.disabled=buttons.length===1);}

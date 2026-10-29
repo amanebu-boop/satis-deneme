@@ -695,52 +695,92 @@ async function loadQuotes(){
     }
   }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message;tr.append(td);rows.append(tr);}
 }
-let productCatalog=[];
+let productCatalog=[],productEditId="";
+function updateProductParentOptions(selected=""){
+ const select=document.getElementById("product-parent");if(!select)return;
+ select.replaceChildren(new Option("Ana makine seç",""));
+ productCatalog.filter(p=>(p.product_type||"machine")==="machine").forEach(p=>select.add(new Option(p.name+" · "+p.sku,p.id)));
+ if([...select.options].some(o=>o.value===selected))select.value=selected;
+}
+function updateProductTypeFields(){
+ const type=document.getElementById("product-type").value,isOption=type==="option";
+ document.getElementById("product-parent-wrap").hidden=!isOption;
+ document.getElementById("product-parent").required=isOption;
+ if(!isOption)document.getElementById("product-parent").value="";
+}
+function resetProductForm(){
+ document.getElementById("product-form").reset();document.getElementById("product-id").value="";productEditId="";
+ document.getElementById("product-currency").value="EUR";document.getElementById("product-price").value="";
+ document.getElementById("product-type").value="machine";updateProductParentOptions();updateProductTypeFields();
+ document.getElementById("save-product").textContent="Ürünü kaydet";
+}
+function editProduct(product){
+ productEditId=product.id;document.getElementById("product-id").value=product.id;
+ document.getElementById("product-sku").value=product.sku||"";document.getElementById("product-name").value=product.name||"";
+ document.getElementById("product-description").value=product.description||"";document.getElementById("product-currency").value=product.currency||"EUR";
+ document.getElementById("product-price").value=product.unit_price==null||String(product.unit_price)===""?"":String(Number(product.unit_price));
+ document.getElementById("product-type").value=product.product_type||"machine";updateProductParentOptions(product.parent_product_id||"");updateProductTypeFields();
+ document.getElementById("save-product").textContent="Değişiklikleri kaydet";document.getElementById("product-message").textContent="Ürün düzenleniyor.";
+ document.getElementById("product-form").scrollIntoView({behavior:"smooth",block:"start"});
+}
 function renderProductCatalog(){
-  const rows=document.getElementById("product-rows");if(!rows)return;
-  const query=document.getElementById("product-search").value.trim().toLocaleLowerCase("tr-TR");
-  const filtered=productCatalog.filter(p=>[p.name,p.sku,p.description||""].some(v=>String(v).toLocaleLowerCase("tr-TR").includes(query)));
-  rows.replaceChildren();
-  if(!filtered.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=query?"Aramayla eşleşen ürün bulunamadı.":"Henüz kayıtlı ürün yok. Yukarıdaki formdan ürün ekleyebilirsiniz.";tr.append(td);rows.append(tr);}
-  for(const product of filtered){
-    const tr=document.createElement("tr");
-    const name=document.createElement("td");const strong=document.createElement("strong");strong.textContent=product.name;name.append(strong);
-    if(product.description){const description=document.createElement("div");description.className="item-sub";description.textContent=product.description;name.append(description);}
-    const sku=document.createElement("td");sku.textContent=product.sku;
-    const price=document.createElement("td");price.textContent=formatMoney(product.unit_price,product.currency);
-    const currency=document.createElement("td");currency.textContent=product.currency;
-    tr.append(name,sku,price,currency);rows.append(tr);
-  }
-  document.getElementById("product-count").textContent=filtered.length+" ürün gösteriliyor · "+productCatalog.length+" kayıtlı ürün";
+ const rows=document.getElementById("product-rows");if(!rows)return;
+ const query=document.getElementById("product-search").value.trim().toLocaleLowerCase("tr-TR");
+ const filtered=productCatalog.filter(p=>[p.name,p.sku,p.description||"",p.product_type||"",p.parent_product_id||""].some(v=>String(v).toLocaleLowerCase("tr-TR").includes(query)));
+ rows.replaceChildren();
+ if(!filtered.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.textContent=query?"Aramayla eşleşen ürün bulunamadı.":"Henüz kayıtlı ürün yok. Yukarıdaki formdan ürün ekleyebilirsiniz.";tr.append(td);rows.append(tr);}
+ for(const product of filtered){
+  const tr=document.createElement("tr");
+  const name=document.createElement("td"),strong=document.createElement("strong");strong.textContent=product.name;name.append(strong);
+  if(product.description){const description=document.createElement("div");description.className="item-sub";description.textContent=product.description;name.append(description);}
+  const sku=document.createElement("td");sku.textContent=product.sku;
+  const type=document.createElement("td"),typeName=({machine:"Ana makine",option:"Opsiyon",service:"Ürün / hizmet"})[product.product_type||"machine"]||"Ana makine";
+  const parent=product.parent_product_id?productCatalog.find(p=>p.id===product.parent_product_id):null;type.textContent=typeName+(parent?" · "+parent.name:"");
+  const price=document.createElement("td");price.textContent=product.unit_price==null||String(product.unit_price)===""?"Fiyat belirtilmemiş":formatMoney(product.unit_price,product.currency);
+  const currency=document.createElement("td");currency.textContent=product.currency;
+  const action=document.createElement("td"),edit=document.createElement("button");edit.type="button";edit.className="btn";edit.textContent="Düzenle";edit.addEventListener("click",()=>editProduct(product));action.append(edit);
+  tr.append(name,sku,type,price,currency,action);rows.append(tr);
+ }
+ document.getElementById("product-count").textContent=filtered.length+" ürün gösteriliyor · "+productCatalog.length+" kayıtlı ürün";
+ updateProductParentOptions(document.getElementById("product-parent").value);
 }
 async function loadProducts(){
-  const rows=document.getElementById("product-rows");if(!rows)return;
-  try{
-    const response=await fetch("/api/products",{credentials:"same-origin",cache:"no-store"});
-    if(response.status===401){showLogin();return;}
-    if(!response.ok)throw new Error("Ürün kataloğu yüklenemedi ("+response.status+")");
-    productCatalog=await response.json();renderProductCatalog();
-  }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message||"Ürünler yüklenemedi.";tr.append(td);rows.append(tr);}
+ const rows=document.getElementById("product-rows");if(!rows)return;
+ try{
+  const response=await fetch("/api/products",{credentials:"same-origin",cache:"no-store"});
+  if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Ürün kataloğu yüklenemedi ("+response.status+")");
+  productCatalog=await response.json();quoteProducts=productCatalog;renderProductCatalog();
+  document.querySelectorAll(".line-product").forEach(populateProductSelect);
+ }catch(error){rows.replaceChildren();const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.textContent=error.message||"Ürünler yüklenemedi.";tr.append(td);rows.append(tr);}
 }
 document.getElementById("product-search").addEventListener("input",renderProductCatalog);
 document.getElementById("refresh-products").addEventListener("click",loadProducts);
+document.getElementById("product-type").addEventListener("change",updateProductTypeFields);
 document.getElementById("product-form").addEventListener("submit",async event=>{
-  event.preventDefault();
-  const button=document.getElementById("save-product"),message=document.getElementById("product-message");
-  button.disabled=true;message.textContent="Ürün kaydediliyor…";
-  const payload={sku:document.getElementById("product-sku").value.trim(),name:document.getElementById("product-name").value.trim(),description:document.getElementById("product-description").value.trim()||null,currency:document.getElementById("product-currency").value,unit_price:Number(document.getElementById("product-price").value)};
-  try{
-    const response=await fetch("/api/products",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
-    const result=await response.json().catch(()=>({}));
-    if(response.status===401){showLogin();return;}
-    if(response.status===409)throw new Error("Bu ürün kodu (SKU) zaten kayıtlı. Farklı bir kod girin.");
-    if(!response.ok)throw new Error(result.detail||"Ürün kaydedilemedi.");
-    productCatalog.push(result);productCatalog.sort((a,b)=>a.name.localeCompare(b.name,"tr"));
-    quoteProducts=productCatalog;renderProductCatalog();document.getElementById("product-form").reset();document.getElementById("product-price").value="0";document.getElementById("product-currency").value="TRY";
-    document.querySelectorAll(".line-product").forEach(populateProductSelect);
-    message.textContent="Ürün başarıyla kaydedildi.";
-  }catch(error){message.textContent=error.message||"Ürün kaydedilemedi.";}
-  finally{button.disabled=false;}
+ event.preventDefault();
+ const button=document.getElementById("save-product"),message=document.getElementById("product-message");button.disabled=true;message.textContent="Ürün kaydediliyor…";
+ const priceValue=document.getElementById("product-price").value.trim();
+ const payload={
+  sku:document.getElementById("product-sku").value.trim(),name:document.getElementById("product-name").value.trim(),
+  description:document.getElementById("product-description").value.trim()||null,currency:document.getElementById("product-currency").value,
+  unit_price:priceValue===""?null:Number(priceValue),product_type:document.getElementById("product-type").value,
+  parent_product_id:document.getElementById("product-type").value==="option"?document.getElementById("product-parent").value:null
+ };
+ try{
+  if(!payload.sku||!payload.name)throw new Error("Ürün kodu ve ürün adı gerekli.");
+  if(payload.product_type==="option"&&!payload.parent_product_id)throw new Error("Opsiyon için bağlı olduğu ana makineyi seçin.");
+  if(payload.unit_price!==null&&(!Number.isInteger(payload.unit_price)||payload.unit_price<0))throw new Error("Fiyat boş bırakılabilir veya sıfır ve üzeri tam sayı olmalıdır.");
+  const id=productEditId,response=await fetch(id?"/api/products/"+encodeURIComponent(id):"/api/products",{method:id?"PUT":"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
+  const result=await response.json().catch(()=>({}));
+  if(response.status===401){showLogin();return;}if(response.status===409)throw new Error("Bu ürün kodu (SKU) zaten kayıtlı. Farklı bir kod girin.");
+  if(!response.ok)throw new Error(result.detail||"Ürün kaydedilemedi.");
+  if(id)productCatalog=productCatalog.map(p=>p.id===id?result:p);else productCatalog.push(result);
+  productCatalog.sort((a,b)=>a.name.localeCompare(b.name,"tr"));quoteProducts=productCatalog;renderProductCatalog();
+  document.querySelectorAll(".line-product").forEach(populateProductSelect);
+  document.querySelectorAll(".meeting-product").forEach(select=>{const selected=select.value;select.replaceChildren(new Option("Ürün seç",""));productCatalog.forEach(p=>select.add(new Option(p.name+" · "+p.sku, p.id)));select.value=selected;});
+  resetProductForm();message.textContent=id?"Ürün değişiklikleri kaydedildi.":"Ürün başarıyla kaydedildi.";
+ }catch(error){message.textContent=error.message||"Ürün kaydedilemedi.";}
+ finally{button.disabled=false;}
 });
 let quoteProducts=[];
 function populateProductSelect(select){

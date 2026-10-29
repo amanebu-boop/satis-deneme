@@ -253,15 +253,21 @@ body{font-size:12.5px;line-height:1.4}
   <div class="panel-head"><h2>Ürün kataloğu</h2><span class="pill blue">Kalıcı kayıt</span></div>
   <p class="subtitle">Ürünleri ve güncel birim fiyatlarını yönetin. Kaydedilen ürünler görüşme ve teklif ekranlarında seçilebilir.</p>
   <form id="product-form" class="quote-form" style="margin-top:18px">
+    <input id="product-id" type="hidden">
     <div class="quote-fields">
       <div><label for="product-sku">Ürün kodu (SKU)</label><input id="product-sku" maxlength="80" required placeholder="Örn. URN-001"></div>
       <div><label for="product-name">Ürün adı</label><input id="product-name" maxlength="200" required placeholder="Ürün veya hizmet adı"></div>
     </div>
     <div><label for="product-description">Açıklama (isteğe bağlı)</label><textarea id="product-description" maxlength="2000" rows="2" placeholder="Ürün hakkında kısa açıklama"></textarea></div>
     <div class="quote-fields">
-      <div><label for="product-currency">Para birimi</label><select id="product-currency" required><option value="TRY">TRY – Türk lirası</option><option value="EUR">EUR – Euro</option><option value="USD">USD – ABD doları</option></select></div>
-      <div><label for="product-price">Birim fiyat (tam sayı)</label><input id="product-price" type="number" min="0" max="99999999" step="1" inputmode="numeric" required value="0"></div>
+      <div><label for="product-currency">Para birimi</label><select id="product-currency" required><option value="EUR">EUR – Euro</option><option value="TRY">TRY – Türk lirası</option><option value="USD">USD – ABD doları</option></select></div>
+      <div><label for="product-price">Birim fiyat (tam sayı)</label><input id="product-price" type="number" min="0" max="99999999" step="1" inputmode="numeric" placeholder="Bilinmiyorsa boş bırak"></div>
     </div>
+    <div class="quote-fields">
+      <div><label for="product-type">Kayıt türü</label><select id="product-type" required><option value="machine">Ana makine</option><option value="option">Makine opsiyonu</option><option value="service">Diğer ürün / hizmet</option></select></div>
+      <div id="product-parent-wrap" hidden><label for="product-parent">Bağlı olduğu ana makine</label><select id="product-parent"><option value="">Ana makine seç</option></select></div>
+    </div>
+    <p class="footer-note">Fiyatı bilinmeyen ürünü boş bırakabilirsiniz. Opsiyonlar ana makineye bağlanır; fiyatı görüşmede belirleyebilirsiniz.</p>
     <p id="product-message" class="footer-note" role="status" aria-live="polite"></p>
     <button class="btn primary" id="save-product" type="submit">Ürünü kaydet</button>
   </form>
@@ -269,7 +275,7 @@ body{font-size:12.5px;line-height:1.4}
 <div class="panel">
   <div class="panel-head"><h2>Kayıtlı ürünler</h2><button class="btn" id="refresh-products" type="button">Yenile</button></div>
   <input class="search" id="product-search" type="search" placeholder="Ürün adı, ürün kodu veya açıklamada ara…" aria-label="Ürün kataloğunda ara">
-  <div class="table-wrap"><table><thead><tr><th>Ürün</th><th>Ürün kodu</th><th>Birim fiyat</th><th>Para birimi</th></tr></thead><tbody id="product-rows"><tr><td colspan="4">Ürünler yükleniyor…</td></tr></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>Ürün</th><th>Ürün kodu</th><th>Tür / ana makine</th><th>Birim fiyat</th><th>Para birimi</th><th>İşlem</th></tr></thead><tbody id="product-rows"><tr><td colspan="6">Ürünler yükleniyor…</td></tr></tbody></table></div>
   <p id="product-count" class="footer-note"></p>
 </div>
 </section>

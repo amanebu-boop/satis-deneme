@@ -310,7 +310,7 @@ class ContactCreate(BaseModel):
 class MeetingProductInput(BaseModel):
     product_id: str = Field(min_length=1, max_length=100)
     quantity: int = Field(ge=1, le=999999)
-    unit_price: int = Field(ge=0, le=99999999)
+    unit_price: int | None = Field(default=None, ge=0, le=99999999)
 
 
 class MeetingCreate(BaseModel):
@@ -358,10 +358,15 @@ def browser_create_meeting(payload: MeetingCreate, request: Request) -> dict:
             "product_id": product["id"],
             "sku": product["sku"],
             "name": product["name"],
+            "product_type": product.get("product_type", "machine"),
+            "parent_product_id": product.get("parent_product_id"),
             "quantity": line["quantity"],
-            "unit_price": str(line["unit_price"]),
+            "unit_price": str(line["unit_price"]) if line["unit_price"] is not None else "",
             "currency": product["currency"],
         })
+    selected_machines = {item["product_id"] for item in product_lines if item["product_type"] == "machine"}
+    if any(item["product_type"] == "option" and item["parent_product_id"] not in selected_machines for item in product_lines):
+        raise HTTPException(status_code=422, detail="Bir opsiyonun bağlı olduğu ana makine de görüşmeye eklenmelidir")
     record = {"id": str(uuid4()), **data, "product_lines": product_lines}
     saved = db.create_meeting(record)
     company = db.get_company(payload.company_id)
@@ -384,10 +389,15 @@ def browser_update_meeting(meeting_id: str, payload: MeetingCreate, request: Req
             "product_id": product["id"],
             "sku": product["sku"],
             "name": product["name"],
+            "product_type": product.get("product_type", "machine"),
+            "parent_product_id": product.get("parent_product_id"),
             "quantity": line["quantity"],
-            "unit_price": str(line["unit_price"]),
+            "unit_price": str(line["unit_price"]) if line["unit_price"] is not None else "",
             "currency": product["currency"],
         })
+    selected_machines = {item["product_id"] for item in product_lines if item["product_type"] == "machine"}
+    if any(item["product_type"] == "option" and item["parent_product_id"] not in selected_machines for item in product_lines):
+        raise HTTPException(status_code=422, detail="Bir opsiyonun bağlı olduğu ana makine de görüşmeye eklenmelidir")
     data["product_lines"] = product_lines
     updated = db.update_meeting(meeting_id, data)
     if updated is None:
@@ -485,7 +495,9 @@ class ProductCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
-    unit_price: int = Field(ge=0, le=99999999)
+    unit_price: int | None = Field(default=None, ge=0, le=99999999)
+    product_type: str = Field(default="machine", pattern=r"^(machine|option|service)$")
+    parent_product_id: str | None = Field(default=None, max_length=100)
 
 
 class QuoteRequest(BaseModel):
@@ -508,13 +520,21 @@ def browser_create_product(payload: ProductCreate, request: Request) -> dict:
     name = payload.name.strip()
     if not sku or not name:
         raise HTTPException(status_code=422, detail="Ürün kodu ve ürün adı boş olamaz")
+    data = payload.model_dump()
+    parent_id = data.get("parent_product_id")
+    if data["product_type"] == "option":
+        parent = db.get_product(parent_id) if parent_id else None
+        if parent is None or parent.get("product_type", "machine") != "machine":
+            raise HTTPException(status_code=422, detail="Opsiyon için katalogdan bir ana makine seçin")
+    elif parent_id:
+        raise HTTPException(status_code=422, detail="Yalnızca opsiyonlar bir ana makineye bağlanabilir")
     record = {
-        **payload.model_dump(),
+        **data,
         "id": str(uuid4()),
         "sku": sku,
         "name": name,
         "description": payload.description.strip() if payload.description else None,
-        "unit_price": str(payload.unit_price),
+        "unit_price": str(payload.unit_price) if payload.unit_price is not None else "",
     }
     try:
         return db.create_product(record)
@@ -522,6 +542,40 @@ def browser_create_product(payload: ProductCreate, request: Request) -> dict:
         if "UNIQUE constraint failed: products.sku" in str(exc):
             raise HTTPException(status_code=409, detail="SKU already exists") from exc
         raise
+
+
+@app.put("/api/products/{product_id}")
+def browser_update_product(product_id: str, payload: ProductCreate, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    sku, name = payload.sku.strip(), payload.name.strip()
+    if not sku or not name:
+        raise HTTPException(status_code=422, detail="Ürün kodu ve ürün adı boş olamaz")
+    parent_id = payload.parent_product_id
+    if payload.product_type == "option":
+        parent = db.get_product(parent_id) if parent_id else None
+        if parent is None or parent.get("product_type", "machine") != "machine":
+            raise HTTPException(status_code=422, detail="Opsiyon için katalogdan bir ana makine seçin")
+        if parent_id == product_id:
+            raise HTTPException(status_code=422, detail="Ürün kendisine bağlı olamaz")
+    elif parent_id:
+        raise HTTPException(status_code=422, detail="Yalnızca opsiyonlar bir ana makineye bağlanabilir")
+    record = {
+        **payload.model_dump(),
+        "sku": sku,
+        "name": name,
+        "description": payload.description.strip() if payload.description else None,
+        "unit_price": str(payload.unit_price) if payload.unit_price is not None else "",
+    }
+    try:
+        updated = db.update_product(product_id, record)
+    except Exception as exc:
+        if "UNIQUE constraint failed: products.sku" in str(exc):
+            raise HTTPException(status_code=409, detail="SKU already exists") from exc
+        raise
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return updated
 
 
 @app.get("/api/quotes")

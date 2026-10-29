@@ -219,13 +219,12 @@ h1{color:var(--ink)}
     <div class="quote-fields">
       <div><label for="quote-currency">Para birimi</label><select id="quote-currency"><option value="TRY">TRY – Türk lirası</option><option value="EUR">EUR – Euro</option><option value="USD">USD – ABD doları</option></select></div>
       <div><label for="quote-tax">Vergi oranı (%)</label><input id="quote-tax" type="number" min="0" max="100" step="0.01" value="20" required></div>
-      <div><label for="quote-discount">İndirim oranı (%)</label><input id="quote-discount" type="number" min="0" max="100" step="0.01" value="0" required></div>
     </div>
     <div class="panel-head"><h3>Teklif kalemleri</h3><button class="btn" id="add-quote-line" type="button">＋ Kalem ekle</button></div>
     <div id="quote-lines">
       <div class="quote-line"><div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="0.0001" max="999999999" step="0.001" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="0.0001" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
     </div>
-    <div class="quote-totals" aria-live="polite" aria-label="Teklif toplamları"><div class="quote-total-row"><span>Ara toplam</span><strong id="quote-subtotal">0,00 TRY</strong></div><div class="quote-total-row"><span>İndirim</span><strong id="quote-discount-total">− 0,00 TRY</strong></div><div class="quote-total-row"><span>Vergi</span><strong id="quote-tax-total">0,00 TRY</strong></div><div class="quote-total-row quote-total-grand"><span>Genel toplam</span><strong id="quote-grand-total">0,00 TRY</strong></div><p class="quote-product-empty">Tutarlar anlık tahmindir; kaydederken sunucu tarafından yeniden hesaplanır.</p></div>
+    <div class="quote-totals" aria-live="polite" aria-label="Teklif toplamları"><div class="quote-total-row"><span>Ara toplam</span><strong id="quote-subtotal">0,00 TRY</strong></div><div class="quote-total-row"><span>Vergi</span><strong id="quote-tax-total">0,00 TRY</strong></div><div class="quote-total-row quote-total-grand"><span>Genel toplam</span><strong id="quote-grand-total">0,00 TRY</strong></div><p class="quote-product-empty">Tutarlar anlık tahmindir; kaydederken sunucu tarafından yeniden hesaplanır.</p></div>
     <p id="quote-message" role="status" aria-live="polite" class="footer-note"></p>
     <button class="btn primary" type="submit" id="save-quote">Teklifi kaydet ve belge oluştur</button>
   </form>
@@ -538,11 +537,9 @@ function formatMoney(value,currency){try{return new Intl.NumberFormat("tr-TR",{s
 function updateQuoteTotals(){
   const currency=document.getElementById("quote-currency").value;
   const subtotal=[...document.querySelectorAll(".quote-line")].reduce((sum,row)=>sum+(Math.max(0,Number(row.querySelector(".line-quantity").value)||0)*Math.max(0,Number(row.querySelector(".line-price").value)||0)),0);
-  const discountRate=Math.min(100,Math.max(0,Number(document.getElementById("quote-discount").value)||0))/100;
   const taxRate=Math.min(100,Math.max(0,Number(document.getElementById("quote-tax").value)||0))/100;
-  const discount=subtotal*discountRate;const tax=(subtotal-discount)*taxRate;const total=subtotal-discount+tax;
+  const tax=subtotal*taxRate;const total=subtotal+tax;
   document.getElementById("quote-subtotal").textContent=formatMoney(subtotal,currency);
-  document.getElementById("quote-discount-total").textContent="− "+formatMoney(discount,currency);
   document.getElementById("quote-tax-total").textContent=formatMoney(tax,currency);
   document.getElementById("quote-grand-total").textContent=formatMoney(total,currency);
 }
@@ -564,7 +561,7 @@ document.getElementById("quote-lines").addEventListener("change",event=>{
   updateQuoteTotals();
 });
 document.getElementById("quote-lines").addEventListener("input",event=>{if(event.target.matches(".line-quantity,.line-price"))updateQuoteTotals();});
-["quote-currency","quote-tax","quote-discount"].forEach(id=>{
+["quote-currency","quote-tax"].forEach(id=>{
   const update=()=>{
     if(id==="quote-currency")document.querySelectorAll(".line-product").forEach(select=>{select.value="";populateProductSelect(select);});
     updateQuoteTotals();
@@ -580,7 +577,7 @@ document.getElementById("quote-form").addEventListener("submit",async event=>{
     if(!csrfToken)await readCsrf();
     const lines=[...document.querySelectorAll(".quote-line")].map(row=>({description:row.querySelector(".line-description").value.trim(),quantity:row.querySelector(".line-quantity").value,unit_price:row.querySelector(".line-price").value}));
     if(lines.some(line=>!line.description||Number(line.quantity)<=0||Number(line.unit_price)<0))throw new Error("Kalem açıklamalarını, miktarları ve fiyatları kontrol et.");
-    const payload={company_id:document.getElementById("quote-company").value||null,currency:document.getElementById("quote-currency").value,tax_rate:Number(document.getElementById("quote-tax").value)/100,discount_rate:Number(document.getElementById("quote-discount").value)/100,lines};
+    const payload={company_id:document.getElementById("quote-company").value||null,currency:document.getElementById("quote-currency").value,tax_rate:Number(document.getElementById("quote-tax").value)/100,lines};
     const response=await fetch("/api/quotes",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
     if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
     if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Teklif kaydedilemedi ("+response.status+")");}

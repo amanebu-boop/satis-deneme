@@ -105,3 +105,15 @@ Her görevde:
 - **GitHub dalı ve commit:**
 - **Render dağıtım durumu (doğrulandıysa):**
 - **Sıradaki tek öncelikli görev:**
+
+
+## 9. 2026-10-29 — Teklif hesaplama düzeltmesi (inceleme dalı)
+
+- `app/pricing.py`: hesaplama artık yalnızca ara toplam, vergi ve genel toplam üretir.
+- `app/main.py`: teklif API şeması fazladan alanları reddeder; hesaplama ve kayıt akışı sadeleştirildi.
+- `app/db.py`: yeni veritabanı şeması eski teklif alanlarını içermez; mevcut SQLite dosyaları açılırken eski kayıtların satır kalemlerinden toplamlar yeniden hesaplanıp eski sütunlar kaldırılır.
+- `app/documents.py` ve `web/index.html`: teklif çıktısı ve arayüz güncellendi.
+- `tests/test_pricing.py`, `tests/test_documents.py` ve `tests/test_quote_api.py` eklendi.
+- `.github/workflows/tests.yml` eklendi; PR için GitHub Actions çalışması henüz görünmüyor.
+- **Doğrulama:** Bu oturumda Python test ortamı yok; testler henüz çalıştırılmadı. Canlı dağıtım yapılmadı.
+- **Sonraki adım:** PR değişikliklerini gözden geçir, testleri çalıştır, ardından ayrı onayla canlı dağıtımı doğrula.

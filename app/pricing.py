@@ -46,4 +46,3 @@ def calculate_quote(lines: list[QuoteLine], currency: str) -> dict:
         "status": "calculated_not_approved",
         "note": "Draft calculation only. Verify currency and commercial terms before use.",
     }
-}

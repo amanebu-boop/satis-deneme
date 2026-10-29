@@ -399,7 +399,7 @@ def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
         connection.execute(
             """INSERT INTO quotations
                (id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (record["id"], record.get("company_id"), record["currency"], record["subtotal"],
              record["tax_rate"],
              record["tax_amount"], record["total"], record["status"], record["created_at"]),

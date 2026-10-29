@@ -230,13 +230,13 @@ def browser_session(request: Request):
 def browser_list_companies(
     request: Request,
     q: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1),
+    limit: int = Query(default=500, ge=1),
     offset: int = Query(default=0, ge=0, le=100000),
 ):
     _require_browser_session(request)
     if q is not None and len(q) > 200:
         raise HTTPException(status_code=400, detail="Search query is too long")
-    return db.list_companies_page(q, limit=min(limit, 50), offset=offset)
+    return db.list_companies_page(q, limit=min(limit, 500), offset=offset)
 
 
 @app.get("/api/companies/{company_id}")
@@ -253,6 +253,13 @@ class CompanyCreate(BaseModel):
     authorized_people: list[str] = Field(default_factory=list, max_length=50)
     phone_numbers: list[str] = Field(default_factory=list, max_length=50)
     address: str | None = Field(default=None, max_length=3000)
+    city: str | None = Field(default=None, max_length=100)
+    district: str | None = Field(default=None, max_length=100)
+    neighborhood: str | None = Field(default=None, max_length=200)
+    street: str | None = Field(default=None, max_length=250)
+    building_number: str | None = Field(default=None, max_length=50)
+    postal_code: str | None = Field(default=None, max_length=20)
+    address_extra: str | None = Field(default=None, max_length=1000)
     website: str | None = Field(default=None, max_length=300)
     email: str | None = Field(default=None, max_length=320)
     tax_office: str | None = Field(default=None, max_length=200)
@@ -300,12 +307,19 @@ class ContactCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=5000)
 
 
+class MeetingProductInput(BaseModel):
+    product_id: str = Field(min_length=1, max_length=100)
+    quantity: int = Field(ge=1, le=999999)
+    unit_price: int = Field(ge=0, le=99999999)
+
+
 class MeetingCreate(BaseModel):
     company_id: str
     meeting_date: str = Field(min_length=1, max_length=40)
     notes: str = Field(min_length=1, max_length=10000)
     meeting_type: str = Field(default="phone", pattern=r"^(phone|visit)$")
     topic: str = Field(default="Genel görüşme", min_length=1, max_length=200)
+    product_lines: list[MeetingProductInput] = Field(default_factory=list, max_length=50)
 
     @field_validator("meeting_date")
     @classmethod
@@ -334,7 +348,21 @@ def browser_create_meeting(payload: MeetingCreate, request: Request) -> dict:
     _require_csrf(request, session)
     if not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; meeting was not saved")
-    record = {"id": str(uuid4()), **payload.model_dump()}
+    data = payload.model_dump()
+    product_lines = []
+    for line in data.get("product_lines") or []:
+        product = db.get_product(line["product_id"])
+        if product is None:
+            raise HTTPException(status_code=404, detail="Seçilen ürün katalogda bulunamadı")
+        product_lines.append({
+            "product_id": product["id"],
+            "sku": product["sku"],
+            "name": product["name"],
+            "quantity": line["quantity"],
+            "unit_price": str(line["unit_price"]),
+            "currency": product["currency"],
+        })
+    record = {"id": str(uuid4()), **data, "product_lines": product_lines}
     saved = db.create_meeting(record)
     company = db.get_company(payload.company_id)
     return {**saved, "company_name": company["name"] if company else "Firma bulunamadı"}
@@ -346,7 +374,22 @@ def browser_update_meeting(meeting_id: str, payload: MeetingCreate, request: Req
     _require_csrf(request, session)
     if not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; meeting was not updated")
-    updated = db.update_meeting(meeting_id, payload.model_dump())
+    data = payload.model_dump()
+    product_lines = []
+    for line in data.get("product_lines") or []:
+        product = db.get_product(line["product_id"])
+        if product is None:
+            raise HTTPException(status_code=404, detail="Seçilen ürün katalogda bulunamadı")
+        product_lines.append({
+            "product_id": product["id"],
+            "sku": product["sku"],
+            "name": product["name"],
+            "quantity": line["quantity"],
+            "unit_price": str(line["unit_price"]),
+            "currency": product["currency"],
+        })
+    data["product_lines"] = product_lines
+    updated = db.update_meeting(meeting_id, data)
     if updated is None:
         raise HTTPException(status_code=404, detail="Meeting not found")
     return updated

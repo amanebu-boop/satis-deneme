@@ -347,46 +347,68 @@ document.getElementById("logout-button").addEventListener("click",async()=>{
   }catch(error){loginError.textContent=error.message||"Çıkış yapılamadı.";}
   finally{button.disabled=false;}
 });
-async function loadCompanies(){
-  const list=document.getElementById("company-rows");
-  const query=document.getElementById("company-search").value.trim();
+let allCompanies=[];
+function composeCompanyAddress(company){
+  return [company.street,company.building_number?("No: "+company.building_number):"",company.neighborhood,company.district,company.city,company.postal_code,company.address_extra].filter(Boolean).join(", ");
+}
+function updateCompanyDistrictOptions(){
+  const city=document.getElementById("company-filter-city").value;
+  const select=document.getElementById("company-filter-district"),previous=select.value;
+  const districts=[...new Set(allCompanies.filter(c=>!city||String(c.city||"")===city).map(c=>String(c.district||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"tr"));
+  select.replaceChildren(new Option("Tüm ilçeler",""));
+  districts.forEach(d=>select.add(new Option(d,d)));
+  if(districts.includes(previous))select.value=previous;
+}
+function renderCompanyList(){
+  const list=document.getElementById("company-rows");if(!list)return;
+  const query=document.getElementById("company-search").value.trim().toLocaleLowerCase("tr-TR");
+  const city=document.getElementById("company-filter-city").value,district=document.getElementById("company-filter-district").value;
+  const filtered=allCompanies.filter(c=>(!city||String(c.city||"")===city)&&(!district||String(c.district||"")===district)&&[c.name,c.city,c.district,c.neighborhood,c.street,c.address,c.website,c.email,c.tax_number,c.tax_office].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(query)));
   list.replaceChildren();
-  const loading=document.createElement("div");loading.className="empty";loading.textContent="Firmalar yükleniyor…";list.append(loading);
-  try{
-    const response=await fetch("/api/companies?q="+encodeURIComponent(query)+"&limit=50",{credentials:"same-origin",cache:"no-store"});
-    if(response.status===401){showLogin();return;}
-    if(!response.ok)throw new Error("Firma listesi alınamadı ("+response.status+")");
-    const companies=await response.json();list.replaceChildren();
-    if(!companies.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="Eşleşen firma bulunamadı.";list.append(empty);return;}
+  if(!filtered.length){const empty=document.createElement("div");empty.className="empty";empty.textContent=allCompanies.length?"Filtrelerle eşleşen firma bulunamadı.":"Henüz kayıtlı firma yok.";list.append(empty);return;}
+  const groups=new Map();
+  for(const company of filtered){const key=String(company.city||"").trim()||"Şehir belirtilmemiş";if(!groups.has(key))groups.set(key,[]);groups.get(key).push(company);}
+  for(const [cityName,companies] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],"tr"))){
+    const group=document.createElement("section");group.className="company-city-group";
+    const heading=document.createElement("div");heading.className="company-city-heading";
+    const name=document.createElement("span");name.textContent=cityName;
+    const count=document.createElement("small");count.textContent=companies.length+" firma";
+    heading.append(name,count);group.append(heading);
+    const records=document.createElement("div");records.className="company-city-records";
     for(const company of companies){
       const card=document.createElement("article");card.className="company-card";
       const title=document.createElement("strong");title.className="company-card-title";title.textContent=company.name||"Firma adı yok";card.append(title);
-      const contacts=document.createElement("div");contacts.className="company-card-line";const people=(company.authorized_people||[]).filter(Boolean).join(", ");const phoneValues=(company.phone_numbers||[]).filter(Boolean);contacts.textContent=people||"";
-      phoneValues.forEach(phone=>{if(contacts.childNodes.length)contacts.append(document.createTextNode(" · "));const link=document.createElement("a");link.href="tel:"+phone.replace(/[^+\d]/g,"");link.className="company-card-link";link.textContent=formatPhoneDisplay(phone);contacts.append(link);});
+      const contacts=document.createElement("div");contacts.className="company-card-line";
+      const people=(company.authorized_people||[]).filter(Boolean).join(", "),phones=(company.phone_numbers||[]).filter(Boolean);contacts.textContent=people;
+      phones.forEach(phone=>{if(contacts.childNodes.length)contacts.append(document.createTextNode(" · "));const link=document.createElement("a");link.href="tel:"+phone.replace(/[^+\\d]/g,"");link.className="company-card-link";link.textContent=formatPhoneDisplay(phone);contacts.append(link);});
       if(!contacts.textContent&&!contacts.childNodes.length)contacts.textContent="Yetkili kişi veya telefon belirtilmemiş";card.append(contacts);
-      if(company.address){
-        const address=document.createElement("a");address.className="company-card-line company-card-link";address.textContent=company.address;
-        address.href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(company.address);
-        address.target="_blank";address.rel="noopener noreferrer";address.setAttribute("aria-label","Adresi Google Haritalar'da aç");card.append(address);
-      }
+      const addressText=company.address||composeCompanyAddress(company);
+      if(addressText){const address=document.createElement("a");address.className="company-card-line company-card-link";address.textContent=addressText;address.href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(addressText);address.target="_blank";address.rel="noopener noreferrer";address.setAttribute("aria-label","Adresi Google Haritalar'da aç");card.append(address);}
       const webMail=document.createElement("div");webMail.className="company-card-line";
-      if(company.website){
-        const raw=String(company.website).trim();
-        const safeUrl=/^https?:\/\//i.test(raw)?raw:"https://"+raw.replace(/^\/+/,"");
-        try{const parsed=new URL(safeUrl);if(parsed.protocol==="http:"||parsed.protocol==="https:"){const a=document.createElement("a");a.href=parsed.href;a.target="_blank";a.rel="noopener noreferrer";a.textContent=raw;a.className="company-card-link";webMail.append(a);}}catch{}
-      }
-      if(company.email){
-        if(webMail.childNodes.length)webMail.append(document.createTextNode(" · "));
-        const mail=document.createElement("a");mail.href="mailto:"+company.email;mail.textContent=company.email;mail.className="company-card-link";webMail.append(mail);
-      }
+      if(company.website){const raw=String(company.website).trim(),safeUrl=/^https?:\\/\\//i.test(raw)?raw:"https://"+raw.replace(/^\\/+ /,"");try{const parsed=new URL(safeUrl);if(parsed.protocol==="http:"||parsed.protocol==="https:"){const a=document.createElement("a");a.href=parsed.href;a.target="_blank";a.rel="noopener noreferrer";a.textContent=raw;a.className="company-card-link";webMail.append(a);}}catch{}}
+      if(company.email){if(webMail.childNodes.length)webMail.append(document.createTextNode(" · "));const mail=document.createElement("a");mail.href="mailto:"+company.email;mail.textContent=company.email;mail.className="company-card-link";webMail.append(mail);}
       if(webMail.childNodes.length)card.append(webMail);
       if(company.notes){const notes=document.createElement("div");notes.className="company-card-line company-card-notes";notes.textContent=company.notes;card.append(notes);}
       const tax=[company.tax_office,company.tax_number,company.mersis_number].filter(Boolean).join(" · ");
       if(tax){const taxLine=document.createElement("div");taxLine.className="company-card-tax";taxLine.textContent="Vergi bilgisi: "+tax;card.append(taxLine);}
-      const actions=document.createElement("div");actions.className="company-card-actions";
-      const edit=document.createElement("button");edit.className="btn";edit.type="button";edit.textContent="Düzenle";edit.addEventListener("click",()=>fillCompanyForm(company));actions.append(edit);card.append(actions);
-      list.append(card);
+      const actions=document.createElement("div");actions.className="company-card-actions";const edit=document.createElement("button");edit.className="btn";edit.type="button";edit.textContent="Düzenle";edit.addEventListener("click",()=>fillCompanyForm(company));actions.append(edit);card.append(actions);
+      records.append(card);
     }
+    group.append(records);list.append(group);
+  }
+}
+async function loadCompanies(){
+  const list=document.getElementById("company-rows");if(!list)return;
+  list.replaceChildren();const loading=document.createElement("div");loading.className="empty";loading.textContent="Firmalar yükleniyor…";list.append(loading);
+  try{
+    const response=await fetch("/api/companies?limit=500",{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Firma listesi alınamadı ("+response.status+")");
+    allCompanies=await response.json();
+    const citySelect=document.getElementById("company-filter-city"),previous=citySelect.value;
+    const cities=[...new Set(allCompanies.map(c=>String(c.city||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"tr"));
+    citySelect.replaceChildren(new Option("Tüm şehirler",""));cities.forEach(c=>citySelect.add(new Option(c,c)));
+    if(cities.includes(previous))citySelect.value=previous;
+    updateCompanyDistrictOptions();renderCompanyList();
   }catch(error){list.replaceChildren();const row=document.createElement("div");row.className="empty";row.textContent=error.message||"Beklenmeyen hata";list.append(row);}
 }
 loginForm.addEventListener("submit",async event=>{
@@ -399,7 +421,9 @@ loginForm.addEventListener("submit",async event=>{
     showAuthenticated();await loadCompanies();await loadMeetingCompanies();await loadMeetings();await loadProducts();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();
   }catch(error){loginError.textContent=error.message||"Giriş yapılamadı.";}
 });
-document.getElementById("company-search").addEventListener("input",()=>loadCompanies());
+document.getElementById("company-search").addEventListener("input",renderCompanyList);
+document.getElementById("company-filter-city").addEventListener("change",()=>{updateCompanyDistrictOptions();renderCompanyList();});
+document.getElementById("company-filter-district").addEventListener("change",renderCompanyList);
 function repeatedValues(selector){return [...document.querySelectorAll(selector)].map(input=>input.value.trim()).filter(Boolean);}
 function resetCompanyForm(){
   document.getElementById("company-form").reset();document.getElementById("company-id").value="";
@@ -422,7 +446,8 @@ function fillCompanyForm(company){
   document.getElementById("company-name").value=company.name||"";
   fillRepeat("company-people",company.authorized_people||[],"company-person","Yetkili kişinin adı");
   fillRepeat("company-phones",company.phone_numbers||[],"company-phone","Telefon numarası","tel");
-  for(const [id,key] of [["company-address","address"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
+  for(const [id,key] of [["company-city","city"],["company-district","district"],["company-neighborhood","neighborhood"],["company-street","street"],["company-building-number","building_number"],["company-postal-code","postal_code"],["company-address-extra","address_extra"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
+  if(!company.city&&!company.district&&!company.neighborhood&&!company.street&&!company.building_number&&!company.postal_code&&!company.address_extra)document.getElementById("company-address-extra").value=company.address||"";
   document.getElementById("save-company").textContent="Değişiklikleri kaydet";document.getElementById("cancel-company-edit").hidden=false;
   document.getElementById("company-message").textContent="Firma düzenleniyor.";
   document.getElementById("company-form").scrollIntoView({behavior:"smooth",block:"start"});
@@ -451,7 +476,14 @@ document.getElementById("company-form").addEventListener("submit",async event=>{
     const payload={
       name:document.getElementById("company-name").value.trim(),
       authorized_people:repeatedValues(".company-person"),phone_numbers:repeatedValues(".company-phone").map(normalizePhoneForStorage),
-      address:document.getElementById("company-address").value.trim()||null,
+      city:document.getElementById("company-city").value.trim()||null,
+      district:document.getElementById("company-district").value.trim()||null,
+      neighborhood:document.getElementById("company-neighborhood").value.trim()||null,
+      street:document.getElementById("company-street").value.trim()||null,
+      building_number:document.getElementById("company-building-number").value.trim()||null,
+      postal_code:document.getElementById("company-postal-code").value.trim()||null,
+      address_extra:document.getElementById("company-address-extra").value.trim()||null,
+      address:[document.getElementById("company-street").value.trim(),document.getElementById("company-building-number").value.trim()?"No: "+document.getElementById("company-building-number").value.trim():"",document.getElementById("company-neighborhood").value.trim(),document.getElementById("company-district").value.trim(),document.getElementById("company-city").value.trim(),document.getElementById("company-postal-code").value.trim(),document.getElementById("company-address-extra").value.trim()].filter(Boolean).join(", ")||null,
       website:normalizeWebsite(document.getElementById("company-website").value),
       email:document.getElementById("company-email").value.trim()||null,
       tax_office:document.getElementById("company-tax-office").value.trim()||null,
@@ -472,22 +504,23 @@ document.getElementById("company-form").addEventListener("submit",async event=>{
 
 let meetingCompanyOptions=[];
 function filterMeetingCompanyOptions(){
- const select=document.getElementById("meeting-company"),search=document.getElementById("meeting-company-search");
- if(!select||!search)return;
+ const select=document.getElementById("meeting-company"),search=document.getElementById("meeting-company-search"),results=document.getElementById("meeting-company-results");
+ if(!select||!search||!results)return;
  const query=search.value.trim().toLocaleLowerCase("tr-TR"),previous=select.value;
- const matches=meetingCompanyOptions.filter(company=>String(company.name||"").toLocaleLowerCase("tr-TR").includes(query));
+ const matches=meetingCompanyOptions.filter(company=>[company.name,company.city,company.district].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(query))).slice(0,30);
  select.replaceChildren(new Option(matches.length?"Firma seç":"Eşleşen firma yok",""));
- for(const company of matches)select.add(new Option(company.name,company.id));
- if(matches.some(company=>String(company.id)===previous))select.value=previous;
+ for(const company of meetingCompanyOptions)select.add(new Option(company.name,company.id));
+ if(meetingCompanyOptions.some(company=>String(company.id)===previous))select.value=previous;
+ results.replaceChildren();
+ if(!query){results.classList.remove("open");return;}
+ if(!matches.length){const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent="Eşleşen firma bulunamadı.";results.append(empty);}
+ for(const company of matches){const button=document.createElement("button");button.type="button";button.className="autocomplete-option";button.textContent=company.name+((company.city||company.district)?" · "+[company.district,company.city].filter(Boolean).join(", "):"");button.addEventListener("click",()=>{select.value=company.id;search.value=company.name;results.classList.remove("open");});results.append(button);}
+ results.classList.add("open");
 }
 async function loadMeetingCompanies(){
  const select=document.getElementById("meeting-company");if(!select)return;
- try{
-  const response=await fetch("/api/companies?limit=50",{credentials:"same-origin",cache:"no-store"});
-  if(response.status===401){showLogin();return;}
-  if(!response.ok)throw new Error("Firmalar yüklenemedi");
-  meetingCompanyOptions=await response.json();filterMeetingCompanyOptions();
- }catch(error){document.getElementById("meeting-message").textContent=error.message||"Firmalar yüklenemedi.";}
+ try{const response=await fetch("/api/companies?limit=500",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Firmalar yüklenemedi");meetingCompanyOptions=await response.json();filterMeetingCompanyOptions();}
+ catch(error){document.getElementById("meeting-message").textContent=error.message||"Firmalar yüklenemedi.";}
 }
 document.getElementById("meeting-company-search")?.addEventListener("input",filterMeetingCompanyOptions);
 let allMeetings=[];
@@ -525,7 +558,7 @@ document.getElementById("refresh-meetings").addEventListener("click",loadMeeting
 document.getElementById("refresh-upcoming").addEventListener("click",loadMeetings);
 async function loadFollowUpCompanies(){
  const select=document.getElementById("follow-up-company");if(!select)return;
- try{const response=await fetch("/api/companies?limit=50",{credentials:"same-origin",cache:"no-store"});if(!response.ok)throw new Error("Firmalar yüklenemedi");const companies=await response.json();select.replaceChildren(new Option("Firma seç",""));for(const c of companies)select.add(new Option(c.name,c.id));}
+ try{const response=await fetch("/api/companies?limit=500",{credentials:"same-origin",cache:"no-store"});if(!response.ok)throw new Error("Firmalar yüklenemedi");const companies=await response.json();select.replaceChildren(new Option("Firma seç",""));for(const c of companies)select.add(new Option(c.name,c.id));}
  catch(e){document.getElementById("follow-up-message").textContent=e.message||"Firmalar yüklenemedi";}
 }
 async function loadFollowUps(){
@@ -564,21 +597,23 @@ document.getElementById("meeting-form").addEventListener("submit",async event=>{
 });
 let quoteCompanyOptions=[];
 function filterQuoteCompanyOptions(){
-  const select=document.getElementById("quote-company"),search=document.getElementById("quote-company-search");
-  if(!select||!search)return;
-  const query=search.value.trim().toLocaleLowerCase("tr-TR"),previous=select.value;
-  const matches=quoteCompanyOptions.filter(company=>String(company.name||"").toLocaleLowerCase("tr-TR").includes(query));
-  select.replaceChildren(new Option(matches.length?"Firma seç (isteğe bağlı)":"Eşleşen firma yok",""));
-  for(const company of matches)select.add(new Option(company.name,company.id));
-  if(matches.some(company=>String(company.id)===previous))select.value=previous;
+ const select=document.getElementById("quote-company"),search=document.getElementById("quote-company-search"),results=document.getElementById("quote-company-results");
+ if(!select||!search||!results)return;
+ const query=search.value.trim().toLocaleLowerCase("tr-TR"),previous=select.value;
+ const matches=quoteCompanyOptions.filter(company=>[company.name,company.city,company.district].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(query))).slice(0,30);
+ select.replaceChildren(new Option("Firma seç (isteğe bağlı)",""));
+ for(const company of quoteCompanyOptions)select.add(new Option(company.name,company.id));
+ if(quoteCompanyOptions.some(company=>String(company.id)===previous))select.value=previous;
+ results.replaceChildren();
+ if(!query){results.classList.remove("open");return;}
+ if(!matches.length){const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent="Eşleşen firma bulunamadı.";results.append(empty);}
+ for(const company of matches){const button=document.createElement("button");button.type="button";button.className="autocomplete-option";button.textContent=company.name+((company.city||company.district)?" · "+[company.district,company.city].filter(Boolean).join(", "):"");button.addEventListener("click",()=>{select.value=company.id;search.value=company.name;results.classList.remove("open");});results.append(button);}
+ results.classList.add("open");
 }
 async function loadQuoteCompanies(){
-  const select=document.getElementById("quote-company");if(!select)return;
-  try{const response=await fetch("/api/companies?limit=50",{credentials:"same-origin",cache:"no-store"});
-    if(response.status===401){showLogin();return;}
-    if(!response.ok)throw new Error("Firmalar yüklenemedi");
-    quoteCompanyOptions=await response.json();filterQuoteCompanyOptions();
-  }catch(error){document.getElementById("quote-message").textContent=error.message;}
+ const select=document.getElementById("quote-company");if(!select)return;
+ try{const response=await fetch("/api/companies?limit=500",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Firmalar yüklenemedi");quoteCompanyOptions=await response.json();filterQuoteCompanyOptions();}
+ catch(error){document.getElementById("quote-message").textContent=error.message;}
 }
 document.getElementById("quote-company-search")?.addEventListener("input",filterQuoteCompanyOptions);
 async function loadQuotes(){

@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app import db
 from app import session_store
@@ -444,11 +444,13 @@ class ProductCreate(BaseModel):
 
 
 class QuoteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     company_id: str | None = None
     currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
     lines: list[QuoteLine] = Field(min_length=1, max_length=100)
     tax_rate: float = Field(default=0, ge=0, le=1)
-    discount_rate: float = Field(default=0, ge=0, le=1)
+    
 
 
 @app.get("/api/products")
@@ -484,15 +486,13 @@ def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
     if payload.company_id and not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; quotation was not saved")
     calculated = calculate_quote(
-        payload.lines, payload.currency, payload.tax_rate, payload.discount_rate
+        payload.lines, payload.currency, payload.tax_rate
     )
     record = {
         "id": str(uuid4()),
         "company_id": payload.company_id,
         "currency": calculated["currency"],
         "subtotal": calculated["subtotal"],
-        "discount_rate": calculated["discount_rate"],
-        "discount_amount": calculated["discount_amount"],
         "tax_rate": calculated["tax_rate"],
         "tax_amount": calculated["tax_amount"],
         "total": calculated["total"],
@@ -672,7 +672,7 @@ def list_products() -> list[dict]:
 @app.post("/quotes/calculate")
 def quote_calculate(payload: QuoteRequest) -> dict:
     # Pure deterministic calculation. This endpoint does not save or approve a quotation.
-    return calculate_quote(payload.lines, payload.currency, payload.tax_rate, payload.discount_rate)
+    return calculate_quote(payload.lines, payload.currency, payload.tax_rate)
 
 
 @app.post("/quotes", status_code=201)
@@ -682,15 +682,13 @@ def create_quotation(payload: QuoteRequest) -> dict:
     if payload.company_id and not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; quotation was not saved")
     calculated = calculate_quote(
-        payload.lines, payload.currency, payload.tax_rate, payload.discount_rate
+        payload.lines, payload.currency, payload.tax_rate
     )
     record = {
         "id": str(uuid4()),
         "company_id": payload.company_id,
         "currency": calculated["currency"],
         "subtotal": calculated["subtotal"],
-        "discount_rate": calculated["discount_rate"],
-        "discount_amount": calculated["discount_amount"],
         "tax_rate": calculated["tax_rate"],
         "tax_amount": calculated["tax_amount"],
         "total": calculated["total"],

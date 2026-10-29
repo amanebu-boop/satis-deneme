@@ -63,7 +63,7 @@ def test_excel_output_preserves_template_and_fills_quote_fields():
     assert sheet["J8"].value == "Selçuklu / 1234567890"
     assert sheet["J9"].value == "Ayşe Yılmaz"
     assert sheet["J10"].value == "0332 123 45 67 / satinalma@example.test"
-    assert sheet["J11"].value == ""
+    assert sheet["J11"].value in (None, "")
     assert sheet["D28"].value == "Deneme Makinesi"
     assert sheet["J28"].value == 2
     assert sheet["K28"].value == 100

@@ -36,7 +36,7 @@ Tarayıcıda `http://127.0.0.1:8000/` adresini açın ve belirlediğiniz yerel p
 
 ## Denenebilen alanlar
 
-- **Firmalar, görüşmeler ve teklifler:** aynı tarayıcı oturumundan kullanılabilen yerel çalışma akışları; teklifler taslak olarak kaydedilir.
+- **Firmalar, görüşmeler ve teklifler:** aynı tarayıcı oturumundan kullanılabilen yerel çalışma akışları; teklifler taslak olarak kaydedilir. Ersen Makina teklif şablonu Excel olarak indirilebilir; sunucuda LibreOffice Calc kuruluysa aynı şablon PDF’ye de dönüştürülür.
 - **Belge şablonları:** `.docx`, `.xlsx` veya doldurulabilir AcroForm `.pdf` yükleyin. Word/Excel alanlarını `{{company_name}}`, `{{quote_total}}` gibi yer tutucularla belirtin; ekranda algılanan alanları doldurup ayrı bir dosya oluşturun.
 - **Veri saklama:** SQLite varsayılan olarak `data/sales.db` dosyasına; şablonlar `data/documents/` klasörüne yazılır. İhtiyaç olursa `SALES_DATABASE_PATH` ve `SALES_DOCUMENTS_PATH` ile konumları değiştirin.
 

@@ -1,7 +1,8 @@
 """Generate an Ersen Makina Excel quotation from a saved draft without altering its template layout."""
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 from pathlib import Path
 import warnings
@@ -27,6 +28,53 @@ def _company_contact(company: dict) -> tuple[str, str]:
     phones = company.get("phone_numbers") or []
     phone = _first_text(phones[0]) if isinstance(phones, list) and phones else ""
     return person, phone
+
+
+def _number_words(value: int) -> str:
+    ones = ["sıfır", "bir", "iki", "üç", "dört", "beş", "altı", "yedi", "sekiz", "dokuz"]
+    tens = ["", "on", "yirmi", "otuz", "kırk", "elli", "altmış", "yetmiş", "seksen", "doksan"]
+    scales = ["", "bin", "milyon", "milyar", "trilyon"]
+    if value == 0:
+        return "sıfır"
+    groups = []
+    while value:
+        groups.append(value % 1000)
+        value //= 1000
+    words = []
+    for index in range(len(groups) - 1, -1, -1):
+        group = groups[index]
+        if not group:
+            continue
+        hundreds, remainder = divmod(group, 100)
+        part = []
+        if hundreds:
+            if hundreds > 1:
+                part.append(ones[hundreds])
+            part.append("yüz")
+        ten, one = divmod(remainder, 10)
+        if ten:
+            part.append(tens[ten])
+        if one:
+            part.append(ones[one])
+        if index == 1 and group == 1:
+            words.append("bin")
+        else:
+            words.extend(part)
+            if scales[index]:
+                words.append(scales[index])
+    return " ".join(words)
+
+
+def _amount_in_words(amount: Decimal, currency: str) -> str:
+    amount = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    whole = int(amount)
+    fraction = int((amount - Decimal(whole)) * 100)
+    currency_names = {"EUR": ("Avro", "sent"), "TRY": ("Türk lirası", "kuruş"), "USD": ("ABD doları", "sent")}
+    unit, minor = currency_names.get(currency, (currency, "alt birim"))
+    result = f"{_number_words(whole)} {unit}"
+    if fraction:
+        result += f" { _number_words(fraction) } {minor}"
+    return result
 
 
 def render_quote_excel(quote: dict, company: dict | None) -> bytes:
@@ -77,7 +125,16 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         sheet["J9"] = contact
         email = _first_text(customer.get("email"))
         sheet["J10"] = " / ".join(value for value in (phone, email) if value)
-        sheet["J11"] = str(customer.get("mersis_number") or "")
+        # The template's "Müşteri Referans No" is not the MERSİS number.
+        # Leave it blank rather than mapping unrelated company data into it.
+        sheet["J11"] = ""
+
+        descriptions = [str(line.get("description") or "").strip() for line in lines]
+        sheet["B18"] = "Teklif kapsamında aşağıdaki ürün ve hizmetler sunulmaktadır: " + "; ".join(item for item in descriptions if item)
+        sheet["D21"] = "; ".join(item for item in descriptions if item)
+        sheet["D22"] = ""
+        sheet["D23"] = ""
+        sheet["B80"] = ""
 
         # Keep the supplied workbook's rows, formulas, styles, payment terms and
         # seller information intact; fill only the 15 supported quotation lines.
@@ -100,7 +157,13 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         # saved draft's rate instead of the template's original fixed 20% formula.
         sheet["I44"] = "=ara_toplam*" + format(tax_rate, ".8g")
         sheet["I45"] = "=ara_toplam+kdv_toplam"
-        sheet["I46"] = "[Genel toplam yazıyla, " + str(quote.get("currency") or "EUR") + "]"
+        currency = str(quote.get("currency") or "EUR").upper()
+        subtotal = sum(
+            (Decimal(str(line.get("quantity") or 0)) * Decimal(str(line.get("unit_price") or 0)) for line in lines),
+            Decimal("0"),
+        )
+        total = (subtotal * (Decimal("1") + Decimal(str(tax_rate)))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        sheet["I46"] = _amount_in_words(total, currency)
         workbook.calculation.fullCalcOnLoad = True
         workbook.calculation.forceFullCalc = True
         workbook.calculation.calcMode = "auto"

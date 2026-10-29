@@ -441,7 +441,7 @@ class ProductCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
-    unit_price: int = Field(ge=0, le=999999999999)
+    unit_price: int = Field(ge=0, le=99999999)
 
 
 class QuoteRequest(BaseModel):

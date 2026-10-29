@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import shutil
+from io import BytesIO
 import subprocess
 import tempfile
 from pathlib import Path
@@ -48,7 +49,7 @@ def convert_excel_to_pdf(excel_content: bytes) -> bytes:
         if not pdf_content.startswith(b"%PDF-"):
             raise HTTPException(status_code=502, detail="Dönüştürücü geçerli bir PDF üretmedi.")
         try:
-            reader = PdfReader(pdf_content, strict=True)
+            reader = PdfReader(BytesIO(pdf_content), strict=True)
             if reader.is_encrypted or not reader.pages:
                 raise ValueError("PDF has no readable pages")
             _ = len(reader.pages)

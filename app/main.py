@@ -530,7 +530,7 @@ def browser_create_quote_revision(quotation_id: str, payload: QuoteRequest, requ
     source = db.get_quotation(quotation_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Source quotation not found")
-    if source.get("company_id") and payload.company_id != source.get("company_id"):
+    if payload.company_id != source.get("company_id"):
         raise HTTPException(status_code=422, detail="A revision must stay linked to the original company")
     if payload.company_id and not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; revision was not saved")

@@ -572,7 +572,7 @@ document.getElementById("quote-lines").addEventListener("click",event=>{const bu
 document.getElementById("quote-lines").addEventListener("change",event=>{
   if(!event.target.matches(".line-product"))return;
   const row=event.target.closest(".quote-line");const product=quoteProducts.find(item=>item.id===event.target.value);
-  if(product){row.querySelector(".line-description").value=product.name;row.querySelector(".line-price").value=product.unit_price;}
+  if(product){row.querySelector(".line-description").value=product.name;row.querySelector(".line-price").value=String(Number(product.unit_price));}
   updateQuoteTotals();
 });
 document.getElementById("quote-lines").addEventListener("input",event=>{if(event.target.matches(".line-quantity,.line-price"))updateQuoteTotals();});

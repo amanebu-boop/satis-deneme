@@ -1,6 +1,7 @@
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
+import shutil
 
 import pytest
 from pydantic import ValidationError
@@ -10,6 +11,8 @@ from fastapi import HTTPException
 from openpyxl import load_workbook
 
 from app import quote_excel
+from app.quote_pdf import convert_excel_to_pdf
+from pypdf import PdfReader
 
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "Ersen_Makina_Teklif_Sablonu.xlsx"
@@ -109,3 +112,15 @@ def test_excel_output_rejects_more_than_fifteen_lines():
 def test_amount_in_words_handles_turkish_number_groups():
     assert quote_excel._amount_in_words(__import__("decimal").Decimal("1234.50"), "EUR") == "bin iki yüz otuz dört Avro elli sent"
     assert quote_excel._amount_in_words(__import__("decimal").Decimal("0.00"), "TRY") == "sıfır Türk lirası"
+
+
+
+def test_template_excel_can_be_converted_to_pdf_when_libreoffice_is_installed():
+    if not (shutil.which("libreoffice") or shutil.which("soffice")):
+        pytest.skip("LibreOffice is not installed in this test environment")
+    excel_content = quote_excel.render_quote_excel(sample_quote(), sample_company())
+    pdf_content = convert_excel_to_pdf(excel_content)
+
+    assert pdf_content.startswith(b"%PDF-")
+    reader = PdfReader(BytesIO(pdf_content), strict=True)
+    assert len(reader.pages) >= 1

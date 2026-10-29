@@ -375,8 +375,8 @@ def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
                 tax_rate, tax_amount, total, status, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (record["id"], record.get("company_id"), record["currency"], record["subtotal"],
-             record["discount_rate"], record["discount_amount"], record["tax_rate"],
-             record["tax_amount"], record["total"], record["status"], record["created_at"]),
+             "0", "0.00", record["tax_rate"], record["tax_amount"],
+             record["total"], record["status"], record["created_at"]),
         )
         for line in record["lines"]:
             connection.execute(

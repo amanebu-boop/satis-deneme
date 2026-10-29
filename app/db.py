@@ -131,15 +131,19 @@ def init_db() -> None:
         if "discount_rate" in quote_columns or "discount_amount" in quote_columns:
             from decimal import Decimal, ROUND_HALF_UP
 
-            old_quotes = connection.execute("SELECT id, tax_rate FROM quotations").fetchall()
+            old_quotes = connection.execute("SELECT id, tax_rate, subtotal FROM quotations").fetchall()
             for quote in old_quotes:
                 line_rows = connection.execute(
                     "SELECT quantity, unit_price FROM quotation_lines WHERE quotation_id = ?",
                     (quote["id"],),
                 ).fetchall()
-                subtotal = sum(
-                    (Decimal(line["quantity"]) * Decimal(line["unit_price"]) for line in line_rows),
-                    Decimal("0"),
+                subtotal = (
+                    sum(
+                        (Decimal(line["quantity"]) * Decimal(line["unit_price"]) for line in line_rows),
+                        Decimal("0"),
+                    )
+                    if line_rows
+                    else Decimal(quote["subtotal"])
                 )
                 tax = subtotal * Decimal(quote["tax_rate"])
                 subtotal_text = str(subtotal.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))

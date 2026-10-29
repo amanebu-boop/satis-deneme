@@ -19,3 +19,5 @@ def test_quotation_document_renders_tax_and_final_total():
     assert "Ara toplam" in html
     assert "KDV/vergi" in html
     assert "Genel toplam" in html
+
+    assert "İndirim" not in html

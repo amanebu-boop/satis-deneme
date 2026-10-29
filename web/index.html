@@ -228,7 +228,7 @@ h1{color:var(--ink)}
     </div>
     <div class="quote-totals" aria-live="polite" aria-label="Teklif toplamları"><div class="quote-total-row"><span>Ara toplam</span><strong id="quote-subtotal">0,00 TRY</strong></div><div class="quote-total-row"><span>İndirim</span><strong id="quote-discount-total">− 0,00 TRY</strong></div><div class="quote-total-row"><span>Vergi</span><strong id="quote-tax-total">0,00 TRY</strong></div><div class="quote-total-row quote-total-grand"><span>Genel toplam</span><strong id="quote-grand-total">0,00 TRY</strong></div><p class="quote-product-empty">Tutarlar anlık tahmindir; kaydederken sunucu tarafından yeniden hesaplanır.</p></div>
     <p id="quote-message" role="status" aria-live="polite" class="footer-note"></p>
-    <button class="btn primary" type="submit" id="save-quote">Teklifi kaydet ve belge oluştur</button>
+    <button class="btn primary" type="submit" id="save-quote">Teklifi kaydet ve şablonlu Excel indir</button>
   </form>
 </div>
 <div class="panel"><div class="panel-head"><h2>Kayıtlı teklifler</h2><button class="btn" id="refresh-quotes" type="button">Yenile</button></div>
@@ -529,8 +529,8 @@ async function loadQuotes(){
     for(const quote of quotes){const tr=document.createElement("tr");
       for(const value of [quote.company_name, String(quote.created_at||"").slice(0,10), quote.total+" "+quote.currency]){const td=document.createElement("td");td.textContent=value;tr.append(td);}
       const action=document.createElement("td");action.style.whiteSpace="nowrap";action.style.display="flex";action.style.flexWrap="wrap";action.style.gap="10px";
-      const preview=document.createElement("a");preview.href="/api/quotes/"+encodeURIComponent(quote.id)+"/document";preview.target="_blank";preview.rel="noopener";preview.textContent="Önizle / PDF";preview.className="link";
-      const excel=document.createElement("a");excel.href="/api/quotes/"+encodeURIComponent(quote.id)+"/excel";excel.textContent="Excel teklif";excel.className="link";
+      const preview=document.createElement("a");preview.href="/api/quotes/"+encodeURIComponent(quote.id)+"/document";preview.target="_blank";preview.rel="noopener";preview.textContent="Genel önizleme / PDF";preview.className="link";
+      const excel=document.createElement("a");excel.href="/api/quotes/"+encodeURIComponent(quote.id)+"/excel";excel.textContent="Ersen Makina şablonu (Excel)";excel.className="link";
       action.append(preview,excel);tr.append(action);rows.append(tr);
     }
   }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message;tr.append(td);rows.append(tr);}
@@ -600,8 +600,8 @@ document.getElementById("quote-form").addEventListener("submit",async event=>{
     const response=await fetch("/api/quotes",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
     if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
     if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Teklif kaydedilemedi ("+response.status+")");}
-    const quote=await response.json();message.textContent="Teklif taslağı kaydedildi. Belge yeni sekmede açılıyor.";
-    window.open("/api/quotes/"+encodeURIComponent(quote.id)+"/document","_blank","noopener");
+    const quote=await response.json();message.textContent="Teklif taslağı kaydedildi. Ersen Makina şablonlu Excel dosyası indiriliyor.";
+    window.open("/api/quotes/"+encodeURIComponent(quote.id)+"/excel","_blank","noopener");
     await loadQuotes();
   }catch(error){message.textContent=error.message||"Teklif kaydedilemedi.";}
   finally{button.disabled=false;}

@@ -13,20 +13,18 @@ def money(value: Decimal) -> Decimal:
     return value.quantize(CENT, rounding=ROUND_HALF_UP)
 
 
-def calculate_quote(lines: list[QuoteLine], currency: str, tax_rate: float = 0, discount_rate: float = 0) -> dict:
+def calculate_quote(lines: list[QuoteLine], currency: str, tax_rate: float = 0) -> dict:
     """Calculate totals deterministically; this function does not validate local tax law."""
     if not lines:
         raise ValueError("At least one line is required")
     if len(currency) != 3 or not currency.isalpha() or currency.upper() != currency:
         raise ValueError("Currency must be a three-letter uppercase code")
-    if not (0 <= tax_rate <= 1) or not (0 <= discount_rate <= 1):
-        raise ValueError("Tax and discount rates must be between 0 and 1")
+    if not 0 <= tax_rate <= 1:
+        raise ValueError("Tax rate must be between 0 and 1")
 
     subtotal = sum((line.quantity * line.unit_price for line in lines), Decimal("0"))
-    discount = subtotal * Decimal(str(discount_rate))
-    taxable = subtotal - discount
-    tax = taxable * Decimal(str(tax_rate))
-    total = taxable + tax
+    tax = subtotal * Decimal(str(tax_rate))
+    total = subtotal + tax
     return {
         "currency": currency,
         "lines": [
@@ -39,11 +37,9 @@ def calculate_quote(lines: list[QuoteLine], currency: str, tax_rate: float = 0, 
             for line in lines
         ],
         "subtotal": str(money(subtotal)),
-        "discount_rate": str(discount_rate),
-        "discount_amount": str(money(discount)),
         "tax_rate": str(tax_rate),
         "tax_amount": str(money(tax)),
         "total": str(money(total)),
         "status": "calculated_not_approved",
-        "note": "Draft calculation only. Verify currency, tax rules, discounts, and rounding policy before commercial use.",
+        "note": "Draft calculation only. Verify currency, applicable tax rules, and rounding policy before commercial use.",
     }

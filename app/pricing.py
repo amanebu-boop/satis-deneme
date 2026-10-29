@@ -8,7 +8,7 @@ FIXED_TAX_RATE = Decimal("0.20")
 class QuoteLine(BaseModel):
     description: str = Field(min_length=1, max_length=300)
     quantity: int = Field(gt=0, le=999999999)
-    unit_price: int = Field(ge=0, le=999999999999)
+    unit_price: int = Field(ge=0, le=99999999)
 
 
 def money(value: Decimal) -> Decimal:

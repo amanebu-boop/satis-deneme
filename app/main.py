@@ -448,7 +448,6 @@ class QuoteRequest(BaseModel):
     currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
     lines: list[QuoteLine] = Field(min_length=1, max_length=100)
     tax_rate: float = Field(default=0, ge=0, le=1)
-    discount_rate: float = Field(default=0, ge=0, le=1)
 
 
 @app.get("/api/products")
@@ -468,6 +467,9 @@ def browser_list_quotes(request: Request) -> list[dict]:
             "id": row["id"],
             "company_id": row.get("company_id"),
             "company_name": companies.get(row.get("company_id"), "Firma belirtilmedi"),
+            "quote_no": row.get("quote_no"),
+            "revision_no": row.get("revision_no", "R00"),
+            "revision_of": row.get("revision_of"),
             "currency": row["currency"],
             "total": row["total"],
             "status": row["status"],
@@ -484,15 +486,15 @@ def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
     if payload.company_id and not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; quotation was not saved")
     calculated = calculate_quote(
-        payload.lines, payload.currency, payload.tax_rate, payload.discount_rate
+        payload.lines, payload.currency, payload.tax_rate
     )
     record = {
         "id": str(uuid4()),
         "company_id": payload.company_id,
         "currency": calculated["currency"],
         "subtotal": calculated["subtotal"],
-        "discount_rate": calculated["discount_rate"],
-        "discount_amount": calculated["discount_amount"],
+        "discount_rate": "0",
+        "discount_amount": "0",
         "tax_rate": calculated["tax_rate"],
         "tax_amount": calculated["tax_amount"],
         "total": calculated["total"],
@@ -510,6 +512,56 @@ def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
         ],
     }
     return db.create_quotation(record)
+
+
+@app.get("/api/quotes/{quotation_id}")
+def browser_get_quote(quotation_id: str, request: Request) -> dict:
+    _require_browser_session(request)
+    record = db.get_quotation(quotation_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    return record
+
+
+@app.post("/api/quotes/{quotation_id}/revisions", status_code=201)
+def browser_create_quote_revision(quotation_id: str, payload: QuoteRequest, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    source = db.get_quotation(quotation_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source quotation not found")
+    if payload.company_id != source.get("company_id"):
+        raise HTTPException(status_code=422, detail="A revision must stay linked to the original company")
+    if payload.company_id and not db.company_exists(payload.company_id):
+        raise HTTPException(status_code=404, detail="Company not found; revision was not saved")
+    calculated = calculate_quote(payload.lines, payload.currency, payload.tax_rate)
+    record = {
+        "id": str(uuid4()),
+        "company_id": source.get("company_id"),
+        "currency": calculated["currency"],
+        "subtotal": calculated["subtotal"],
+        "discount_rate": "0",
+        "discount_amount": "0",
+        "tax_rate": calculated["tax_rate"],
+        "tax_amount": calculated["tax_amount"],
+        "total": calculated["total"],
+        "status": "draft",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "lines": [
+            {
+                "id": str(uuid4()),
+                "description": line.description,
+                "quantity": str(line.quantity),
+                "unit_price": str(line.unit_price),
+                "line_total": calculated["lines"][index]["line_total"],
+            }
+            for index, line in enumerate(payload.lines)
+        ],
+    }
+    try:
+        return db.create_quotation(record, revision_of=quotation_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Source quotation not found") from exc
 
 
 @app.get("/api/quotes/{quotation_id}/document", response_class=HTMLResponse)
@@ -672,7 +724,7 @@ def list_products() -> list[dict]:
 @app.post("/quotes/calculate")
 def quote_calculate(payload: QuoteRequest) -> dict:
     # Pure deterministic calculation. This endpoint does not save or approve a quotation.
-    return calculate_quote(payload.lines, payload.currency, payload.tax_rate, payload.discount_rate)
+    return calculate_quote(payload.lines, payload.currency, payload.tax_rate)
 
 
 @app.post("/quotes", status_code=201)
@@ -682,15 +734,15 @@ def create_quotation(payload: QuoteRequest) -> dict:
     if payload.company_id and not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; quotation was not saved")
     calculated = calculate_quote(
-        payload.lines, payload.currency, payload.tax_rate, payload.discount_rate
+        payload.lines, payload.currency, payload.tax_rate
     )
     record = {
         "id": str(uuid4()),
         "company_id": payload.company_id,
         "currency": calculated["currency"],
         "subtotal": calculated["subtotal"],
-        "discount_rate": calculated["discount_rate"],
-        "discount_amount": calculated["discount_amount"],
+        "discount_rate": "0",
+        "discount_amount": "0",
         "tax_rate": calculated["tax_rate"],
         "tax_amount": calculated["tax_amount"],
         "total": calculated["total"],

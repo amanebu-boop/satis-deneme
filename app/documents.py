@@ -6,7 +6,8 @@ def render_quotation_html(quotation: dict[str, Any], company: dict[str, Any] | N
     """Render a saved draft quotation as a self-contained, printable HTML document."""
     company_name = escape((company or {}).get("name") or "Firma belirtilmedi")
     website = escape((company or {}).get("website") or "")
-    quote_id = escape(str(quotation["id"]))
+    quote_number = escape(str(quotation.get("quote_no") or quotation["id"]))
+    revision_number = escape(str(quotation.get("revision_no") or "R00"))
     created_at = escape(str(quotation["created_at"])[:10])
     currency = escape(str(quotation["currency"]))
     rows = []
@@ -20,10 +21,8 @@ def render_quotation_html(quotation: dict[str, Any], company: dict[str, Any] | N
             "</tr>"
         )
     line_rows = "\n".join(rows)
-    discount_rate = escape(str(quotation.get("discount_rate", "0")))
     tax_rate = escape(str(quotation.get("tax_rate", "0")))
     subtotal = escape(str(quotation.get("subtotal", "0")))
-    discount = escape(str(quotation.get("discount_amount", "0")))
     tax = escape(str(quotation.get("tax_amount", "0")))
     total = escape(str(quotation.get("total", "0")))
     website_row = f"<p>{website}</p>" if website else ""
@@ -48,12 +47,11 @@ button{{border:0;border-radius:8px;background:#335cff;color:white;padding:10px 1
 <div class="print-action"><button onclick="window.print()">Yazdır / PDF olarak kaydet</button>
 <p class="muted">Bu belge bir teklif taslağıdır; onaylanmış teklif veya fatura değildir.</p></div>
 <header><div><h1>Teklif taslağı</h1><strong>{company_name}</strong>{website_row}</div>
-<div><p><strong>Belge no:</strong> {quote_id}</p><p><strong>Tarih:</strong> {created_at}</p><p><strong>Durum:</strong> Taslak</p></div></header>
+<div><p><strong>Teklif no:</strong> {quote_number}</p><p><strong>Revizyon:</strong> {revision_number}</p><p><strong>Tarih:</strong> {created_at}</p><p><strong>Durum:</strong> Taslak</p></div></header>
 <table><thead><tr><th>Açıklama</th><th class="num">Miktar</th><th class="num">Birim fiyat</th><th class="num">Tutar</th></tr></thead>
 <tbody>{line_rows}</tbody></table>
 <div class="totals">
 <p>Ara toplam: <strong>{subtotal} {currency}</strong></p>
-<p>İndirim (%{discount_rate}): <strong>−{discount} {currency}</strong></p>
 <p>KDV/vergi (%{tax_rate}): <strong>{tax} {currency}</strong></p>
 <p class="total">Genel toplam: {total} {currency}</p>
 </div>

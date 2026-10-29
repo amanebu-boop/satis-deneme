@@ -105,3 +105,15 @@ Her görevde:
 - **GitHub dalı ve commit:**
 - **Render dağıtım durumu (doğrulandıysa):**
 - **Sıradaki tek öncelikli görev:**
+
+## 9. Oturum notu — teklif numarası ve revizyon altyapısı (2026-10-29)
+
+- **Dal:** `feature/quote-numbering-revisions`
+- **Yapılan kod değişiklikleri:** SQLite teklif kayıtlarına `quote_no`, `revision_no`, `revision_of` alanları ve yıllık sıra sayacı eklendi; eski kayıtlar için numaralandırma migrasyonu yazıldı. Yeni teklifler `TK-YYYY-NNNN / R00` biçiminde, revizyonlar aynı teklif numarası altında `R01`, `R02` biçiminde oluşturuluyor.
+- **Arayüz:** Kayıtlı teklif listesinde teklif/revizyon numarası gösteriliyor; mevcut tekliften revizyon başlatma akışı eklendi.
+- **Belge çıktısı:** Teklif numarası ve revizyon numarası belge başlığına eklendi.
+- **İndirim alanları:** Teklif oluşturma arayüzünden kaldırıldı; yeni hesaplamalarda indirim uygulanmıyor.
+- **Testler:** `tests/test_quote_numbering.py` eklendi. Bu oturumda test komutu çalıştırılamadı; testlerin geçtiği doğrulanmadı.
+- **Dağıtım:** `main` dalına birleştirilmedi ve canlı ortama dağıtılmadı.
+- **Açık doğrulamalar:** `python -m pytest -q` çalıştırılmalı; eski veritabanı migrasyonu, yeni teklif oluşturma, revizyon oluşturma, belge çıktısı ve arayüz akışı uçtan uca kontrol edilmeli.
+- **Sıradaki adım:** Dal değişikliklerini gözden geçirip test kanıtı elde etmek; kullanıcı onayı olmadan `main` dalına birleştirmemek.

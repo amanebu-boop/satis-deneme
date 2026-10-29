@@ -532,24 +532,37 @@ document.getElementById("meeting-company-search")?.addEventListener("input",filt
 function addMeetingProductRow(prefill=null){
  const container=document.getElementById("meeting-product-lines");if(!container)return;
  const row=document.createElement("div");row.className="meeting-product-row";
- const productWrap=document.createElement("div"),productLabel=document.createElement("label");productLabel.textContent="Katalog ürünü";
- const productSelect=document.createElement("select");productSelect.className="meeting-product";productSelect.required=true;productSelect.add(new Option("Ürün seç",""));
+ const productWrap=document.createElement("div"),productLabel=document.createElement("label");productLabel.textContent="Ürün veya opsiyon ara";
+ const search=document.createElement("input");search.type="search";search.className="meeting-product-search";search.placeholder="Ürün adı veya kodu…";search.autocomplete="off";
+ const results=document.createElement("div");results.className="autocomplete-results";
+ const productSelect=document.createElement("select");productSelect.className="meeting-product";productSelect.hidden=true;
  const products=Array.isArray(productCatalog)?productCatalog:[];
- products.forEach(p=>productSelect.add(new Option(p.name+" · "+p.sku+" · "+formatMoney(p.unit_price,p.currency),p.id)));
- if(prefill?.product_id)productSelect.value=prefill.product_id;
- productWrap.append(productLabel,productSelect);
+ productSelect.add(new Option("Ürün seç",""));products.forEach(p=>productSelect.add(new Option(p.name+" · "+p.sku,p.id)));
+ if(prefill?.product_id){productSelect.value=prefill.product_id;const p=products.find(item=>item.id===prefill.product_id);if(p)search.value=p.name;}
+ function renderResults(){
+  const query=search.value.trim().toLocaleLowerCase("tr-TR");results.replaceChildren();
+  if(!query){results.classList.remove("open");return;}
+  const machineIds=new Set([...container.querySelectorAll(".meeting-product-row")].map(r=>productCatalog.find(p=>p.id===r.querySelector(".meeting-product").value)).filter(p=>p&&(p.product_type||"machine")==="machine").map(p=>p.id));
+  const matches=products.filter(p=>{
+   const match=[p.name,p.sku,p.description||""].some(v=>String(v).toLocaleLowerCase("tr-TR").includes(query));
+   return match&&((p.product_type||"machine")!=="option"||machineIds.has(p.parent_product_id));
+  }).slice(0,30);
+  if(!matches.length){const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent="Eşleşen ürün yok. Opsiyon için önce bağlı ana makineyi ekleyin.";results.append(empty);}
+  matches.forEach(p=>{const button=document.createElement("button");button.type="button";button.className="autocomplete-option";const kind=({machine:"Ana makine",option:"Opsiyon",service:"Ürün / hizmet"})[p.product_type||"machine"];button.textContent=p.name+" · "+p.sku+" · "+kind+" · "+(p.unit_price==null||String(p.unit_price)===""?"Fiyat belirtilmemiş":formatMoney(p.unit_price,p.currency));button.addEventListener("click",()=>{productSelect.value=p.id;search.value=p.name;price.value=p.unit_price==null||String(p.unit_price)===""?"":String(Number(p.unit_price));row.dataset.currency=p.currency;results.classList.remove("open");productSelect.dispatchEvent(new Event("change",{bubbles:true}));});results.append(button);});
+  results.classList.add("open");
+ }
+ search.addEventListener("input",renderResults);search.addEventListener("focus",renderResults);
+ productWrap.append(productLabel,search,results,productSelect);
  const quantityWrap=document.createElement("div"),quantityLabel=document.createElement("label");quantityLabel.textContent="Miktar";const quantity=document.createElement("input");quantity.className="meeting-product-quantity";quantity.type="number";quantity.min="1";quantity.max="999999";quantity.step="1";quantity.value=prefill?.quantity||"1";quantity.required=true;quantity.inputMode="numeric";quantityLabel.append(quantity);quantityWrap.append(quantityLabel);
- const priceWrap=document.createElement("div"),priceLabel=document.createElement("label");priceLabel.textContent="Birim fiyat";const price=document.createElement("input");price.className="meeting-product-price";price.type="number";price.min="0";price.max="99999999";price.step="1";price.value=prefill?.unit_price??"0";price.required=true;price.inputMode="numeric";priceLabel.append(price);priceWrap.append(priceLabel);
+ const priceWrap=document.createElement("div"),priceLabel=document.createElement("label");priceLabel.textContent="Birim fiyat";const price=document.createElement("input");price.className="meeting-product-price";price.type="number";price.min="0";price.max="99999999";price.step="1";price.value=prefill?.unit_price==null||String(prefill?.unit_price)===""?"":String(prefill.unit_price);price.placeholder="Bilinmiyorsa boş";price.inputMode="numeric";priceLabel.append(price);priceWrap.append(priceLabel);
  const remove=document.createElement("button");remove.type="button";remove.className="btn remove-meeting-product";remove.textContent="−";remove.setAttribute("aria-label","Ürünü kaldır");remove.addEventListener("click",()=>row.remove());
- productSelect.addEventListener("change",()=>{const product=productCatalog.find(p=>p.id===productSelect.value);if(product){price.value=String(Number(product.unit_price)||0);row.dataset.currency=product.currency;}});
- if(prefill?.product_id){const p=products.find(item=>item.id===prefill.product_id);if(p)row.dataset.currency=p.currency;}
  row.append(productWrap,quantityWrap,priceWrap,remove);container.append(row);
 }
 function getMeetingProductLines(){
  return [...document.querySelectorAll("#meeting-product-lines .meeting-product-row")].filter(row=>row.querySelector(".meeting-product").value).map(row=>({
    product_id:row.querySelector(".meeting-product").value,
    quantity:Number(row.querySelector(".meeting-product-quantity").value),
-   unit_price:Number(row.querySelector(".meeting-product-price").value)
+   unit_price:row.querySelector(".meeting-product-price").value.trim()===""?null:Number(row.querySelector(".meeting-product-price").value)
  }));
 }
 document.getElementById("add-meeting-product")?.addEventListener("click",()=>addMeetingProductRow());
@@ -571,9 +584,10 @@ function transferMeetingToQuote(meeting){
  const container=document.getElementById("quote-lines");container.replaceChildren();
  lines.forEach(line=>{
    addQuoteLine();const row=container.lastElementChild;
-   row.querySelector(".line-description").value=line.name;
+   const missingPrice=line.unit_price==null||String(line.unit_price)==="";
+   row.querySelector(".line-description").value=line.name+(missingPrice?" — FİYAT BELİRTİLMEDİ":"");
    row.querySelector(".line-quantity").value=String(Number(line.quantity)||1);
-   row.querySelector(".line-price").value=String(Number(line.unit_price)||0);
+   row.querySelector(".line-price").value=missingPrice?"0":String(Number(line.unit_price)||0);
    const select=row.querySelector(".line-product");
    if(line.product_id&&[...select.options].some(o=>o.value===line.product_id))select.value=line.product_id;
  });
@@ -649,7 +663,10 @@ document.getElementById("meeting-form").addEventListener("submit",async event=>{
     const productLines=getMeetingProductLines();
      const payload={company_id:document.getElementById("meeting-company").value,meeting_date:document.getElementById("meeting-date").value,meeting_type:document.getElementById("meeting-type").value,topic:document.getElementById("meeting-topic").value.trim(),notes:document.getElementById("meeting-notes").value.trim(),product_lines:productLines};
     if(!payload.company_id||!payload.meeting_date||!payload.topic||!payload.notes)throw new Error("Firma, tarih, görüşme konusu ve notlar gerekli.");
-     if(productLines.some(line=>!Number.isInteger(line.quantity)||line.quantity<1||!Number.isInteger(line.unit_price)||line.unit_price<0))throw new Error("Ürün miktarları pozitif tam sayı, fiyatlar sıfır veya pozitif tam sayı olmalı.");
+     if(productLines.some(line=>!Number.isInteger(line.quantity)||line.quantity<1||(line.unit_price!==null&&(!Number.isInteger(line.unit_price)||line.unit_price<0))))throw new Error("Ürün miktarları pozitif tam sayı, fiyatlar boş veya sıfır ve üzeri tam sayı olmalı.");
+     const selectedProducts=productLines.map(line=>productCatalog.find(p=>p.id===line.product_id)).filter(Boolean);
+     const machineIds=new Set(selectedProducts.filter(p=>(p.product_type||"machine")==="machine").map(p=>p.id));
+     if(selectedProducts.some(p=>(p.product_type||"machine")==="option"&&!machineIds.has(p.parent_product_id)))throw new Error("Bir opsiyonu kaydetmek için bağlı olduğu ana makineyi de görüşmeye ekleyin.");
      const currencies=[...new Set(productLines.map(line=>productCatalog.find(p=>p.id===line.product_id)?.currency).filter(Boolean))];
      if(currencies.length>1)throw new Error("Aynı görüşmede tek para biriminden ürünler seçin.");
     const response=await fetch("/api/meetings",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
@@ -797,7 +814,7 @@ function addQuoteLine(){
   container.append(row);populateProductSelect(row.querySelector(".line-product"));updateLineButtons();updateQuoteTotals();
 }
 function updateLineButtons(){const buttons=[...document.querySelectorAll(".remove-line")];buttons.forEach(button=>button.disabled=buttons.length===1);}
-function formatMoney(value,currency){try{return new Intl.NumberFormat("tr-TR",{style:"currency",currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value)||0);}catch(_error){return (Number(value)||0).toFixed(2)+" "+currency;}}
+function formatMoney(value,currency){if(value===null||value===undefined||String(value).trim()==="")return "Fiyat belirtilmemiş";try{return new Intl.NumberFormat("tr-TR",{style:"currency",currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value)||0);}catch(_error){return (Number(value)||0).toFixed(2)+" "+currency;}}
 function updateQuoteTotals(){
   const currency=document.getElementById("quote-currency").value;
   const subtotal=[...document.querySelectorAll(".quote-line")].reduce((sum,row)=>sum+(Math.max(0,Number(row.querySelector(".line-quantity").value)||0)*Math.max(0,Number(row.querySelector(".line-price").value)||0)),0);
@@ -820,7 +837,7 @@ document.getElementById("quote-lines").addEventListener("click",event=>{const bu
 document.getElementById("quote-lines").addEventListener("change",event=>{
   if(!event.target.matches(".line-product"))return;
   const row=event.target.closest(".quote-line");const product=quoteProducts.find(item=>item.id===event.target.value);
-  if(product){row.querySelector(".line-description").value=product.name;row.querySelector(".line-price").value=String(Number(product.unit_price));}
+  if(product){const missing=product.unit_price==null||String(product.unit_price)==="";row.querySelector(".line-description").value=product.name+(missing?" — FİYAT BELİRTİLMEDİ":"");row.querySelector(".line-price").value=missing?"0":String(Number(product.unit_price));}
   updateQuoteTotals();
 });
 document.getElementById("quote-lines").addEventListener("input",event=>{if(event.target.matches(".line-quantity,.line-price"))updateQuoteTotals();});

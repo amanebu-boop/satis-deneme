@@ -434,6 +434,15 @@ def list_products() -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+def get_product(product_id: str) -> dict[str, Any] | None:
+    with connect() as connection:
+        row = connection.execute(
+            """SELECT id, sku, name, description, currency, unit_price
+               FROM products WHERE id = ?""", (product_id,)
+        ).fetchone()
+    return dict(row) if row is not None else None
+
+
 def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(

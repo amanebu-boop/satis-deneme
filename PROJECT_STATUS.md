@@ -39,7 +39,7 @@ Firmaları, satış görüşmelerini ve teklif taslaklarını tek bir mobil önc
 - Görüşme kaydında tür seçimi: **Telefon görüşmesi** veya **Ziyaret**.
 - Görüşme raporu görüşme notlarını/içeriklerini dışarı vermemeli; yalnızca firma, tarih, görüşme şekli ve konu gibi alanları göstermeli.
 - Teklif şablonunda satıcı firma: **ERŞEN KALIP VE MAKİNE SANAYİ TİC. LTD.**
-- Teklif çıktısında indirim bölümü istenmiyor. Mevcut çıktı kodu bu gereksinimle uyuşmuyor; düzeltme öncesi kabul kriteri netleştirilip test eklenmeli.
+- **Kesin iş kuralı: Teklifte indirim bölümü hiçbir yerde olmayacak.** İndirim oranı/tutarı teklif arayüzünde, API istek/yanıtlarında, hesaplama modelinde, veritabanı alanlarında ve üretilen belgelerde yer almamalı. Vergi/KDV ayrı bir hesaplama olarak ele alınmalı. Mevcut `QuoteRequest`, `calculate_quote`, teklif tablosu şeması ve `app/documents.py` çıktısı bu kurala göre birlikte düzenlenmeli; veri tabanı geçişi gerekiyorsa mevcut kayıtlar korunarak yapılmalı ve regresyon testleri eklenmeli.
 
 Bu gereksinimlerin tamamı uygulanmış veya doğrulanmış değildir.
 
@@ -64,7 +64,7 @@ Bu gereksinimlerin tamamı uygulanmış veya doğrulanmış değildir.
 ## 5. Kanıtlanmış sorunlar ve riskler
 
 1. **Eski rotalar ve ortak API anahtarı:** `app/main.py` middleware'i `/companies`, `/meetings`, `/products`, `/quotes` prefix'lerini API anahtarıyla koruyor. Ancak `/api/...` akışı ayrı browser-session kontrolü yapıyor. Eski rotaları kullanan istemciler belirlenmeden değişiklik yapılmamalı; üretimde kullanıcı bazlı yetkilendirme ve veri izolasyonu mevcut sayılmamalı.
-2. **Teklif görünümü gereksinimi:** `app/documents.py` indirim oranı/tutar satırı üretiyor; bu, durum dosyasındaki “indirim bölümü olmasın” kararıyla uyuşmuyor. Hesaplama modeli de iskonto parametresi kabul ediyor; iş kuralı ve çıktı ayrı ayrı ele alınmalı.
+2. **Teklif iş kuralı ihlali:** İndirim hiçbir yerde olmayacak. `app/documents.py` indirim oranı/tutar satırı üretiyor; `QuoteRequest` ve `app/pricing.py` iskonto oranını kabul ediyor; veritabanında `discount_rate` ve `discount_amount` alanları bulunuyor. Yalnızca HTML satırını kaldırmak yeterli değildir: API modeli, hesaplama, kalıcılık ve çıktı birlikte düzeltilmeli; mevcut kayıtları kaybetmeyecek bir geçiş ve testler hazırlanmalı.
 3. **Test ve belge referansları:** README kurulum ve güvenlik/yedekleme belgelerine bağlantı veriyor, ancak görülen `main` dosya ağacında `docs/` ve `tests/` dizinleri yer almıyor. İçeriklerin başka dalda/taşınmış olup olmadığı ayrıca kontrol edilmelidir.
 4. **Canlı ortam:** Render kalıcı depolama, ortam değişkenleri ve canlı commit eşleşmesi doğrulanmadı. Prototip gerçek müşteri verisiyle kullanılmamalı.
 
@@ -84,7 +84,7 @@ Bu gereksinimlerin tamamı uygulanmış veya doğrulanmış değildir.
 1. Depoyu yerel/CI Python 3.11+ ortamında aç; bağımlılıkları `python -m pip install -e ".[test]"` ile kur ve `python -m pytest -q` çalıştır.
 2. `tests/` gerçekten yoksa, ilk önce mevcut login, session/CSRF, korumalı rotalar, firma/görüşme/teklif akışları ve şablon işlemleri için regresyon testleri ekle.
 3. Eski rotaları hangi istemcilerin kullandığını doğrula. Kullanılmayan eski rotalar kaldırılmalı veya tarayıcı erişimine açılmaları önlenmeli; API istemcisi gerekiyorsa token politikasını ve veri izolasyonunu açıkça tasarla.
-4. İndirim bölümünün kaldırılması gereksinimini teklif görünümü/hesaplama davranışına göre kabul testleriyle netleştir.
+4. İndirim bölümünü tüm teklif akışından kaldır: API şeması, hesaplama, veritabanı, arayüz ve çıktı. Kabul testleri indirim alanlarının yokluğunu ve indirim olmadan doğru toplamı doğrulamalı.
 5. Her değişiklikten sonra hedefli ve tam test paketini çalıştır; gerçek çıktıyı kaydet.
 6. Render'da kaynak branch/commit, disk ve ortam değişkenlerini doğrulamadan canlıya dağıtım yapma.
 

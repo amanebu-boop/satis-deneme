@@ -75,7 +75,9 @@ def init_db() -> None:
                 name TEXT NOT NULL,
                 description TEXT,
                 currency TEXT NOT NULL CHECK(length(currency) = 3),
-                unit_price TEXT NOT NULL
+                unit_price TEXT NOT NULL,
+                product_type TEXT NOT NULL DEFAULT 'machine' CHECK(product_type IN ('machine', 'option', 'service')),
+                parent_product_id TEXT REFERENCES products(id) ON DELETE SET NULL
             );
             CREATE TABLE IF NOT EXISTS meeting_products (
                 id TEXT PRIMARY KEY,
@@ -133,6 +135,11 @@ def init_db() -> None:
         if "topic" not in meeting_columns:
             connection.execute("ALTER TABLE meetings ADD COLUMN topic TEXT NOT NULL DEFAULT 'Genel görüşme'")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_follow_up_due ON follow_up_tasks(status, due_date)")
+        product_columns = {row["name"] for row in connection.execute("PRAGMA table_info(products)")}
+        if "product_type" not in product_columns:
+            connection.execute("ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'machine'")
+        if "parent_product_id" not in product_columns:
+            connection.execute("ALTER TABLE products ADD COLUMN parent_product_id TEXT REFERENCES products(id) ON DELETE SET NULL")
         columns = {row["name"] for row in connection.execute("PRAGMA table_info(companies)")}
         additions = {
             "authorized_people": "TEXT NOT NULL DEFAULT '[]'",
@@ -417,10 +424,12 @@ def complete_follow_up(task_id: str) -> dict[str, Any] | None:
 def create_product(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
-            """INSERT INTO products (id, sku, name, description, currency, unit_price)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO products
+               (id, sku, name, description, currency, unit_price, product_type, parent_product_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (record["id"], record["sku"], record["name"], record.get("description"),
-             record["currency"], record["unit_price"]),
+             record["currency"], record.get("unit_price") or "", record.get("product_type", "machine"),
+             record.get("parent_product_id")),
         )
     return record
 
@@ -428,7 +437,7 @@ def create_product(record: dict[str, Any]) -> dict[str, Any]:
 def list_products() -> list[dict[str, Any]]:
     with connect() as connection:
         rows = connection.execute(
-            """SELECT id, sku, name, description, currency, unit_price
+            """SELECT id, sku, name, description, currency, unit_price, product_type, parent_product_id
                FROM products ORDER BY name, sku"""
         ).fetchall()
     return [dict(row) for row in rows]
@@ -437,10 +446,24 @@ def list_products() -> list[dict[str, Any]]:
 def get_product(product_id: str) -> dict[str, Any] | None:
     with connect() as connection:
         row = connection.execute(
-            """SELECT id, sku, name, description, currency, unit_price
+            """SELECT id, sku, name, description, currency, unit_price, product_type, parent_product_id
                FROM products WHERE id = ?""", (product_id,)
         ).fetchone()
     return dict(row) if row is not None else None
+
+
+def update_product(product_id: str, record: dict[str, Any]) -> dict[str, Any] | None:
+    with connect() as connection:
+        cursor = connection.execute(
+            """UPDATE products SET sku=?, name=?, description=?, currency=?, unit_price=?,
+               product_type=?, parent_product_id=? WHERE id=?""",
+            (record["sku"], record["name"], record.get("description"), record["currency"],
+             record.get("unit_price") or "", record.get("product_type", "machine"),
+             record.get("parent_product_id"), product_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+    return {"id": product_id, **record}
 
 
 def create_quotation(record: dict[str, Any]) -> dict[str, Any]:

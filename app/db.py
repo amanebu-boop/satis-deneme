@@ -74,8 +74,6 @@ def init_db() -> None:
                 company_id TEXT REFERENCES companies(id) ON DELETE SET NULL,
                 currency TEXT NOT NULL CHECK(length(currency) = 3),
                 subtotal TEXT NOT NULL,
-                discount_rate TEXT NOT NULL,
-                discount_amount TEXT NOT NULL,
                 tax_rate TEXT NOT NULL,
                 tax_amount TEXT NOT NULL,
                 total TEXT NOT NULL,
@@ -107,6 +105,10 @@ def init_db() -> None:
             """
         )
         # Safe in-place migration for existing SQLite databases.
+        quotation_columns = {row["name"] for row in connection.execute("PRAGMA table_info(quotations)")}
+        for obsolete_column in ("discount_rate", "discount_amount"):
+            if obsolete_column in quotation_columns:
+                connection.execute(f"ALTER TABLE quotations DROP COLUMN {obsolete_column}")
         meeting_columns = {row["name"] for row in connection.execute("PRAGMA table_info(meetings)")}
         if "meeting_type" not in meeting_columns:
             connection.execute("ALTER TABLE meetings ADD COLUMN meeting_type TEXT NOT NULL DEFAULT 'phone'")
@@ -371,12 +373,11 @@ def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
             """INSERT INTO quotations
-               (id, company_id, currency, subtotal, discount_rate, discount_amount,
-                tax_rate, tax_amount, total, status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (record["id"], record.get("company_id"), record["currency"], record["subtotal"],
-             record["discount_rate"], record["discount_amount"], record["tax_rate"],
-             record["tax_amount"], record["total"], record["status"], record["created_at"]),
+             record["tax_rate"], record["tax_amount"], record["total"], record["status"],
+             record["created_at"]),
         )
         for line in record["lines"]:
             connection.execute(
@@ -392,8 +393,7 @@ def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
 def get_quotation(quotation_id: str) -> dict[str, Any] | None:
     with connect() as connection:
         row = connection.execute(
-            """SELECT id, company_id, currency, subtotal, discount_rate, discount_amount,
-                      tax_rate, tax_amount, total, status, created_at
+            """SELECT id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
                FROM quotations WHERE id = ?""",
             (quotation_id,),
         ).fetchone()
@@ -413,8 +413,7 @@ def get_quotation(quotation_id: str) -> dict[str, Any] | None:
 def list_quotations() -> list[dict[str, Any]]:
     with connect() as connection:
         rows = connection.execute(
-            """SELECT id, company_id, currency, subtotal, discount_rate, discount_amount,
-                      tax_rate, tax_amount, total, status, created_at
+            """SELECT id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
                FROM quotations ORDER BY created_at DESC, id DESC"""
         ).fetchall()
     return [dict(row) for row in rows]

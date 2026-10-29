@@ -1,12 +1,18 @@
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
+import shutil
 
 import pytest
+from pydantic import ValidationError
+
+from app.pricing import QuoteLine
 from fastapi import HTTPException
 from openpyxl import load_workbook
 
 from app import quote_excel
+from app.quote_pdf import convert_excel_to_pdf
+from pypdf import PdfReader
 
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "Ersen_Makina_Teklif_Sablonu.xlsx"
@@ -23,8 +29,6 @@ def sample_quote(**overrides):
         "created_at": "2026-10-29T10:30:00+00:00",
         "currency": "EUR",
         "subtotal": "250.00",
-        "discount_rate": 0,
-        "discount_amount": "0.00",
         "tax_rate": 0.20,
         "tax_amount": "50.00",
         "total": "300.00",
@@ -67,11 +71,12 @@ def test_excel_output_preserves_template_and_fills_quote_fields():
     assert sheet["D28"].value == "Deneme Makinesi"
     assert sheet["J28"].value == 2
     assert sheet["K28"].value == 100
+    assert sheet["D22"].value in (None, "")
     assert sheet["D29"].value == "Kurulum Hizmeti"
     assert sheet["J29"].value == 1
     assert sheet["K29"].value == 50
     assert sheet["L28"].value == "=K28*J28"
-    assert sheet["I44"].value == "=ara_toplam*0.2"
+    assert sheet["I44"].value == "=ara_toplam*20/100"
     assert sheet["I45"].value == "=ara_toplam+kdv_toplam"
     assert sheet["I46"].value == "üç yüz Avro"
     assert sheet["D49"].value == "Sipariş onayı ve avansın tahsilini takip eden ilk iş günü"
@@ -79,13 +84,19 @@ def test_excel_output_preserves_template_and_fills_quote_fields():
     workbook.close()
 
 
-def test_excel_output_rejects_discount_instead_of_silently_dropping_it():
-    quote = sample_quote(discount_amount="25.00", discount_rate=0.1)
+def test_excel_output_rejects_decimal_unit_price():
+    quote = sample_quote(lines=[
+        {"description": "Ondalıklı fiyat", "quantity": "1", "unit_price": "10.5"}
+    ])
     with pytest.raises(HTTPException) as exc:
         quote_excel.render_quote_excel(quote, sample_company())
     assert exc.value.status_code == 422
-    assert "indirim" in str(exc.value.detail).lower()
+    assert "tam sayı" in str(exc.value.detail).lower()
 
+
+def test_quote_line_rejects_decimal_unit_price():
+    with pytest.raises(ValidationError):
+        QuoteLine(description="Ondalıklı fiyat", quantity=1, unit_price="10.5")
 
 def test_excel_output_rejects_more_than_fifteen_lines():
     quote = sample_quote(lines=[
@@ -101,3 +112,15 @@ def test_excel_output_rejects_more_than_fifteen_lines():
 def test_amount_in_words_handles_turkish_number_groups():
     assert quote_excel._amount_in_words(__import__("decimal").Decimal("1234.50"), "EUR") == "bin iki yüz otuz dört Avro elli sent"
     assert quote_excel._amount_in_words(__import__("decimal").Decimal("0.00"), "TRY") == "sıfır Türk lirası"
+
+
+
+def test_template_excel_can_be_converted_to_pdf_when_libreoffice_is_installed():
+    if not (shutil.which("libreoffice") or shutil.which("soffice")):
+        pytest.skip("LibreOffice is not installed in this test environment")
+    excel_content = quote_excel.render_quote_excel(sample_quote(), sample_company())
+    pdf_content = convert_excel_to_pdf(excel_content)
+
+    assert pdf_content.startswith(b"%PDF-")
+    reader = PdfReader(BytesIO(pdf_content), strict=True)
+    assert len(reader.pages) >= 1

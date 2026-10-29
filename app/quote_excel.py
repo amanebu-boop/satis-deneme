@@ -73,8 +73,12 @@ def _amount_in_words(amount: Decimal, currency: str) -> str:
     unit, minor = currency_names.get(currency, (currency, "alt birim"))
     result = f"{_number_words(whole)} {unit}"
     if fraction:
-        result += f" { _number_words(fraction) } {minor}"
+        result += f" {_number_words(fraction)} {minor}"
     return result
+
+
+def money_text(value: Decimal) -> str:
+    return format(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), ".2f")
 
 
 def render_quote_excel(quote: dict, company: dict | None) -> bytes:
@@ -85,8 +89,6 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         raise HTTPException(status_code=422, detail="Excel teklifi için en az bir ürün/hizmet satırı gerekli.")
     if len(lines) > MAX_LINES:
         raise HTTPException(status_code=422, detail=f"Bu teklif şablonu en fazla {MAX_LINES} kalem destekliyor.")
-    if float(quote.get("discount_amount") or 0) != 0:
-        raise HTTPException(status_code=422, detail="Erşen Makina şablonunda indirim bölümü bulunmadığı için indirimli teklifler Excel olarak oluşturulamaz. Önce indirim oranını sıfırlayın.")
 
     customer = company or {}
     contact, phone = _company_contact(customer)
@@ -95,16 +97,10 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         quote_date = date.fromisoformat(created_raw)
     except ValueError:
         quote_date = date.today()
-    try:
-        validity_days = 15
-        valid_until = quote_date + timedelta(days=validity_days)
-        tax_rate = float(quote.get("tax_rate") or 0)
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=422, detail="Teklif tarihi veya vergi oranı geçersiz.")
+    validity_days = 15
+    valid_until = quote_date + timedelta(days=validity_days)
 
-    # openpyxl preserves cell formatting and formulas. The source template includes
-    # an Excel-only validation extension that openpyxl warns it cannot retain; suppress
-    # only that known warning so it does not leak into server logs.
+    # Keep the supplied workbook's structure and formulas; only populate quote data.
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="Data Validation extension is not supported")
         workbook = load_workbook(TEMPLATE_PATH, data_only=False)
@@ -125,8 +121,6 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         sheet["J9"] = contact
         email = _first_text(customer.get("email"))
         sheet["J10"] = " / ".join(value for value in (phone, email) if value)
-        # The template's "Müşteri Referans No" is not the MERSİS number.
-        # Leave it blank rather than mapping unrelated company data into it.
         sheet["J11"] = ""
 
         descriptions = [str(line.get("description") or "").strip() for line in lines]
@@ -136,8 +130,6 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         sheet["D23"] = ""
         sheet["B80"] = ""
 
-        # Keep the supplied workbook's rows, formulas, styles, payment terms and
-        # seller information intact; fill only the 15 supported quotation lines.
         for row in range(28, 43):
             index = row - 28
             if index >= len(lines):
@@ -148,21 +140,28 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
             sheet[f"C{row}"] = ""
             sheet[f"D{row}"] = str(line.get("description") or "")[:500]
             try:
-                sheet[f"J{row}"] = float(line.get("quantity") or 0)
-                sheet[f"K{row}"] = float(line.get("unit_price") or 0)
-            except (TypeError, ValueError):
-                raise HTTPException(status_code=422, detail=f"Teklif kalemi {index + 1} için miktar veya birim fiyat geçersiz.")
+                quantity = int(str(line.get("quantity") or 0))
+                raw_price = Decimal(str(line.get("unit_price") or 0))
+                if raw_price != raw_price.to_integral_value():
+                    raise ValueError("Birim fiyat tam sayı olmalıdır.")
+                unit_price = int(raw_price)
+                if quantity <= 0 or unit_price < 0:
+                    raise ValueError("Miktar veya birim fiyat aralık dışında.")
+                sheet[f"J{row}"] = quantity
+                sheet[f"K{row}"] = unit_price
+            except (TypeError, ValueError, ArithmeticError):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Teklif kalemi {index + 1} için miktar ve birim fiyat tam sayı olmalıdır; birim fiyat sıfır veya pozitif olmalıdır.",
+                )
 
-        # The workbook intentionally has no discount row. Calculate tax using the
-        # saved draft's rate instead of the template's original fixed 20% formula.
-        sheet["I44"] = "=ara_toplam*" + format(tax_rate, ".8g")
-        sheet["I45"] = "=ara_toplam+kdv_toplam"
+        # Do not overwrite I44/I45: the template already contains the VAT and total formulas.
         currency = str(quote.get("currency") or "EUR").upper()
         subtotal = sum(
             (Decimal(str(line.get("quantity") or 0)) * Decimal(str(line.get("unit_price") or 0)) for line in lines),
             Decimal("0"),
         )
-        total = (subtotal * (Decimal("1") + Decimal(str(tax_rate)))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        total = (subtotal * Decimal("1.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         sheet["I46"] = _amount_in_words(total, currency)
         workbook.calculation.fullCalcOnLoad = True
         workbook.calculation.forceFullCalc = True

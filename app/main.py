@@ -20,6 +20,7 @@ from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
 from app.quote_excel import render_quote_excel
+from app.quote_pdf import convert_excel_to_pdf
 
 
 @asynccontextmanager
@@ -441,15 +442,13 @@ class ProductCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
-    unit_price: Decimal = Field(ge=0, max_digits=12, decimal_places=4)
+    unit_price: int = Field(ge=0, le=99999999)
 
 
 class QuoteRequest(BaseModel):
     company_id: str | None = None
     currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
     lines: list[QuoteLine] = Field(min_length=1, max_length=100)
-    tax_rate: float = Field(default=0, ge=0, le=1)
-    discount_rate: float = Field(default=0, ge=0, le=1)
 
 
 @app.get("/api/products")
@@ -484,16 +483,12 @@ def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
     _require_csrf(request, session)
     if payload.company_id and not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; quotation was not saved")
-    calculated = calculate_quote(
-        payload.lines, payload.currency, payload.tax_rate, payload.discount_rate
-    )
+    calculated = calculate_quote(payload.lines, payload.currency)
     record = {
         "id": str(uuid4()),
         "company_id": payload.company_id,
         "currency": calculated["currency"],
         "subtotal": calculated["subtotal"],
-        "discount_rate": calculated["discount_rate"],
-        "discount_amount": calculated["discount_amount"],
         "tax_rate": calculated["tax_rate"],
         "tax_amount": calculated["tax_amount"],
         "total": calculated["total"],
@@ -525,6 +520,25 @@ def browser_quotation_excel(quotation_id: str, request: Request) -> Response:
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="Teklif_{quotation_id[:8].upper()}.xlsx"'},
+    )
+    response.headers["Cache-Control"] = "no-store, private"
+    return response
+
+
+@app.get("/api/quotes/{quotation_id}/pdf")
+def browser_quotation_pdf(quotation_id: str, request: Request) -> Response:
+    """Convert the exact Ersen Makina workbook output to PDF using LibreOffice."""
+    _require_browser_session(request)
+    record = db.get_quotation(quotation_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    company = db.get_company(record["company_id"]) if record.get("company_id") else None
+    excel_content = render_quote_excel(record, company)
+    pdf_content = convert_excel_to_pdf(excel_content)
+    response = Response(
+        content=pdf_content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="Teklif_{quotation_id[:8].upper()}.pdf"'},
     )
     response.headers["Cache-Control"] = "no-store, private"
     return response
@@ -690,7 +704,7 @@ def list_products() -> list[dict]:
 @app.post("/quotes/calculate")
 def quote_calculate(payload: QuoteRequest) -> dict:
     # Pure deterministic calculation. This endpoint does not save or approve a quotation.
-    return calculate_quote(payload.lines, payload.currency, payload.tax_rate, payload.discount_rate)
+    return calculate_quote(payload.lines, payload.currency)
 
 
 @app.post("/quotes", status_code=201)
@@ -699,16 +713,12 @@ def create_quotation(payload: QuoteRequest) -> dict:
     # cannot silently alter this draft. This is a draft only, never an approval.
     if payload.company_id and not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; quotation was not saved")
-    calculated = calculate_quote(
-        payload.lines, payload.currency, payload.tax_rate, payload.discount_rate
-    )
+    calculated = calculate_quote(payload.lines, payload.currency)
     record = {
         "id": str(uuid4()),
         "company_id": payload.company_id,
         "currency": calculated["currency"],
         "subtotal": calculated["subtotal"],
-        "discount_rate": calculated["discount_rate"],
-        "discount_amount": calculated["discount_amount"],
         "tax_rate": calculated["tax_rate"],
         "tax_amount": calculated["tax_amount"],
         "total": calculated["total"],

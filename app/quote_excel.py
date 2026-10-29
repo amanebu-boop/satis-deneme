@@ -33,7 +33,7 @@ def _company_contact(company: dict) -> tuple[str, str]:
 def _number_words(value: int) -> str:
     ones = ["sıfır", "bir", "iki", "üç", "dört", "beş", "altı", "yedi", "sekiz", "dokuz"]
     tens = ["", "on", "yirmi", "otuz", "kırk", "elli", "altmış", "yetmiş", "seksen", "doksan"]
-    scales = ["", "bin", "milyon", "milyar", "trilyon", "katrilyon", "kentilyon"]
+    scales = ["", "bin", "milyon", "milyar", "trilyon"]
     if value == 0:
         return "sıfır"
     groups = []

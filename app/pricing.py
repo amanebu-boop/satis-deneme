@@ -5,7 +5,7 @@ CENT = Decimal("0.01")
 
 class QuoteLine(BaseModel):
     description: str = Field(min_length=1, max_length=300)
-    quantity: Decimal = Field(gt=0, max_digits=12, decimal_places=3)
+    quantity: int = Field(gt=0, le=999999999)
     unit_price: Decimal = Field(ge=0, max_digits=12, decimal_places=4)
 
 

@@ -259,7 +259,7 @@ class CompanyCreate(BaseModel):
     street: str | None = Field(default=None, max_length=250)
     building_number: str | None = Field(default=None, max_length=50)
     postal_code: str | None = Field(default=None, max_length=20)
-    address_extra: str | None = Field(default=None, max_length=1000)
+    address_extra: str | None = Field(default=None, max_length=3000)
     website: str | None = Field(default=None, max_length=300)
     email: str | None = Field(default=None, max_length=320)
     tax_office: str | None = Field(default=None, max_length=200)

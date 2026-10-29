@@ -20,10 +20,8 @@ def render_quotation_html(quotation: dict[str, Any], company: dict[str, Any] | N
             "</tr>"
         )
     line_rows = "\n".join(rows)
-    discount_rate = escape(str(quotation.get("discount_rate", "0")))
     tax_rate = escape(str((float(quotation.get("tax_rate", 0) or 0) * 100)))
     subtotal = escape(str(quotation.get("subtotal", "0")))
-    discount = escape(str(quotation.get("discount_amount", "0")))
     tax = escape(str(quotation.get("tax_amount", "0")))
     total = escape(str(quotation.get("total", "0")))
     website_row = f"<p>{website}</p>" if website else ""
@@ -53,7 +51,6 @@ button{{border:0;border-radius:8px;background:#335cff;color:white;padding:10px 1
 <tbody>{line_rows}</tbody></table>
 <div class="totals">
 <p>Ara toplam: <strong>{subtotal} {currency}</strong></p>
-<p>İndirim (%{discount_rate}): <strong>−{discount} {currency}</strong></p>
 <p>KDV/vergi (%{tax_rate}): <strong>{tax} {currency}</strong></p>
 <p class="total">Genel toplam: {total} {currency}</p>
 </div>

@@ -148,7 +148,7 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         # Surface the discount so the Excel output explains the reduced net total.
         if discount_amount:
             sheet["D22"] = (
-                f"İndirim (%{(discount_rate * Decimal('100')).normalize()}): "
+                f"İndirim (%{format((discount_rate * Decimal('100')).normalize(), 'f')}): "
                 f"{money_text(discount_amount)} {str(quote.get('currency') or 'EUR').upper()}"
             )
         else:

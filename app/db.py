@@ -175,7 +175,7 @@ def create_company(record: dict[str, Any]) -> dict[str, Any]:
             """INSERT INTO companies
                (id, name, authorized_people, phone_numbers, address, website, email,
                 tax_office, tax_number, mersis_number, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (stored["id"], stored["name"], stored["authorized_people"], stored["phone_numbers"],
              stored.get("address"), stored.get("website"), stored.get("email"),
              stored.get("tax_office"), stored.get("tax_number"), stored.get("mersis_number"),

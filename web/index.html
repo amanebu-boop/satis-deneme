@@ -425,7 +425,7 @@ function updateIstanbulGreeting(){const now=new Date(),parts=new Intl.DateTimeFo
 function go(page){document.querySelectorAll(".page").forEach(el=>el.classList.toggle("active",el.id==="page-"+page));document.querySelectorAll("[data-page]").forEach(el=>el.classList.toggle("active",el.dataset.page===page));document.getElementById("crumb-current").textContent=titles[page][0];document.getElementById("page-title").textContent=page==="dashboard"?document.getElementById("page-title").textContent:titles[page][1];document.getElementById("page-subtitle").textContent=titles[page][2];if(page==="dashboard")updateIstanbulGreeting();window.scrollTo({top:0,behavior:"smooth"});}
 document.querySelectorAll("[data-page]").forEach(el=>el.addEventListener("click",()=>go(el.dataset.page)));document.getElementById("profile-reports-button").addEventListener("click",()=>{profileMenu.hidden=true;profileMenuButton.setAttribute("aria-expanded","false");document.getElementById("reports-dialog").showModal();});
 document.getElementById("reports-close").addEventListener("click",()=>document.getElementById("reports-dialog").close());
-document.querySelectorAll("[data-meeting-tab]").forEach(button=>button.addEventListener("click",()=>{const tab=button.dataset.meetingTab;document.querySelectorAll("[data-meeting-tab]").forEach(b=>{const active=b===button;b.classList.toggle("active",active);b.setAttribute("aria-selected",String(active));});document.getElementById("meeting-create-tab").hidden=tab!=="create";document.getElementById("meeting-history-tab").hidden=tab!=="history";}));
+document.querySelectorAll("[data-meeting-tab]").forEach(button=>button.addEventListener("click",()=>{const tab=button.dataset.meetingTab;document.querySelectorAll("[data-meeting-tab]").forEach(b=>{const active=b===button;b.classList.toggle("active",active);b.setAttribute("aria-selected",String(active));});document.getElementById("meeting-create-tab").hidden=tab!=="create";document.getElementById("meeting-history-tab").hidden=tab!=="history";if(tab==="create"){loadMeetingCompanies();loadFollowUpCompanies();loadFollowUps();}else{loadMeetings();}}));
 document.querySelectorAll("[data-go]").forEach(el=>el.addEventListener("click",()=>go(el.dataset.go)));
 
 let csrfToken = "";
@@ -670,7 +670,7 @@ loginForm.addEventListener("submit",async event=>{
     const response=await fetch("/api/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});
     if(!response.ok)throw new Error(response.status===401?"Parola hatalı.":response.status===503?"Sunucu parolası yapılandırılmamış.":"Giriş başarısız.");
     const result=await response.json();csrfToken=result.csrf_token;document.getElementById("login-password").value="";
-    showAuthenticated();await loadCompanies();await loadMeetingCompanies();await loadMeetings();await loadProducts();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();
+    showAuthenticated();await loadCompanies();await loadMeetingCompanies();await loadMeetings();await loadFollowUpCompanies();await loadFollowUps();await loadProducts();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();await loadTemplates();
   }catch(error){loginError.textContent=error.message||"Giriş yapılamadı.";}
 });
 const companySearchInput=document.getElementById("company-search");
@@ -1266,7 +1266,7 @@ async function initializeAuth(){
   loadTurkeyLocations();
   try{
     const response=await fetch("/api/session",{credentials:"same-origin",cache:"no-store"});
-    if(response.ok&&(await response.json()).authenticated){await readCsrf();showAuthenticated();await loadCompanies();await loadProducts();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();await loadTemplates();await loadFollowUpCompanies();await loadFollowUps();}
+    if(response.ok&&(await response.json()).authenticated){await readCsrf();showAuthenticated();await loadCompanies();await loadMeetingCompanies();await loadMeetings();await loadFollowUpCompanies();await loadFollowUps();await loadProducts();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();await loadTemplates();}
   }catch(_error){loginError.textContent="Yerel sunucuya bağlanılamadı.";}
 }
 initializeAuth();

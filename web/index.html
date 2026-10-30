@@ -576,7 +576,13 @@ function composeCompanyAddress(company){
  const building=company.building_number?"No: "+company.building_number:"";
  const locality=[company.district,company.city].filter(Boolean).join(" / ");
  const formatted=[neighborhood,road,building,locality,company.postal_code].filter(Boolean).join(" ");
- return formatted||String(company.address||"").trim();
+ if(formatted)return formatted;
+  let legacy=String(company.address||"").trim();
+  const extra=String(company.address_extra||"").trim();
+  if(extra&&legacy){
+    legacy=legacy.split(extra).join(" ").replace(/[,;]+/g," ").replace(/\\s{2,}/g," ").trim();
+  }
+  return legacy;
 }
 function renderCompanyFilterOptions(kind,query=""){
  const input=document.getElementById("company-filter-"+kind+"-search"),results=document.getElementById("company-filter-"+kind+"-options"),select=document.getElementById("company-filter-"+kind);
@@ -733,7 +739,7 @@ document.getElementById("company-form").addEventListener("submit",async event=>{
       building_number:document.getElementById("company-building-number").value.trim()||null,
       postal_code:document.getElementById("company-postal-code").value.trim()||null,
       address_extra:document.getElementById("company-address-extra").value.trim()||null,
-      address:[document.getElementById("company-street").value.trim(),document.getElementById("company-building-number").value.trim()?"No: "+document.getElementById("company-building-number").value.trim():"",document.getElementById("company-neighborhood").value.trim(),document.getElementById("company-district").value.trim(),document.getElementById("company-city").value.trim(),document.getElementById("company-postal-code").value.trim(),document.getElementById("company-address-extra").value.trim()].filter(Boolean).join(", ")||null,
+      address:[document.getElementById("company-street").value.trim(),document.getElementById("company-building-number").value.trim()?"No: "+document.getElementById("company-building-number").value.trim():"",document.getElementById("company-neighborhood").value.trim(),document.getElementById("company-district").value.trim(),document.getElementById("company-city").value.trim(),document.getElementById("company-postal-code").value.trim()].filter(Boolean).join(", ")||null,
       website:normalizeWebsite(document.getElementById("company-website").value),
       email:document.getElementById("company-email").value.trim()||null,
       tax_office:normalizeTurkishName(document.getElementById("company-tax-office").value)||null,

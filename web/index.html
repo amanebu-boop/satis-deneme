@@ -702,7 +702,7 @@ function createMeetingCard(meeting){
  const ni=document.createElement("textarea");ni.rows=5;ni.maxLength=10000;ni.required=true;ni.value=noteText;
  const field=(label,control)=>{const wrap=document.createElement("label");wrap.textContent=label;wrap.append(control);return wrap;};
  const editLines=document.createElement("div");editLines.id="meeting-edit-lines-"+meeting.id;editLines.className="meeting-product-lines";
- (meetingLines||[]).forEach(line=>addMeetingProductRow(line,editLines.id));
+ (meetingLines||[]).forEach(line=>{addMeetingProductRow(line,editLines.id);const editRow=editLines.lastElementChild;if(editRow){editRow.querySelector(".meeting-product-search").value=line.name||"";editRow.dataset.snapshotName=line.name||"";}});
  const addLine=document.createElement("button");addLine.type="button";addLine.className="btn";addLine.textContent="＋ Ürün ekle";addLine.addEventListener("click",()=>addMeetingProductRow(null,editLines.id));
  const actions=document.createElement("div");actions.className="actions";const save=document.createElement("button");save.type="submit";save.className="btn primary";save.textContent="Kaydet";const cancel=document.createElement("button");cancel.type="button";cancel.className="btn";cancel.textContent="Vazgeç";actions.append(save,cancel);
  editor.append(field("Görüşme tarihi ve saati",di),field("Görüşme şekli",ti),field("Görüşme konusu",topi),field("Görüşme notları",ni),field("Görüşme ürünleri",editLines),addLine,actions);
@@ -799,9 +799,9 @@ async function loadQuotes(){
     for(const quote of quotes){const tr=document.createElement("tr");
       for(const value of [(quote.quote_number||"Teklif")+" · "+quote.company_name, String(quote.created_at||"").slice(0,10), quote.total+" "+quote.currency]){const td=document.createElement("td");td.textContent=value;tr.append(td);}
       const action=document.createElement("td");action.style.whiteSpace="nowrap";action.style.display="flex";action.style.flexWrap="wrap";action.style.gap="10px";
-      const preview=document.createElement("a");preview.href="/api/quotes/"+encodeURIComponent(quote.id)+"/document";preview.target="_blank";preview.rel="noopener";preview.textContent="Genel önizleme / PDF";preview.className="link";
-      const excel=document.createElement("a");excel.href="/api/quotes/"+encodeURIComponent(quote.id)+"/excel";excel.textContent="Şablonlu Excel";excel.className="link";
-      const pdf=document.createElement("a");pdf.href="/api/quotes/"+encodeURIComponent(quote.id)+"/pdf";pdf.textContent="Şablonlu PDF";pdf.className="link";
+      const preview=document.createElement("a");preview.href="/api/quotes/"+encodeURIComponent(quote.id)+"/document";preview.target="_blank";preview.rel="noopener";preview.textContent="Şablonlu PDF önizle";preview.className="link";
+      const excel=document.createElement("a");excel.href="/api/quotes/"+encodeURIComponent(quote.id)+"/excel";excel.textContent="Excel indir";excel.className="link";
+      const pdf=document.createElement("a");pdf.href="/api/quotes/"+encodeURIComponent(quote.id)+"/pdf?download=1";pdf.textContent="PDF indir";pdf.className="link";
       action.append(preview,excel,pdf);tr.append(action);rows.append(tr);
     }
   }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message;tr.append(td);rows.append(tr);}
@@ -964,8 +964,7 @@ document.getElementById("quote-form").addEventListener("submit",async event=>{
     const response=await fetch("/api/quotes",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
     if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
     if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Teklif kaydedilemedi ("+response.status+")");}
-    const quote=await response.json();message.textContent="Teklif taslağı kaydedildi. Ersen Makina şablonlu Excel dosyası indiriliyor.";
-    window.open("/api/quotes/"+encodeURIComponent(quote.id)+"/excel","_blank","noopener");
+    const quote=await response.json();message.textContent="Teklif kaydedildi. Şablonlu Excel ve PDF dosyalarını istediğin zaman kayıtlı teklifler bölümünden indirebilirsin.";
     await loadQuotes();
   }catch(error){message.textContent=error.message||"Teklif kaydedilemedi.";}
   finally{button.disabled=false;}

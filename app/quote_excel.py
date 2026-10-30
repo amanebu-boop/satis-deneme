@@ -137,7 +137,7 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
                     sheet[cell] = None
                 continue
             line = lines[index]
-            sheet[f"C{row}"] = ""
+            sheet[f"C{row}"] = index + 1
             sheet[f"D{row}"] = str(line.get("description") or "")[:500]
             try:
                 quantity = int(str(line.get("quantity") or 0))

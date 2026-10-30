@@ -438,7 +438,7 @@ let allCompanies=[];
 function composeCompanyAddress(company){
  const clean=value=>String(value||"").trim().split(" ").filter(Boolean).join(" ");
  let road=clean(company.street);const lowerRoad=road.toLocaleLowerCase("tr-TR");
- if(road){if(lowerRoad.endsWith(" sokak"))road=road.slice(0,-6).trim()+" Sok.";else if(lowerRoad.endsWith(" sok."))road=road.slice(0,-4).trim()+" Sok.";else road+=" Sok.";}
+ if(road){if(lowerRoad.endsWith(" sokak"))road=road.slice(0,-6).trim()+" Sok.";else if(lowerRoad.endsWith(" sok."))road=road.slice(0,-4).trim()+" Sok.";else if(lowerRoad.endsWith(" cadde"))road=road.slice(0,-6).trim()+" Cad.";else if(lowerRoad.endsWith(" cad."))road=road.slice(0,-4).trim()+" Cad.";else if(lowerRoad.endsWith(" bulvar"))road=road.slice(0,-7).trim()+" Bulv.";else if(lowerRoad.endsWith(" bulv."))road=road.slice(0,-6).trim()+" Bulv.";else road+=" Sok.";}
  let neighborhood=clean(company.neighborhood);const lowerNeighborhood=neighborhood.toLocaleLowerCase("tr-TR");
  if(neighborhood){if(lowerNeighborhood.endsWith(" mahalle"))neighborhood=neighborhood.slice(0,-8).trim();else if(lowerNeighborhood.endsWith(" mah."))neighborhood=neighborhood.slice(0,-4).trim();neighborhood+=" Mah.";}
  const building=company.building_number?"No: "+company.building_number:"";

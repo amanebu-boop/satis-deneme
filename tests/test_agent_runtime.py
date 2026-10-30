@@ -90,3 +90,22 @@ def test_invalid_reporting_input_is_marked_failed(isolated_database):
 
     assert foundation.list_runs()[0]["status"] == "failed"
     assert foundation.list_audit_logs()[0]["event_type"] == "run_failed"
+
+
+def test_completed_agent_run_cannot_execute_twice(isolated_database, monkeypatch):
+    from app import db
+
+    with db.connect() as connection:
+        connection.execute("UPDATE agents SET enabled = 1 WHERE id = 'reporting'")
+
+    monkeypatch.setattr(
+        agent_runtime, "_sales_overview",
+        lambda payload: {"report": "sales_overview", "scope": "aggregate_counts_only"},
+    )
+    run = foundation.create_run("reporting", "sales_overview", "test-user")
+    agent_runtime.execute_run(run["id"], "test-user")
+
+    with pytest.raises(ValueError, match="not queued"):
+        agent_runtime.execute_run(run["id"], "test-user")
+
+    assert foundation.list_runs()[0]["status"] == "succeeded"

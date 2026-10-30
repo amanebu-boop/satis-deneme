@@ -218,9 +218,11 @@ def request_approval(
     now = datetime.now(timezone.utc)
     approval_id = str(uuid4())
     with db.connect() as connection:
-        run = connection.execute("SELECT id, agent_id FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
+        run = connection.execute("SELECT id, agent_id, status FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
         if run is None:
             raise ValueError("unknown run")
+        if run["status"] not in {"queued", "running", "pending_approval"}:
+            raise ValueError("run is not eligible for approval")
         connection.execute(
             """INSERT INTO agent_approvals
                (id, run_id, action_type, payload_json, payload_sha256, status,
@@ -304,3 +306,35 @@ def list_audit_logs(limit: int = 100) -> list[dict[str, Any]]:
         {**dict(row), "details": json.loads(row["details_json"])}
         for row in rows
     ]
+
+
+
+def list_runs(limit: int = 100) -> list[dict[str, Any]]:
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
+        raise ValueError("limit must be between 1 and 500")
+    with db.connect() as connection:
+        rows = connection.execute(
+            """SELECT r.id, r.agent_id, a.name AS agent_name, r.task_type, r.status,
+                      r.requested_by, r.created_at, r.finished_at
+               FROM agent_runs r JOIN agents a ON a.id = r.agent_id
+               ORDER BY r.created_at DESC, r.rowid DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def list_approvals(limit: int = 100) -> list[dict[str, Any]]:
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
+        raise ValueError("limit must be between 1 and 500")
+    with db.connect() as connection:
+        rows = connection.execute(
+            """SELECT p.id, p.run_id, r.agent_id, a.name AS agent_name,
+                      p.action_type, p.status, p.requested_by, p.reviewed_by,
+                      p.created_at, p.expires_at, p.reviewed_at
+               FROM agent_approvals p
+               JOIN agent_runs r ON r.id = p.run_id
+               JOIN agents a ON a.id = r.agent_id
+               ORDER BY p.created_at DESC, p.rowid DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    return [dict(row) for row in rows]

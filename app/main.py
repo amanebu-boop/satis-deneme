@@ -6,6 +6,7 @@ from decimal import Decimal
 import hmac
 import logging
 import os
+import re
 import time
 from threading import Lock
 from uuid import uuid4
@@ -679,7 +680,7 @@ def browser_quotation_pdf(quotation_id: str, request: Request, download: bool = 
     return response
 
 
-@app.get("/api/quotes/{quotation_id}/document", response_class=HTMLResponse)
+@app.get("/api/quotes/{quotation_id}/document")
 def browser_quotation_document(quotation_id: str, request: Request) -> Response:
     """Show the same Ersen Makina template PDF used by the dedicated PDF action."""
     _require_browser_session(request)

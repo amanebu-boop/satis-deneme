@@ -62,32 +62,32 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         total = subtotal + vat
 
         styles = getSampleStyleSheet()
-    regular_font = "Helvetica"
-    bold_font = "Helvetica-Bold"
-    font_candidates = [
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-        Path("/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"),
-        Path(reportlab.__file__).parent / "fonts" / "Vera.ttf",
-    ]
-    for font_path in font_candidates:
-        if font_path.is_file():
-            try:
-                pdfmetrics.registerFont(TTFont("QuoteSans", str(font_path)))
-                regular_font = "QuoteSans"
-                bold_path = font_path.with_name("DejaVuSans-Bold.ttf") if "DejaVuSans" in font_path.name else font_path
-                if bold_path.is_file():
-                    pdfmetrics.registerFont(TTFont("QuoteSans-Bold", str(bold_path)))
-                    bold_font = "QuoteSans-Bold"
-                else:
-                    bold_font = regular_font
-                break
-            except Exception:
-                continue
-    styles.add(ParagraphStyle(name="BrandTitle", parent=styles["Title"], fontName=bold_font, fontSize=19, leading=22, textColor=colors.HexColor("#292A2A"), alignment=TA_LEFT, spaceAfter=2))
-    styles.add(ParagraphStyle(name="Subtle", parent=styles["Normal"], fontName=regular_font, fontSize=8, leading=11, textColor=colors.HexColor("#6D6D68")))
-    styles.add(ParagraphStyle(name="BodyTR", parent=styles["BodyText"], fontName=regular_font, fontSize=8.5, leading=12, textColor=colors.HexColor("#292A2A")))
-    styles.add(ParagraphStyle(name="SmallRight", parent=styles["BodyText"], fontName=regular_font, fontSize=8, leading=11, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name="SectionTR", parent=styles["Heading2"], fontName=bold_font, fontSize=10, leading=13, textColor=colors.HexColor("#292A2A"), spaceBefore=8, spaceAfter=5))
+        regular_font = "Helvetica"
+        bold_font = "Helvetica-Bold"
+        font_candidates = [
+            Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+            Path("/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"),
+            Path(reportlab.__file__).parent / "fonts" / "Vera.ttf",
+        ]
+        for font_path in font_candidates:
+            if font_path.is_file():
+                try:
+                    pdfmetrics.registerFont(TTFont("QuoteSans", str(font_path)))
+                    regular_font = "QuoteSans"
+                    bold_path = font_path.with_name("DejaVuSans-Bold.ttf") if "DejaVuSans" in font_path.name else font_path
+                    if bold_path.is_file():
+                        pdfmetrics.registerFont(TTFont("QuoteSans-Bold", str(bold_path)))
+                        bold_font = "QuoteSans-Bold"
+                    else:
+                        bold_font = regular_font
+                    break
+                except Exception:
+                    continue
+        styles.add(ParagraphStyle(name="BrandTitle", parent=styles["Title"], fontName=bold_font, fontSize=19, leading=22, textColor=colors.HexColor("#292A2A"), alignment=TA_LEFT, spaceAfter=2))
+        styles.add(ParagraphStyle(name="Subtle", parent=styles["Normal"], fontName=regular_font, fontSize=8, leading=11, textColor=colors.HexColor("#6D6D68")))
+        styles.add(ParagraphStyle(name="BodyTR", parent=styles["BodyText"], fontName=regular_font, fontSize=8.5, leading=12, textColor=colors.HexColor("#292A2A")))
+        styles.add(ParagraphStyle(name="SmallRight", parent=styles["BodyText"], fontName=regular_font, fontSize=8, leading=11, alignment=TA_RIGHT))
+        styles.add(ParagraphStyle(name="SectionTR", parent=styles["Heading2"], fontName=bold_font, fontSize=10, leading=13, textColor=colors.HexColor("#292A2A"), spaceBefore=8, spaceAfter=5))
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=16*mm, leftMargin=16*mm, topMargin=13*mm, bottomMargin=15*mm, title=f"{company} {quote_number}")

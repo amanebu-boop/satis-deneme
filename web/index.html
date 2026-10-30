@@ -1014,7 +1014,8 @@ async function loadQuotes(){
       const preview=document.createElement("a");preview.href="/api/quotes/"+encodeURIComponent(quote.id)+"/document";preview.target="_blank";preview.rel="noopener";preview.textContent="Şablonlu PDF önizle";preview.className="link";
       const excel=document.createElement("a");excel.href="/api/quotes/"+encodeURIComponent(quote.id)+"/excel";excel.textContent="Excel indir";excel.className="link";
       const pdf=document.createElement("a");pdf.href="/api/quotes/"+encodeURIComponent(quote.id)+"/pdf?download=1";pdf.textContent="PDF indir";pdf.className="link";
-      action.append(preview,excel,pdf);tr.append(action);rows.append(tr);
+      const remove=document.createElement("button");remove.type="button";remove.className="link quote-delete";remove.textContent="Sil";remove.setAttribute("aria-label",(quote.quote_number||"Teklifi")+" sil");remove.addEventListener("click",async()=>{if(!window.confirm((quote.quote_number||"Bu teklif")+" kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz."))return;remove.disabled=true;try{if(!csrfToken)await readCsrf();const result=await fetch("/api/quotes/"+encodeURIComponent(quote.id),{method:"DELETE",credentials:"same-origin",cache:"no-store",headers:{"X-CSRF-Token":csrfToken}});if(result.status===401){showLogin();return;}if(!result.ok){const body=await result.json().catch(()=>({}));throw new Error(body.detail||"Teklif silinemedi.");}await loadQuotes();}catch(error){window.alert(error.message||"Teklif silinemedi.");remove.disabled=false;}});
+      action.append(preview,excel,pdf,remove);tr.append(action);rows.append(tr);
     }
   }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message;tr.append(td);rows.append(tr);}
 }

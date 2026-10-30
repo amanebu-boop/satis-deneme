@@ -654,7 +654,7 @@ def browser_quotation_excel(quotation_id: str, request: Request) -> Response:
     response = Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="Teklif_{quotation_id[:8].upper()}.xlsx"'},
+        headers={"Content-Disposition": f'attachment; filename="{_quote_filename_base(record, company)}.xlsx"'},
     )
     response.headers["Cache-Control"] = "no-store, private"
     return response
@@ -673,24 +673,29 @@ def browser_quotation_pdf(quotation_id: str, request: Request) -> Response:
     response = Response(
         content=pdf_content,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="Teklif_{quotation_id[:8].upper()}.pdf"'},
+        headers={"Content-Disposition": f'inline; filename="{_quote_filename_base(record, company)}.pdf"'},
     )
     response.headers["Cache-Control"] = "no-store, private"
     return response
 
 
 @app.get("/api/quotes/{quotation_id}/document", response_class=HTMLResponse)
-def browser_quotation_document(quotation_id: str, request: Request) -> HTMLResponse:
+def browser_quotation_document(quotation_id: str, request: Request) -> Response:
+    """Show the same Ersen Makina template PDF used by the dedicated PDF action."""
     _require_browser_session(request)
     record = db.get_quotation(quotation_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Quotation not found")
     company = db.get_company(record["company_id"]) if record.get("company_id") else None
-    response = HTMLResponse(render_quotation_html(record, company))
-    response.headers["Content-Disposition"] = 'inline; filename="teklif-taslagi.html"'
+    excel_content = render_quote_excel(record, company)
+    pdf_content = convert_excel_to_pdf(excel_content)
+    response = Response(
+        content=pdf_content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{_quote_filename_base(record, company)}.pdf"'},
+    )
     response.headers["Cache-Control"] = "no-store, private"
     return response
-
 
 class TemplateGenerationRequest(BaseModel):
     values: dict[str, str] = Field(default_factory=dict, max_length=500)

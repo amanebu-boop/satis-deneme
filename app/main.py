@@ -7,6 +7,7 @@ import hmac
 import logging
 import os
 import re
+import qrcode
 import time
 from threading import Lock
 from uuid import uuid4
@@ -642,6 +643,27 @@ def _quote_filename_base(record: dict, company: dict | None) -> str:
     safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", name.translate(transliteration)).strip("_") or "Firma"
     safe_number = re.sub(r"[^A-Za-z0-9_-]+", "_", number) or "Teklif"
     return f"{safe_name}_{safe_number}"
+
+
+class ProfileQrRequest(BaseModel):
+    vcard: str = Field(min_length=1, max_length=2048)
+
+
+@app.post("/api/profile/qr")
+def browser_profile_qr(payload: ProfileQrRequest, request: Request) -> Response:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    image = qrcode.make(
+        payload.vcard,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=4,
+    )
+    output = BytesIO()
+    image.save(output, format="PNG")
+    response = Response(content=output.getvalue(), media_type="image/png")
+    response.headers["Cache-Control"] = "no-store, private"
+    return response
 
 
 @app.get("/api/quotes/{quotation_id}/excel")

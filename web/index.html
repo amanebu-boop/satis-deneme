@@ -710,11 +710,11 @@ document.getElementById("company-website").addEventListener("blur",event=>{
 });
 function normalizeTurkishName(value){
  const keepUpper=new Set(["A.Ş.","AŞ","LTD.","LTD","ŞTİ.","ŞTİ","SAN.","TİC.","OSB","AR-GE","ARGE"]);
- return String(value||"").trim().replace(/\\s+/g," ").split(" ").map(word=>{
+ return String(value||"").trim().replace(/\s+/g," ").split(" ").map(word=>{
   const clean=word.toLocaleUpperCase("tr-TR");
   if(keepUpper.has(clean))return clean;
   const lower=word.toLocaleLowerCase("tr-TR");
-  return lower.replace(/(^|[-'])(([^\\s])?)/gu,(match,prefix,letter)=>prefix+letter.toLocaleUpperCase("tr-TR"));
+  return lower.split(/([-'])/).map((part,index)=>index%2?part:(part?part[0].toLocaleUpperCase("tr-TR")+part.slice(1):part)).join("");
  }).join(" ");
 }
 document.getElementById("company-form").addEventListener("submit",async event=>{

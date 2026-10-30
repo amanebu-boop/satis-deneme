@@ -468,7 +468,7 @@ document.getElementById("company-filter-city").addEventListener("change",()=>{up
 document.getElementById("company-filter-district").addEventListener("change",renderCompanyList);
 function repeatedValues(selector){return [...document.querySelectorAll(selector)].map(input=>input.value.trim()).filter(Boolean);}
 function resetCompanyForm(){
-  document.getElementById("company-form").reset();document.getElementById("company-id").value="";
+  document.getElementById("company-form").reset();document.getElementById("company-id").value="";setCompanyLocation("","");
   document.getElementById("company-people").innerHTML='<div class="repeat-row"><input class="company-person" maxlength="200" placeholder="Yetkili kişinin adı"><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div>';
   document.getElementById("company-phones").innerHTML='<div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" placeholder="Telefon numarası"><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div>';
   document.getElementById("save-company").textContent="Firmayı kaydet";document.getElementById("cancel-company-edit").hidden=true;

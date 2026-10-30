@@ -586,6 +586,8 @@ def browser_list_quotes(request: Request) -> list[dict]:
     return [
         {
             "id": row["id"],
+            "quote_number": row.get("quote_number"),
+            "revision": row.get("revision", 0),
             "company_id": row.get("company_id"),
             "company_name": companies.get(row.get("company_id"), "Firma belirtilmedi"),
             "currency": row["currency"],

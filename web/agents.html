@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#292a2a">
+<title>Ajan Yönetimi — Satış</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#292a2a;background:#f7f6f2;--line:#e6e3dc;--muted:#737373;--gold:#c89b35}
+*{box-sizing:border-box}body{margin:0}.shell{max-width:1120px;margin:auto;padding:22px 18px 50px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}
+.brand{font-weight:800;letter-spacing:.02em}.brand span{color:var(--gold)}
+a{color:inherit;text-decoration:none}.back{font-size:13px;color:#725719}
+h1{font-size:25px;margin:0 0 5px}h2{font-size:16px;margin:0}
+.sub{font-size:13px;color:var(--muted);margin:0 0 18px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:5px;background:#efeee9;border:1px solid var(--line);border-radius:11px;margin-bottom:14px}
+.tabs button{border:0;background:transparent;padding:9px 13px;border-radius:8px;font:inherit;font-size:12px;color:#68645b}
+.tabs button.active{background:#fff;color:#292a2a;box-shadow:0 1px 4px #0001}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+button{cursor:pointer}.btn{border:1px solid #d8d4c9;background:#fff;border-radius:8px;padding:8px 12px;font:inherit;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px}
+.stat strong{display:block;font-size:23px}.stat span{font-size:11px;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.agent{border:1px solid var(--line);border-radius:9px;padding:12px;min-width:0}
+.agent strong{display:block;font-size:13px;margin-bottom:4px}.agent p{font-size:11px;color:var(--muted);margin:0 0 9px}
+.pill{display:inline-block;padding:4px 7px;border-radius:30px;background:#f0eee8;color:#6e5a2c;font-size:10px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:650}
+.wrap{overflow:auto}.empty{font-size:12px;color:var(--muted);padding:16px 0}.muted{color:var(--muted)}
+.section{display:none}.section.active{display:block}
+.notice{padding:11px 12px;background:#f8f6ef;border:1px solid #ece5d2;border-radius:9px;color:#6b5a34;font-size:12px;line-height:1.5;margin:0 0 14px}
+@media(max-width:650px){.shell{padding:16px 11px 30px}h1{font-size:22px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:1fr}.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.tabs button{padding:9px 4px;font-size:11px}.panel{padding:12px}table{min-width:560px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header><a class="brand" href="/">satış<span>.</span></a><a class="back" href="/">← Satış ekranına dön</a></header>
+<h1>Ajan yönetimi</h1>
+<p class="sub">Ajan altyapısının durumu, görev kayıtları, onaylar ve denetim geçmişi.</p>
+<p class="notice">Güvenli başlangıç: tüm ajanlar devre dışıdır. Bu ekranda henüz ajan etkinleştirme veya otomatik ticari işlem yetkisi verilmez. Liste ve geçmiş bilgileri görüntülenir.</p>
+<div class="grid">
+<div class="stat"><strong id="stat-agents">—</strong><span>Kayıtlı ajan</span></div>
+<div class="stat"><strong id="stat-enabled">—</strong><span>Etkin ajan</span></div>
+<div class="stat"><strong id="stat-pending">—</strong><span>Bekleyen onay</span></div>
+<div class="stat"><strong id="stat-runs">—</strong><span>Görev kaydı</span></div>
+</div>
+<nav class="tabs" aria-label="Ajan yönetimi bölümleri">
+<button class="active" data-tab="overview">Genel Bakış</button>
+<button data-tab="agents">Ajanlar</button>
+<button data-tab="approvals">Onay Merkezi</button>
+<button data-tab="history">İşlem Geçmişi</button>
+<button data-tab="rules">İş Kuralları</button>
+</nav>
+<section class="section active" id="section-overview">
+<div class="panel"><div class="panel-head"><h2>Ajan durumu</h2><button class="btn" id="refresh">Yenile</button></div><div class="cards" id="overview-agents"><p class="empty">Yükleniyor…</p></div></div>
+<div class="panel"><h2>Son hareketler</h2><div class="wrap"><table><thead><tr><th>Tarih</th><th>İşlem</th><th>Ajan</th><th>Aktör</th></tr></thead><tbody id="overview-audit"></tbody></table></div></div>
+</section>
+<section class="section" id="section-agents"><div class="panel"><div class="panel-head"><h2>Kayıtlı ajanlar</h2><span class="muted" id="agent-count"></span></div><div class="cards" id="agent-list"></div></div></section>
+<section class="section" id="section-approvals"><div class="panel"><h2>Onay kayıtları</h2><div class="wrap"><table><thead><tr><th>İşlem</th><th>Ajan</th><th>Durum</th><th>Talep</th><th>Son tarih</th></tr></thead><tbody id="approval-list"></tbody></table></div></div></section>
+<section class="section" id="section-history"><div class="panel"><h2>Görev geçmişi</h2><div class="wrap"><table><thead><tr><th>Tarih</th><th>Ajan</th><th>Görev</th><th>Durum</th><th>Talep eden</th></tr></thead><tbody id="run-list"></tbody></table></div></div><div class="panel"><h2>Denetim kayıtları</h2><div class="wrap"><table><thead><tr><th>Tarih</th><th>Olay</th><th>Ajan</th><th>Aktör</th><th>Detay</th></tr></thead><tbody id="audit-list"></tbody></table></div></div></section>
+<section class="section" id="section-rules"><div class="panel"><h2>İş kuralları</h2><div class="wrap"><table><thead><tr><th>Kural</th><th>Değer</th><th>Son güncelleme</th></tr></thead><tbody id="rule-list"></tbody></table></div></div></section>
+<p class="sub" id="page-message" role="status" aria-live="polite"></p>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const safe=value=>value==null||value===""?"—":String(value);
+function cell(row,value){const td=document.createElement("td");td.textContent=safe(value);row.append(td);return td;}
+function tr(parent,values){const row=document.createElement("tr");values.forEach(v=>cell(row,v));parent.append(row);return row;}
+function emptyRow(parent,cols,message){parent.replaceChildren();const row=document.createElement("tr"),td=document.createElement("td");td.colSpan=cols;td.className="empty";td.textContent=message;row.append(td);parent.append(row);}
+function date(value){if(!value)return "—";const d=new Date(value);return Number.isNaN(d.getTime())?value:d.toLocaleString("tr-TR");}
+function card(agent){const el=document.createElement("article");el.className="agent";const title=document.createElement("strong");title.textContent=agent.name;const desc=document.createElement("p");desc.textContent=agent.description;const state=document.createElement("span");state.className="pill";state.textContent=agent.enabled?"Etkin":"Devre dışı";el.append(title,desc,state);return el;}
+async function api(path){const r=await fetch(path,{credentials:"same-origin",cache:"no-store"});if(r.status===401){location.assign("/");throw new Error("Oturum gerekli");}if(!r.ok)throw new Error("Veriler alınamadı ("+r.status+")");return r.json();}
+async function load(){
+$("page-message").textContent="Veriler yükleniyor…";
+try{
+const [agents,rules,runs,approvals,audit]=await Promise.all([api("/api/agents"),api("/api/agent-rules"),api("/api/agent-runs"),api("/api/agent-approvals"),api("/api/agent-audit")]);
+$("stat-agents").textContent=agents.length;$("stat-enabled").textContent=agents.filter(x=>x.enabled).length;$("stat-pending").textContent=approvals.filter(x=>x.status==="pending").length;$("stat-runs").textContent=runs.length;
+$("agent-count").textContent=agents.length+" ajan";$("agent-list").replaceChildren(...agents.map(card));$("overview-agents").replaceChildren(...agents.map(card));
+$("approval-list").replaceChildren();if(!approvals.length)emptyRow($("approval-list"),5,"Henüz onay talebi yok.");else approvals.forEach(x=>tr($("approval-list"),[x.action_type,x.agent_name,x.status,x.requested_by,date(x.expires_at)]));
+$("run-list").replaceChildren();if(!runs.length)emptyRow($("run-list"),5,"Henüz görev kaydı yok.");else runs.forEach(x=>tr($("run-list"),[date(x.created_at),x.agent_name,x.task_type,x.status,x.requested_by]));
+$("audit-list").replaceChildren();if(!audit.length)emptyRow($("audit-list"),5,"Henüz denetim kaydı yok.");else audit.forEach(x=>tr($("audit-list"),[date(x.created_at),x.event_type,x.agent_id,x.actor,JSON.stringify(x.details)]));
+$("overview-audit").replaceChildren();if(!audit.length)emptyRow($("overview-audit"),4,"Henüz hareket yok.");else audit.slice(0,6).forEach(x=>tr($("overview-audit"),[date(x.created_at),x.event_type,x.agent_id,x.actor]));
+$("rule-list").replaceChildren();if(!rules.length)emptyRow($("rule-list"),3,"Kural kaydı yok.");else rules.forEach(x=>tr($("rule-list"),[x.key,JSON.stringify(x.config),date(x.updated_at)]));
+$("page-message").textContent="Güncellendi.";
+}catch(e){$("page-message").textContent=e.message||"Bir hata oluştu.";}
+}
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".section").forEach(x=>x.classList.toggle("active",x.id==="section-"+b.dataset.tab));}));
+$("refresh").addEventListener("click",load);
+(async()=>{try{const s=await api("/api/session");if(!s.authenticated){location.assign("/");return;}await load();}catch(e){$("page-message").textContent=e.message||"Oturum doğrulanamadı.";}})();
+</script>
+</body>
+</html>

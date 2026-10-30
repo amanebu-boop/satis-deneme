@@ -198,6 +198,41 @@ select:disabled{opacity:.65;cursor:not-allowed}
 .avatar.has-photo{padding:0;overflow:hidden;width:38px;height:38px;border-radius:50%}
 .avatar.has-photo img{width:100%;height:100%;object-fit:cover}
 @media(max-width:640px){#login-screen{margin:7vh 12px 0}.login-brand{margin-bottom:24px}.topbar{min-height:66px;padding:10px 12px}.topbar-brand img{width:150px}.meeting-tabs{display:grid;grid-template-columns:1fr 1fr}.meeting-tab{padding:8px 7px;font-size:11px}}
+
+/* Seçim kutularında ortak görünüm: firma, filtre ve ürün kayıt alanları */
+#meeting-company,
+#company-filter-city,
+#company-filter-district,
+#product-type,
+#quote-company{
+  display:block!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:42px!important;
+  padding:10px 38px 10px 12px!important;
+  border:1px solid #d9e1eb!important;
+  border-radius:9px!important;
+  background-color:#fff!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23737373' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")!important;
+  background-repeat:no-repeat!important;
+  background-position:right 12px center!important;
+  color:var(--ink)!important;
+  font:inherit!important;
+  line-height:1.4!important;
+  box-shadow:0 1px 2px #292a2a08!important;
+}
+#meeting-company:focus,
+#company-filter-city:focus,
+#company-filter-district:focus,
+#product-type:focus,
+#quote-company:focus{
+  outline:none!important;
+  border-color:#c89b35!important;
+  box-shadow:0 0 0 3px #c89b3522!important;
+}
+
 </style>
 </head>
 <body>

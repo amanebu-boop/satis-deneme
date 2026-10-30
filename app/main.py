@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app import db
 from app import session_store
+from app import agent_foundation
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
@@ -29,6 +30,7 @@ from app.quote_pdf import convert_excel_to_pdf
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db.init_db()
+    agent_foundation.init_agent_foundation()
     yield
 
 

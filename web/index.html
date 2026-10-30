@@ -443,7 +443,8 @@ function composeCompanyAddress(company){
  if(neighborhood){if(lowerNeighborhood.endsWith(" mahalle"))neighborhood=neighborhood.slice(0,-8).trim();else if(lowerNeighborhood.endsWith(" mah."))neighborhood=neighborhood.slice(0,-4).trim();neighborhood+=" Mah.";}
  const building=company.building_number?"No: "+company.building_number:"";
  const locality=[company.district,company.city].filter(Boolean).join(" / ");
- return [neighborhood,road,building,locality,company.postal_code,company.address_extra].filter(Boolean).join(" ");
+ const formatted=[neighborhood,road,building,locality,company.postal_code,company.address_extra].filter(Boolean).join(" ");
+ return formatted||String(company.address||"").trim();
 }
 function updateCompanyDistrictOptions(){
   const city=document.getElementById("company-filter-city").value;

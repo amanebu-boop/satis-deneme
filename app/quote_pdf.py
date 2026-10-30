@@ -1,4 +1,4 @@
-"""Convert generated Excel quotation workbooks to PDF with LibreOffice Calc."""
+"""Convert the populated Erşen Makina Excel quotation into a PDF."""
 from __future__ import annotations
 
 import shutil
@@ -6,19 +6,145 @@ from io import BytesIO
 import subprocess
 import tempfile
 from pathlib import Path
+from decimal import Decimal, ROUND_HALF_UP
+from xml.sax.saxutils import escape
 
 from fastapi import HTTPException
+from openpyxl import load_workbook
 from pypdf import PdfReader
 
 
+def _reportlab_pdf(excel_content: bytes) -> bytes:
+    """Fallback renderer for hosts without LibreOffice; reads the exact populated workbook."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, KeepTogether
+    except ImportError as exc:
+        raise HTTPException(status_code=503, detail="PDF oluşturmak için ReportLab paketi sunucuda bulunamadı.") from exc
+
+    workbook = load_workbook(BytesIO(excel_content), data_only=False)
+    try:
+        sheet = workbook["Teklif"]
+        quote_number = str(sheet["D13"].value or "")
+        quote_date = sheet["D14"].value
+        valid_until = sheet["D15"].value
+        currency = str(sheet["J15"].value or "EUR")
+        company = str(sheet["J6"].value or "")
+        address = str(sheet["J7"].value or "")
+        tax = str(sheet["J8"].value or "")
+        contact = str(sheet["J9"].value or "")
+        phone_email = str(sheet["J10"].value or "")
+        intro = str(sheet["B18"].value or "")
+        rows = []
+        subtotal = Decimal("0")
+        for row in range(28, 43):
+            description = str(sheet[f"D{row}"].value or "").strip()
+            quantity = sheet[f"J{row}"].value
+            price = sheet[f"K{row}"].value
+            if not description and quantity in (None, "") and price in (None, ""):
+                continue
+            try:
+                qty = Decimal(str(quantity or 0))
+                unit = Decimal(str(price or 0))
+            except Exception:
+                continue
+            line_total = qty * unit
+            subtotal += line_total
+            rows.append([str(sheet[f"C{row}"].value or len(rows) + 1), description, str(int(qty)), f"{unit:,.0f} {currency}", f"{line_total:,.0f} {currency}"])
+        vat = (subtotal * Decimal("0.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        total = subtotal + vat
+
+        styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(name="BrandTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=19, leading=22, textColor=colors.HexColor("#292A2A"), alignment=TA_LEFT, spaceAfter=2))
+        styles.add(ParagraphStyle(name="Subtle", parent=styles["Normal"], fontSize=8, leading=11, textColor=colors.HexColor("#6D6D68")))
+        styles.add(ParagraphStyle(name="BodyTR", parent=styles["BodyText"], fontSize=8.5, leading=12, textColor=colors.HexColor("#292A2A")))
+        styles.add(ParagraphStyle(name="SmallRight", parent=styles["BodyText"], fontSize=8, leading=11, alignment=TA_RIGHT))
+        styles.add(ParagraphStyle(name="SectionTR", parent=styles["Heading2"], fontSize=10, leading=13, textColor=colors.HexColor("#292A2A"), spaceBefore=8, spaceAfter=5))
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=16*mm, leftMargin=16*mm, topMargin=13*mm, bottomMargin=15*mm, title=f"{company} {quote_number}")
+        story = []
+
+        # Keep the original workbook's embedded logo/signature artwork in the generated PDF.
+        top_images, bottom_images = [], []
+        for workbook_image in getattr(sheet, "_images", []):
+            try:
+                raw = workbook_image._data()
+                image = RLImage(BytesIO(raw))
+                image._restrictSize(52*mm, 22*mm)
+                anchor_row = getattr(getattr(workbook_image, "anchor", None), "_from", None)
+                if anchor_row and getattr(anchor_row, "row", 0) >= 20:
+                    bottom_images.append(image)
+                else:
+                    top_images.append(image)
+            except Exception:
+                continue
+        if top_images:
+            image_cells = [[image for image in top_images[:3]]]
+            image_table = Table(image_cells, colWidths=[(A4[0]-32*mm)/min(len(top_images),3)]*min(len(top_images),3))
+            image_table.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"MIDDLE"),("ALIGN",(0,0),(-1,-1),"LEFT"),("BOTTOMPADDING",(0,0),(-1,-1),4)]))
+            story.append(image_table)
+            story.append(Spacer(1, 3*mm))
+        else:
+            story.append(Paragraph("ERŞEN MAKİNA", styles["BrandTitle"]))
+        story.append(Paragraph("MAKİNE TEKLİFİ", styles["SectionTR"]))
+        meta = [
+            [Paragraph(f"<b>Teklif No:</b> {escape(quote_number)}", styles["BodyTR"]), Paragraph(f"<b>Tarih:</b> {escape(str(quote_date or ''))}", styles["SmallRight"])],
+            [Paragraph(f"<b>Geçerlilik:</b> {escape(str(valid_until or ''))}", styles["BodyTR"]), Paragraph(f"<b>Para birimi:</b> {escape(currency)}", styles["SmallRight"])],
+        ]
+        meta_table = Table(meta, colWidths=[90*mm, 88*mm])
+        meta_table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#F4F1E9")),("BOX",(0,0),(-1,-1),.5,colors.HexColor("#D8D1C1")),("INNERGRID",(0,0),(-1,-1),.25,colors.HexColor("#E5E0D5")),("LEFTPADDING",(0,0),(-1,-1),7),("RIGHTPADDING",(0,0),(-1,-1),7),("TOPPADDING",(0,0),(-1,-1),6),("BOTTOMPADDING",(0,0),(-1,-1),6)]))
+        story.append(meta_table)
+        story.append(Paragraph("MÜŞTERİ BİLGİLERİ", styles["SectionTR"]))
+        customer_rows = [
+            [Paragraph("<b>Firma</b>", styles["BodyTR"]), Paragraph(escape(company), styles["BodyTR"])],
+            [Paragraph("<b>Adres</b>", styles["BodyTR"]), Paragraph(escape(address), styles["BodyTR"])],
+            [Paragraph("<b>Vergi</b>", styles["BodyTR"]), Paragraph(escape(tax), styles["BodyTR"])],
+            [Paragraph("<b>Yetkili</b>", styles["BodyTR"]), Paragraph(escape(contact), styles["BodyTR"])],
+            [Paragraph("<b>İletişim</b>", styles["BodyTR"]), Paragraph(escape(phone_email), styles["BodyTR"])],
+        ]
+        customer_table = Table(customer_rows, colWidths=[28*mm,150*mm])
+        customer_table.setStyle(TableStyle([("BACKGROUND",(0,0),(0,-1),colors.HexColor("#F4F1E9")),("BOX",(0,0),(-1,-1),.5,colors.HexColor("#D8D1C1")),("INNERGRID",(0,0),(-1,-1),.25,colors.HexColor("#E5E0D5")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),6),("RIGHTPADDING",(0,0),(-1,-1),6),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5)]))
+        story.append(customer_table)
+        if intro:
+            story.append(Spacer(1, 5*mm))
+            story.append(Paragraph(escape(intro), styles["BodyTR"]))
+        story.append(Paragraph("TEKLİF KALEMLERİ", styles["SectionTR"]))
+        data = [[ "Sıra", "Ürün / Hizmet", "Miktar", "Birim Fiyat", "Toplam" ]]
+        data.extend([[Paragraph(escape(str(cell)), styles["BodyTR"]) if col==1 else str(cell) for col,cell in enumerate(row)] for row in rows])
+        if len(data)==1:
+            data.append(["1","—","—","—","—"])
+        item_table=Table(data,colWidths=[13*mm,75*mm,18*mm,36*mm,36*mm],repeatRows=1)
+        item_table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#292A2A")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),7.5),("GRID",(0,0),(-1,-1),.35,colors.HexColor("#D8D1C1")),("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white,colors.HexColor("#FAF9F6")]),("VALIGN",(0,0),(-1,-1),"MIDDLE"),("ALIGN",(0,0),(0,-1),"CENTER"),("ALIGN",(2,1),(-1,-1),"RIGHT"),("LEFTPADDING",(0,0),(-1,-1),5),("RIGHTPADDING",(0,0),(-1,-1),5),("TOPPADDING",(0,0),(-1,-1),6),("BOTTOMPADDING",(0,0),(-1,-1),6)]))
+        story.append(item_table)
+        totals=[
+            ["Ara toplam",f"{subtotal:,.2f} {currency}"],
+            ["KDV %20",f"{vat:,.2f} {currency}"],
+            ["Genel toplam",f"{total:,.2f} {currency}"],
+        ]
+        total_table=Table(totals,colWidths=[125*mm,53*mm],hAlign="RIGHT")
+        total_table.setStyle(TableStyle([("ALIGN",(1,0),(1,-1),"RIGHT"),("FONTNAME",(0,2),(-1,2),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),9),("LINEABOVE",(0,2),(-1,2),1,colors.HexColor("#C89B35")),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5),("BACKGROUND",(0,2),(-1,2),colors.HexColor("#F6EFDD"))]))
+        story.append(Spacer(1,4*mm));story.append(total_table)
+        if bottom_images:
+            story.append(Spacer(1,10*mm))
+            for image in bottom_images[:3]:
+                story.append(image)
+        story.append(Spacer(1,8*mm))
+        story.append(Paragraph("Erşen Makina · Bu teklif kayıtlı teklif verileri ve teklif şablonu esas alınarak oluşturulmuştur.", styles["Subtle"]))
+        doc.build(story)
+        return buffer.getvalue()
+    finally:
+        workbook.close()
+
+
 def convert_excel_to_pdf(excel_content: bytes) -> bytes:
-    """Convert an in-memory XLSX workbook using the installed LibreOffice binary."""
+    """Prefer exact LibreOffice workbook rendering; use a branded workbook-based fallback otherwise."""
     converter = shutil.which("libreoffice") or shutil.which("soffice")
     if not converter:
-        raise HTTPException(
-            status_code=503,
-            detail="Şablonlu PDF oluşturmak için LibreOffice dönüştürücüsü sunucuda kurulu değil.",
-        )
+        return _reportlab_pdf(excel_content)
     with tempfile.TemporaryDirectory(prefix="quote-pdf-") as temp_dir:
         workdir = Path(temp_dir)
         input_path = workdir / "quotation.xlsx"
@@ -26,33 +152,25 @@ def convert_excel_to_pdf(excel_content: bytes) -> bytes:
         profile_path = workdir / "lo-profile"
         input_path.write_bytes(excel_content)
         command = [
-            converter,
-            "--headless",
-            f"-env:UserInstallation={profile_path.as_uri()}",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(workdir),
-            str(input_path),
+            converter, "--headless", f"-env:UserInstallation={profile_path.as_uri()}",
+            "--convert-to", "pdf", "--outdir", str(workdir), str(input_path),
         ]
         try:
-            completed = subprocess.run(
-                command, check=False, capture_output=True, text=True, timeout=60
-            )
+            completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=60)
         except subprocess.TimeoutExpired as exc:
             raise HTTPException(status_code=504, detail="Excel şablonunun PDF dönüşümü zaman aşımına uğradı.") from exc
         except OSError as exc:
             raise HTTPException(status_code=503, detail="PDF dönüştürücüsü başlatılamadı.") from exc
         if completed.returncode != 0 or not output_path.is_file():
-            raise HTTPException(status_code=502, detail="Excel şablonu PDF'ye dönüştürülemedi.")
+            return _reportlab_pdf(excel_content)
         pdf_content = output_path.read_bytes()
         if not pdf_content.startswith(b"%PDF-"):
-            raise HTTPException(status_code=502, detail="Dönüştürücü geçerli bir PDF üretmedi.")
+            return _reportlab_pdf(excel_content)
         try:
             reader = PdfReader(BytesIO(pdf_content), strict=True)
             if reader.is_encrypted or not reader.pages:
                 raise ValueError("PDF has no readable pages")
             _ = len(reader.pages)
-        except Exception as exc:
-            raise HTTPException(status_code=502, detail="Oluşturulan PDF okunamıyor veya bozuk.") from exc
+        except Exception:
+            return _reportlab_pdf(excel_content)
         return pdf_content

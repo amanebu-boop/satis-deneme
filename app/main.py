@@ -494,7 +494,7 @@ class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
-    currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    currency: str = Field(default="EUR", pattern=r"^EUR$")
     unit_price: int | None = Field(default=None, ge=0, le=99999999)
     product_type: str = Field(default="machine", pattern=r"^(machine|option|service)$")
     parent_product_id: str | None = Field(default=None, max_length=100)
@@ -502,7 +502,7 @@ class ProductCreate(BaseModel):
 
 class QuoteRequest(BaseModel):
     company_id: str | None = None
-    currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    currency: str = Field(default="EUR", pattern=r"^EUR$")
     lines: list[QuoteLine] = Field(min_length=1, max_length=100)
 
 

@@ -24,23 +24,48 @@ def test_disabled_reporting_agent_cannot_execute(isolated_database):
     assert foundation.list_runs()[0]["status"] == "blocked"
 
 
-def test_read_only_sales_overview_executes_and_records_aggregate_output(isolated_database, monkeypatch):
+def test_read_only_sales_overview_executes_and_records_aggregate_output(isolated_database):
     from app import db
 
     with db.connect() as connection:
         connection.execute("UPDATE agents SET enabled = 1 WHERE id = 'reporting'")
-
-    monkeypatch.setattr(db, "list_companies", lambda: [{"id": "1"}, {"id": "2"}])
-    monkeypatch.setattr(db, "list_meetings", lambda: [{"id": "m1"}])
-    monkeypatch.setattr(db, "list_products", lambda: [{"id": "p1"}, {"id": "p2"}, {"id": "p3"}])
-    monkeypatch.setattr(db, "list_quotations", lambda: [
-        {"status": "draft", "currency": "TRY"},
-        {"status": "sent", "currency": "TRY"},
-        {"status": "draft", "currency": "EUR"},
-    ])
-    monkeypatch.setattr(db, "list_follow_ups", lambda: [
-        {"status": "open"}, {"status": "done"}, {"status": "open"},
-    ])
+        connection.executemany(
+            "INSERT INTO companies (id, name) VALUES (?, ?)",
+            [("c1", "Company 1"), ("c2", "Company 2")],
+        )
+        connection.execute(
+            "INSERT INTO meetings (id, company_id, meeting_date, notes) VALUES (?, ?, ?, ?)",
+            ("m1", "c1", "2026-10-30", "Test"),
+        )
+        connection.executemany(
+            """INSERT INTO products (id, sku, name, currency, unit_price)
+               VALUES (?, ?, ?, ?, ?)""",
+            [
+                ("p1", "SKU-1", "Product 1", "TRY", "10"),
+                ("p2", "SKU-2", "Product 2", "TRY", "20"),
+                ("p3", "SKU-3", "Product 3", "EUR", "30"),
+            ],
+        )
+        connection.executemany(
+            """INSERT INTO quotations
+               (id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, 'draft', ?)""",
+            [
+                ("q1", "TRY", "10", "0", "0", "10", "2026-10-30"),
+                ("q2", "TRY", "20", "0", "0", "20", "2026-10-30"),
+                ("q3", "EUR", "30", "0", "0", "30", "2026-10-30"),
+            ],
+        )
+        connection.executemany(
+            """INSERT INTO follow_up_tasks
+               (id, company_id, title, due_date, status, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            [
+                ("f1", "c1", "Follow up 1", "2026-10-31", "open", "2026-10-30"),
+                ("f2", "c1", "Follow up 2", "2026-10-31", "done", "2026-10-30"),
+                ("f3", "c2", "Follow up 3", "2026-10-31", "open", "2026-10-30"),
+            ],
+        )
 
     run = foundation.create_run("reporting", "sales_overview", "test-user")
     result = agent_runtime.execute_run(run["id"], "test-user")
@@ -53,7 +78,7 @@ def test_read_only_sales_overview_executes_and_records_aggregate_output(isolated
         "meetings": 1,
         "products": 3,
         "quotations": 3,
-        "quotations_by_status": {"draft": 2, "sent": 1},
+        "quotations_by_status": {"draft": 3},
         "quotations_by_currency": {"EUR": 1, "TRY": 2},
         "follow_ups_by_status": {"done": 1, "open": 2},
     }

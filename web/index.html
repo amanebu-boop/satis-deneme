@@ -294,7 +294,7 @@ body{font-size:12.5px;line-height:1.4}
     <input id="quote-currency" type="hidden" value="EUR"><p class="footer-note">Teklif para birimi EUR’dur. Fiyatlar KDV hariçtir; şablonda %20 KDV otomatik hesaplanır.</p>
     <div class="panel-head"><h3>Teklif kalemleri</h3><button class="btn" id="add-quote-line" type="button">＋ Kalem ekle</button></div>
     <div id="quote-lines">
-      <div class="quote-line"><div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="1" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
+      <div class="quote-line"><div class="line-product-wrap"><label>Katalogdan ürün ara (isteğe bağlı)</label><input class="line-product-search" type="search" placeholder="Ürün adı veya kodu…" autocomplete="off"><div class="autocomplete-results line-product-results"></div><select class="line-product" hidden><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="1" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
     </div>
     <div class="quote-totals" aria-live="polite" aria-label="Teklif toplamları"><div class="quote-total-row"><span>Ara toplam (EUR)</span><strong id="quote-subtotal">0,00 EUR</strong></div><div class="quote-total-row"><span>KDV %20</span><strong id="quote-tax-total">0,00 EUR</strong></div><div class="quote-total-row quote-total-grand"><span>Genel toplam</span><strong id="quote-grand-total">0,00 EUR</strong></div><p class="quote-product-empty">Tutarlar anlık tahmindir; kaydederken sunucu tarafından yeniden hesaplanır.</p></div>
     <p id="quote-message" role="status" aria-live="polite" class="footer-note"></p>
@@ -840,15 +840,24 @@ document.getElementById("product-form").addEventListener("submit",async event=>{
 let quoteProducts=[];
 function populateProductSelect(select){
   const selected=select.value;select.replaceChildren(new Option("Serbest ürün / hizmet",""));
-  const currency="EUR";
-  quoteProducts.filter(product=>product.currency===currency).forEach(product=>{
-    select.add(new Option(product.name+" · "+product.sku+" · "+formatMoney(product.unit_price,product.currency),product.id));
-  });
+  quoteProducts.filter(product=>product.currency==="EUR").forEach(product=>select.add(new Option(product.name+" · "+product.sku+" · "+formatMoney(product.unit_price,"EUR"),product.id)));
   if([...select.options].some(option=>option.value===selected))select.value=selected;
+  const row=select.closest(".quote-line"),search=row?.querySelector(".line-product-search"),results=row?.querySelector(".line-product-results");
+  if(!search||!results)return;
+  if(search.dataset.bound==="1")return;search.dataset.bound="1";
+  search.addEventListener("input",()=>{
+    const query=search.value.trim().toLocaleLowerCase("tr-TR");results.replaceChildren();
+    if(!query){results.classList.remove("open");return;}
+    const matches=quoteProducts.filter(p=>p.currency==="EUR"&&[p.name,p.sku,p.description||""].some(v=>String(v).toLocaleLowerCase("tr-TR").includes(query))).slice(0,25);
+    if(!matches.length){const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent="Eşleşen ürün bulunamadı.";results.append(empty);}
+    matches.forEach(product=>{const option=document.createElement("button");option.type="button";option.className="autocomplete-option";option.textContent=product.name+" · "+product.sku+" · "+(product.unit_price==null||String(product.unit_price)===""?"Fiyat belirtilmedi":formatMoney(product.unit_price,"EUR"));option.addEventListener("click",()=>{select.value=product.id;search.value=product.name;results.classList.remove("open");select.dispatchEvent(new Event("change",{bubbles:true}));});results.append(option);});
+    results.classList.add("open");
+  });
+  search.addEventListener("focus",()=>{if(search.value.trim())search.dispatchEvent(new Event("input"));});
 }
 function addQuoteLine(){
   const container=document.getElementById("quote-lines");const row=document.createElement("div");row.className="quote-line";
-  row.innerHTML='<div class="line-product-wrap"><label>Katalogdan ürün seç (isteğe bağlı)</label><select class="line-product"><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="1" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
+  row.innerHTML='<div class="line-product-wrap"><label>Katalogdan ürün ara (isteğe bağlı)</label><input class="line-product-search" type="search" placeholder="Ürün adı veya kodu…" autocomplete="off"><div class="autocomplete-results line-product-results"></div><select class="line-product" hidden><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="1" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
   container.append(row);populateProductSelect(row.querySelector(".line-product"));updateLineButtons();updateQuoteTotals();
 }
 function updateLineButtons(){const buttons=[...document.querySelectorAll(".remove-line")];buttons.forEach(button=>button.disabled=buttons.length===1);}

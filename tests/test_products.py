@@ -20,7 +20,7 @@ def test_product_catalog_can_create_and_list_products(tmp_path, monkeypatch):
             "sku": "URN-001",
             "name": "Deneme ürünü",
             "description": "Test açıklaması",
-            "currency": "TRY",
+            "currency": "EUR",
             "unit_price": 1250,
         }
 

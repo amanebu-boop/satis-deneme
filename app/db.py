@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+from uuid import uuid4
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,13 @@ def init_db() -> None:
                 authorized_people TEXT NOT NULL DEFAULT '[]',
                 phone_numbers TEXT NOT NULL DEFAULT '[]',
                 address TEXT,
+                city TEXT,
+                district TEXT,
+                neighborhood TEXT,
+                street TEXT,
+                building_number TEXT,
+                postal_code TEXT,
+                address_extra TEXT,
                 website TEXT,
                 email TEXT,
                 tax_office TEXT,
@@ -67,10 +75,24 @@ def init_db() -> None:
                 name TEXT NOT NULL,
                 description TEXT,
                 currency TEXT NOT NULL CHECK(length(currency) = 3),
-                unit_price TEXT NOT NULL
+                unit_price TEXT NOT NULL,
+                product_type TEXT NOT NULL DEFAULT 'machine' CHECK(product_type IN ('machine', 'option', 'service')),
+                parent_product_id TEXT REFERENCES products(id) ON DELETE SET NULL
+            );
+            CREATE TABLE IF NOT EXISTS meeting_products (
+                id TEXT PRIMARY KEY,
+                meeting_id TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+                product_id TEXT REFERENCES products(id) ON DELETE SET NULL,
+                sku TEXT,
+                name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                unit_price TEXT NOT NULL,
+                currency TEXT NOT NULL CHECK(length(currency) = 3)
             );
             CREATE TABLE IF NOT EXISTS quotations (
                 id TEXT PRIMARY KEY,
+                quote_number TEXT UNIQUE,
+                revision INTEGER NOT NULL DEFAULT 0,
                 company_id TEXT REFERENCES companies(id) ON DELETE SET NULL,
                 currency TEXT NOT NULL CHECK(length(currency) = 3),
                 subtotal TEXT NOT NULL,
@@ -79,6 +101,10 @@ def init_db() -> None:
                 total TEXT NOT NULL,
                 status TEXT NOT NULL CHECK(status = 'draft'),
                 created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS quote_sequences (
+                quote_year INTEGER PRIMARY KEY,
+                last_number INTEGER NOT NULL
             );
             CREATE TABLE IF NOT EXISTS quotation_lines (
                 id TEXT PRIMARY KEY,
@@ -106,6 +132,21 @@ def init_db() -> None:
         )
         # Safe in-place migration for existing SQLite databases.
         quotation_columns = {row["name"] for row in connection.execute("PRAGMA table_info(quotations)")}
+        if "quote_number" not in quotation_columns:
+            connection.execute("ALTER TABLE quotations ADD COLUMN quote_number TEXT")
+        if "revision" not in quotation_columns:
+            connection.execute("ALTER TABLE quotations ADD COLUMN revision INTEGER NOT NULL DEFAULT 0")
+        connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_quotations_number ON quotations(quote_number)")
+        # Existing drafts keep stable legacy identifiers; new drafts receive sequential annual numbers.
+        legacy_rows = connection.execute(
+            "SELECT id FROM quotations WHERE quote_number IS NULL ORDER BY created_at, id"
+        ).fetchall()
+        for legacy in legacy_rows:
+            connection.execute(
+                "UPDATE quotations SET quote_number = ? WHERE id = ?",
+                ("ERS-OLD-" + str(legacy["id"])[:8].upper(), legacy["id"]),
+            )
+        quotation_columns = {row["name"] for row in connection.execute("PRAGMA table_info(quotations)")}
         for obsolete_column in ("discount_rate", "discount_amount"):
             if obsolete_column in quotation_columns:
                 connection.execute(f"ALTER TABLE quotations DROP COLUMN {obsolete_column}")
@@ -115,11 +156,23 @@ def init_db() -> None:
         if "topic" not in meeting_columns:
             connection.execute("ALTER TABLE meetings ADD COLUMN topic TEXT NOT NULL DEFAULT 'Genel görüşme'")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_follow_up_due ON follow_up_tasks(status, due_date)")
+        product_columns = {row["name"] for row in connection.execute("PRAGMA table_info(products)")}
+        if "product_type" not in product_columns:
+            connection.execute("ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'machine'")
+        if "parent_product_id" not in product_columns:
+            connection.execute("ALTER TABLE products ADD COLUMN parent_product_id TEXT REFERENCES products(id) ON DELETE SET NULL")
         columns = {row["name"] for row in connection.execute("PRAGMA table_info(companies)")}
         additions = {
             "authorized_people": "TEXT NOT NULL DEFAULT '[]'",
             "phone_numbers": "TEXT NOT NULL DEFAULT '[]'",
             "address": "TEXT",
+            "city": "TEXT",
+            "district": "TEXT",
+            "neighborhood": "TEXT",
+            "street": "TEXT",
+            "building_number": "TEXT",
+            "postal_code": "TEXT",
+            "address_extra": "TEXT",
             "email": "TEXT",
             "tax_office": "TEXT",
             "tax_number": "TEXT",
@@ -148,13 +201,16 @@ def create_company(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
             """INSERT INTO companies
-               (id, name, authorized_people, phone_numbers, address, website, email,
-                tax_office, tax_number, mersis_number, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (id, name, authorized_people, phone_numbers, address, city, district,
+                neighborhood, street, building_number, postal_code, address_extra,
+                website, email, tax_office, tax_number, mersis_number, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (stored["id"], stored["name"], stored["authorized_people"], stored["phone_numbers"],
-             stored.get("address"), stored.get("website"), stored.get("email"),
-             stored.get("tax_office"), stored.get("tax_number"), stored.get("mersis_number"),
-             stored.get("notes")),
+             stored.get("address"), stored.get("city"), stored.get("district"),
+             stored.get("neighborhood"), stored.get("street"), stored.get("building_number"),
+             stored.get("postal_code"), stored.get("address_extra"), stored.get("website"),
+             stored.get("email"), stored.get("tax_office"), stored.get("tax_number"),
+             stored.get("mersis_number"), stored.get("notes")),
         )
     return {**record}
 
@@ -214,12 +270,15 @@ def update_company(company_id: str, record: dict[str, Any]) -> dict[str, Any] | 
     with connect() as connection:
         cursor = connection.execute(
             """UPDATE companies SET name=?, authorized_people=?, phone_numbers=?, address=?,
-               website=?, email=?, tax_office=?, tax_number=?, mersis_number=?, notes=?
+               city=?, district=?, neighborhood=?, street=?, building_number=?, postal_code=?,
+               address_extra=?, website=?, email=?, tax_office=?, tax_number=?, mersis_number=?, notes=?
                WHERE id=?""",
             (stored["name"], stored["authorized_people"], stored["phone_numbers"],
-             stored.get("address"), stored.get("website"), stored.get("email"),
-             stored.get("tax_office"), stored.get("tax_number"), stored.get("mersis_number"),
-             stored.get("notes"), company_id),
+             stored.get("address"), stored.get("city"), stored.get("district"),
+             stored.get("neighborhood"), stored.get("street"), stored.get("building_number"),
+             stored.get("postal_code"), stored.get("address_extra"), stored.get("website"),
+             stored.get("email"), stored.get("tax_office"), stored.get("tax_number"),
+             stored.get("mersis_number"), stored.get("notes"), company_id),
         )
         if cursor.rowcount == 0:
             return None
@@ -255,6 +314,27 @@ def list_company_contacts(company_id: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+def _save_meeting_products(connection: sqlite3.Connection, meeting_id: str, products: list[dict[str, Any]]) -> None:
+    connection.execute("DELETE FROM meeting_products WHERE meeting_id = ?", (meeting_id,))
+    for item in products:
+        connection.execute(
+            """INSERT INTO meeting_products
+               (id, meeting_id, product_id, sku, name, quantity, unit_price, currency)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (item.get("id") or str(uuid4()), meeting_id, item.get("product_id"), item.get("sku"),
+             item["name"], str(item["quantity"]), str(item["unit_price"]), item["currency"]),
+        )
+
+
+def _meeting_products(connection: sqlite3.Connection, meeting_id: str) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """SELECT id, meeting_id, product_id, sku, name, quantity, unit_price, currency
+           FROM meeting_products WHERE meeting_id = ? ORDER BY rowid""",
+        (meeting_id,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
@@ -264,7 +344,9 @@ def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
             (record["id"], record["company_id"], record["meeting_date"], record["notes"],
              record.get("meeting_type", "phone"), record.get("topic", "Genel görüşme")),
         )
-    return record
+        _save_meeting_products(connection, record["id"], record.get("product_lines") or [])
+        saved_lines = _meeting_products(connection, record["id"])
+    return {**record, "product_lines": saved_lines}
 
 
 def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | None:
@@ -277,6 +359,8 @@ def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | 
         )
         if cursor.rowcount == 0:
             return None
+        if record.get("product_lines") is not None:
+            _save_meeting_products(connection, meeting_id, record["product_lines"])
         row = connection.execute(
             """SELECT m.id, m.company_id, c.name AS company_name, m.meeting_date,
                       m.notes, m.meeting_type, m.topic
@@ -284,7 +368,12 @@ def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | 
                WHERE m.id = ?""",
             (meeting_id,),
         ).fetchone()
-    return dict(row) if row is not None else None
+        if row is not None:
+            result = dict(row)
+            result["product_lines"] = _meeting_products(connection, meeting_id)
+        else:
+            result = None
+    return result
 
 
 def list_company_meetings(company_id: str) -> list[dict[str, Any]]:
@@ -307,7 +396,12 @@ def list_meetings() -> list[dict[str, Any]]:
                FROM meetings AS m JOIN companies AS c ON c.id = m.company_id
                ORDER BY m.meeting_date DESC, m.id DESC"""
         ).fetchall()
-    return [dict(row) for row in rows]
+        records = []
+        for row in rows:
+            item = dict(row)
+            item["product_lines"] = _meeting_products(connection, item["id"])
+            records.append(item)
+    return records
 
 
 def create_follow_up(record: dict[str, Any]) -> dict[str, Any]:
@@ -352,10 +446,12 @@ def complete_follow_up(task_id: str) -> dict[str, Any] | None:
 def create_product(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
-            """INSERT INTO products (id, sku, name, description, currency, unit_price)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO products
+               (id, sku, name, description, currency, unit_price, product_type, parent_product_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (record["id"], record["sku"], record["name"], record.get("description"),
-             record["currency"], record["unit_price"]),
+             record["currency"], record.get("unit_price") or "", record.get("product_type", "machine"),
+             record.get("parent_product_id")),
         )
     return record
 
@@ -363,21 +459,54 @@ def create_product(record: dict[str, Any]) -> dict[str, Any]:
 def list_products() -> list[dict[str, Any]]:
     with connect() as connection:
         rows = connection.execute(
-            """SELECT id, sku, name, description, currency, unit_price
+            """SELECT id, sku, name, description, currency, unit_price, product_type, parent_product_id
                FROM products ORDER BY name, sku"""
         ).fetchall()
     return [dict(row) for row in rows]
 
 
+def get_product(product_id: str) -> dict[str, Any] | None:
+    with connect() as connection:
+        row = connection.execute(
+            """SELECT id, sku, name, description, currency, unit_price, product_type, parent_product_id
+               FROM products WHERE id = ?""", (product_id,)
+        ).fetchone()
+    return dict(row) if row is not None else None
+
+
+def update_product(product_id: str, record: dict[str, Any]) -> dict[str, Any] | None:
+    with connect() as connection:
+        cursor = connection.execute(
+            """UPDATE products SET sku=?, name=?, description=?, currency=?, unit_price=?,
+               product_type=?, parent_product_id=? WHERE id=?""",
+            (record["sku"], record["name"], record.get("description"), record["currency"],
+             record.get("unit_price") or "", record.get("product_type", "machine"),
+             record.get("parent_product_id"), product_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+    return {"id": product_id, **record}
+
+
 def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
+        year = int(str(record["created_at"])[:4])
+        sequence = connection.execute(
+            "SELECT last_number FROM quote_sequences WHERE quote_year = ?", (year,)
+        ).fetchone()
+        next_number = (int(sequence["last_number"]) + 1) if sequence else 1
+        connection.execute(
+            """INSERT INTO quote_sequences (quote_year, last_number) VALUES (?, ?)
+               ON CONFLICT(quote_year) DO UPDATE SET last_number = excluded.last_number""",
+            (year, next_number),
+        )
+        quote_number = f"ERS-{year}-{next_number:04d}"
         connection.execute(
             """INSERT INTO quotations
-               (id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (record["id"], record.get("company_id"), record["currency"], record["subtotal"],
-             record["tax_rate"], record["tax_amount"], record["total"], record["status"],
-             record["created_at"]),
+               (id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (record["id"], quote_number, record.get("company_id"), record["currency"], record["subtotal"],
+             record["tax_rate"], record["tax_amount"], record["total"], record["status"], record["created_at"]),
         )
         for line in record["lines"]:
             connection.execute(
@@ -387,13 +516,13 @@ def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
                 (line["id"], record["id"], line["description"], line["quantity"],
                  line["unit_price"], line["line_total"]),
             )
-    return record
+    return {**record, "quote_number": quote_number, "revision": 0}
 
 
 def get_quotation(quotation_id: str) -> dict[str, Any] | None:
     with connect() as connection:
         row = connection.execute(
-            """SELECT id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
+            """SELECT id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
                FROM quotations WHERE id = ?""",
             (quotation_id,),
         ).fetchone()
@@ -413,7 +542,13 @@ def get_quotation(quotation_id: str) -> dict[str, Any] | None:
 def list_quotations() -> list[dict[str, Any]]:
     with connect() as connection:
         rows = connection.execute(
-            """SELECT id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
+            """SELECT id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
                FROM quotations ORDER BY created_at DESC, id DESC"""
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def delete_quotation(quotation_id: str) -> bool:
+    with connect() as connection:
+        cursor = connection.execute("DELETE FROM quotations WHERE id = ?", (quotation_id,))
+        return cursor.rowcount > 0

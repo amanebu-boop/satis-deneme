@@ -2,7 +2,7 @@ name: Quote template validation
 
 on:
   push:
-    branches: [feature/quote-template-file]
+    branches: [feature/quote-template-file, feature/company-address-meeting-products]
   pull_request:
     branches: [main]
 

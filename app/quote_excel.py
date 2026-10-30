@@ -106,7 +106,7 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         workbook = load_workbook(TEMPLATE_PATH, data_only=False)
     try:
         sheet = workbook["Teklif"]
-        quote_number = "ERS-" + str(quote.get("id", ""))[:8].upper()
+        quote_number = str(quote.get("quote_number") or ("ERS-" + str(quote.get("id", ""))[:8].upper()))
         sheet["D13"] = quote_number
         sheet["D14"] = quote_date
         sheet["D15"] = valid_until
@@ -137,7 +137,7 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
                     sheet[cell] = None
                 continue
             line = lines[index]
-            sheet[f"C{row}"] = ""
+            sheet[f"C{row}"] = index + 1
             sheet[f"D{row}"] = str(line.get("description") or "")[:500]
             try:
                 quantity = int(str(line.get("quantity") or 0))

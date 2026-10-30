@@ -582,7 +582,7 @@ function composeCompanyAddress(company){
   if(extra&&legacy){
     legacy=legacy.split(extra).join(" ").replace(/[,;]+/g," ").replace(/\\s{2,}/g," ").trim();
   }
-  return legacy;
+  return extra ? "" : legacy;
 }
 function renderCompanyFilterOptions(kind,query=""){
  const input=document.getElementById("company-filter-"+kind+"-search"),results=document.getElementById("company-filter-"+kind+"-options"),select=document.getElementById("company-filter-"+kind);
@@ -628,7 +628,7 @@ function renderCompanyList(){
       phones.forEach(phone=>{if(contacts.childNodes.length)contacts.append(document.createTextNode(" · "));const link=document.createElement("a");link.href="tel:"+phone.replace(/[^+\d]/g,"");link.className="company-card-link";link.textContent=formatPhoneDisplay(phone);contacts.append(link);});
       if(!contacts.textContent&&!contacts.childNodes.length)contacts.textContent="Yetkili kişi veya telefon belirtilmemiş";card.append(contacts);
       const addressText=composeCompanyAddress(company);
-      if(addressText){const address=document.createElement("a");address.className="company-card-line company-card-link";address.textContent=addressText;address.href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(addressText);address.target="_blank";address.rel="noopener noreferrer";address.setAttribute("aria-label","Adresi Google Haritalar'da aç");card.append(address);}
+      if(addressText){const address=document.createElement("div");address.className="company-card-line";address.textContent=addressText;card.append(address);}
       const legacyAddress=String(company.address_extra||"").trim();
       if(legacyAddress){const legacy=document.createElement("a");legacy.className="company-card-line company-card-link";legacy.textContent="Eski açık adres: "+legacyAddress;legacy.href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(legacyAddress);legacy.target="_blank";legacy.rel="noopener noreferrer";legacy.setAttribute("aria-label","Eski açık adresi Google Haritalar'da aç");card.append(legacy);}
       const webMail=document.createElement("div");webMail.className="company-card-line";

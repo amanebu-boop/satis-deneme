@@ -87,3 +87,36 @@ def test_read_models_include_run_approval_and_audit_records(isolated_database):
     assert agents.list_runs()[0]["id"] == run["id"]
     assert agents.list_audit_logs()[0]["event_type"] == "run_blocked"
     assert agents.list_approvals() == []
+
+
+def test_idempotency_key_cannot_be_reused_for_different_payload(isolated_database):
+    agents.create_run(
+        "audit", "inspect_records", "test-user",
+        {"scope": "companies"}, idempotency_key="same-key",
+    )
+
+    with pytest.raises(ValueError, match="different request"):
+        agents.create_run(
+            "audit", "inspect_records", "test-user",
+            {"scope": "quotes"}, idempotency_key="same-key",
+        )
+
+
+def test_expired_approval_state_is_persisted(isolated_database):
+    from datetime import datetime, timedelta, timezone
+    from app import db
+
+    run = agents.create_run("audit", "inspect_records", "test-user")
+    approval = agents.request_approval(
+        run["id"], "inspect", {"scope": "audit"}, "test-user"
+    )
+    with db.connect() as connection:
+        connection.execute(
+            "UPDATE agent_approvals SET expires_at = ? WHERE id = ?",
+            ((datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(), approval["id"]),
+        )
+
+    with pytest.raises(ValueError, match="expired"):
+        agents.review_approval(approval["id"], "approved", "reviewer")
+
+    assert agents.list_approvals()[0]["status"] == "expired"

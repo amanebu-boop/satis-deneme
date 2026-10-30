@@ -1,12 +1,11 @@
 """Safe deterministic agent execution handlers.
 
-The first runtime capability is a read-only sales overview. It returns aggregate
-counts only; it never exposes customer notes or mutates business records.
+The first runtime capability is a read-only sales overview. SQL aggregates are
+computed in the database so customer details are never loaded into the handler.
 """
 from __future__ import annotations
 
 import json
-from collections import Counter
 from typing import Any
 
 from app import db
@@ -17,26 +16,31 @@ def _sales_overview(input_data: dict[str, Any]) -> dict[str, Any]:
     if input_data:
         raise ValueError("sales_overview does not accept input fields")
 
-    companies = db.list_companies()
-    meetings = db.list_meetings()
-    products = db.list_products()
-    quotations = db.list_quotations()
-    follow_ups = db.list_follow_ups()
-
-    quote_statuses = Counter(str(item.get("status") or "unknown") for item in quotations)
-    quote_currencies = Counter(str(item.get("currency") or "unknown") for item in quotations)
-    follow_up_statuses = Counter(str(item.get("status") or "unknown") for item in follow_ups)
+    with db.connect() as connection:
+        companies = connection.execute("SELECT COUNT(*) AS total FROM companies").fetchone()["total"]
+        meetings = connection.execute("SELECT COUNT(*) AS total FROM meetings").fetchone()["total"]
+        products = connection.execute("SELECT COUNT(*) AS total FROM products").fetchone()["total"]
+        quotations = connection.execute("SELECT COUNT(*) AS total FROM quotations").fetchone()["total"]
+        quote_statuses = connection.execute(
+            "SELECT status, COUNT(*) AS total FROM quotations GROUP BY status ORDER BY status"
+        ).fetchall()
+        quote_currencies = connection.execute(
+            "SELECT currency, COUNT(*) AS total FROM quotations GROUP BY currency ORDER BY currency"
+        ).fetchall()
+        follow_up_statuses = connection.execute(
+            "SELECT status, COUNT(*) AS total FROM follow_up_tasks GROUP BY status ORDER BY status"
+        ).fetchall()
 
     return {
         "report": "sales_overview",
         "scope": "aggregate_counts_only",
-        "companies": len(companies),
-        "meetings": len(meetings),
-        "products": len(products),
-        "quotations": len(quotations),
-        "quotations_by_status": dict(sorted(quote_statuses.items())),
-        "quotations_by_currency": dict(sorted(quote_currencies.items())),
-        "follow_ups_by_status": dict(sorted(follow_up_statuses.items())),
+        "companies": companies,
+        "meetings": meetings,
+        "products": products,
+        "quotations": quotations,
+        "quotations_by_status": {str(row["status"] or "unknown"): row["total"] for row in quote_statuses},
+        "quotations_by_currency": {str(row["currency"] or "unknown"): row["total"] for row in quote_currencies},
+        "follow_ups_by_status": {str(row["status"] or "unknown"): row["total"] for row in follow_up_statuses},
     }
 
 

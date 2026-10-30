@@ -22,7 +22,10 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, KeepTogether
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        import reportlab
     except ImportError as exc:
         raise HTTPException(status_code=503, detail="PDF oluşturmak için ReportLab paketi sunucuda bulunamadı.") from exc
 
@@ -59,11 +62,32 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         total = subtotal + vat
 
         styles = getSampleStyleSheet()
-        styles.add(ParagraphStyle(name="BrandTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=19, leading=22, textColor=colors.HexColor("#292A2A"), alignment=TA_LEFT, spaceAfter=2))
-        styles.add(ParagraphStyle(name="Subtle", parent=styles["Normal"], fontSize=8, leading=11, textColor=colors.HexColor("#6D6D68")))
-        styles.add(ParagraphStyle(name="BodyTR", parent=styles["BodyText"], fontSize=8.5, leading=12, textColor=colors.HexColor("#292A2A")))
-        styles.add(ParagraphStyle(name="SmallRight", parent=styles["BodyText"], fontSize=8, leading=11, alignment=TA_RIGHT))
-        styles.add(ParagraphStyle(name="SectionTR", parent=styles["Heading2"], fontSize=10, leading=13, textColor=colors.HexColor("#292A2A"), spaceBefore=8, spaceAfter=5))
+    regular_font = "Helvetica"
+    bold_font = "Helvetica-Bold"
+    font_candidates = [
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        Path("/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"),
+        Path(reportlab.__file__).parent / "fonts" / "Vera.ttf",
+    ]
+    for font_path in font_candidates:
+        if font_path.is_file():
+            try:
+                pdfmetrics.registerFont(TTFont("QuoteSans", str(font_path)))
+                regular_font = "QuoteSans"
+                bold_path = font_path.with_name("DejaVuSans-Bold.ttf") if "DejaVuSans" in font_path.name else font_path
+                if bold_path.is_file():
+                    pdfmetrics.registerFont(TTFont("QuoteSans-Bold", str(bold_path)))
+                    bold_font = "QuoteSans-Bold"
+                else:
+                    bold_font = regular_font
+                break
+            except Exception:
+                continue
+        styles.add(ParagraphStyle(name="BrandTitle", parent=styles["Title"], fontName=bold_font, fontSize=19, leading=22, textColor=colors.HexColor("#292A2A"), alignment=TA_LEFT, spaceAfter=2))
+        styles.add(ParagraphStyle(name="Subtle", parent=styles["Normal"], fontName=regular_font, fontSize=8, leading=11, textColor=colors.HexColor("#6D6D68")))
+        styles.add(ParagraphStyle(name="BodyTR", parent=styles["BodyText"], fontName=regular_font, fontSize=8.5, leading=12, textColor=colors.HexColor("#292A2A")))
+        styles.add(ParagraphStyle(name="SmallRight", parent=styles["BodyText"], fontName=regular_font, fontSize=8, leading=11, alignment=TA_RIGHT))
+        styles.add(ParagraphStyle(name="SectionTR", parent=styles["Heading2"], fontName=bold_font, fontSize=10, leading=13, textColor=colors.HexColor("#292A2A"), spaceBefore=8, spaceAfter=5))
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=16*mm, leftMargin=16*mm, topMargin=13*mm, bottomMargin=15*mm, title=f"{company} {quote_number}")
         story = []
@@ -118,7 +142,7 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         if len(data)==1:
             data.append(["1","—","—","—","—"])
         item_table=Table(data,colWidths=[13*mm,75*mm,18*mm,36*mm,36*mm],repeatRows=1)
-        item_table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#292A2A")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),7.5),("GRID",(0,0),(-1,-1),.35,colors.HexColor("#D8D1C1")),("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white,colors.HexColor("#FAF9F6")]),("VALIGN",(0,0),(-1,-1),"MIDDLE"),("ALIGN",(0,0),(0,-1),"CENTER"),("ALIGN",(2,1),(-1,-1),"RIGHT"),("LEFTPADDING",(0,0),(-1,-1),5),("RIGHTPADDING",(0,0),(-1,-1),5),("TOPPADDING",(0,0),(-1,-1),6),("BOTTOMPADDING",(0,0),(-1,-1),6)]))
+        item_table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#292A2A")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),bold_font),("FONTSIZE",(0,0),(-1,-1),7.5),("GRID",(0,0),(-1,-1),.35,colors.HexColor("#D8D1C1")),("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white,colors.HexColor("#FAF9F6")]),("VALIGN",(0,0),(-1,-1),"MIDDLE"),("ALIGN",(0,0),(0,-1),"CENTER"),("ALIGN",(2,1),(-1,-1),"RIGHT"),("LEFTPADDING",(0,0),(-1,-1),5),("RIGHTPADDING",(0,0),(-1,-1),5),("TOPPADDING",(0,0),(-1,-1),6),("BOTTOMPADDING",(0,0),(-1,-1),6)]))
         story.append(item_table)
         totals=[
             ["Ara toplam",f"{subtotal:,.2f} {currency}"],
@@ -126,7 +150,7 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
             ["Genel toplam",f"{total:,.2f} {currency}"],
         ]
         total_table=Table(totals,colWidths=[125*mm,53*mm],hAlign="RIGHT")
-        total_table.setStyle(TableStyle([("ALIGN",(1,0),(1,-1),"RIGHT"),("FONTNAME",(0,2),(-1,2),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),9),("LINEABOVE",(0,2),(-1,2),1,colors.HexColor("#C89B35")),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5),("BACKGROUND",(0,2),(-1,2),colors.HexColor("#F6EFDD"))]))
+        total_table.setStyle(TableStyle([("ALIGN",(1,0),(1,-1),"RIGHT"),("FONTNAME",(0,2),(-1,2),bold_font),("FONTSIZE",(0,0),(-1,-1),9),("LINEABOVE",(0,2),(-1,2),1,colors.HexColor("#C89B35")),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5),("BACKGROUND",(0,2),(-1,2),colors.HexColor("#F6EFDD"))]))
         story.append(Spacer(1,4*mm));story.append(total_table)
         if bottom_images:
             story.append(Spacer(1,10*mm))

@@ -606,9 +606,13 @@ function updateCompanyDistrictOptions(){
 }
 function renderCompanyList(){
   const list=document.getElementById("company-rows");if(!list)return;
-  const query=document.getElementById("company-search").value.trim().toLocaleLowerCase("tr-TR");
+  const normalizeSearch=value=>String(value||"").toLocaleLowerCase("tr-TR").replace(/ı/g,"i").replace(/İ/g,"i").trim();
+  const query=normalizeSearch(document.getElementById("company-search").value);
   const city=document.getElementById("company-filter-city").value,district=document.getElementById("company-filter-district").value;
-  const filtered=allCompanies.filter(c=>(!city||String(c.city||"")===city)&&(!district||String(c.district||"")===district)&&[c.name,c.city,c.district,c.neighborhood,c.street,c.address,c.website,c.email,c.tax_number,c.tax_office].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(query)));
+  const filtered=allCompanies.filter(c=>{
+    const searchable=[c.name,c.city,c.district,c.neighborhood,c.street,c.building_number,c.postal_code,c.address,c.address_extra,c.website,c.email,c.tax_number,c.tax_office,c.mersis_number,...(c.authorized_people||[]),...(c.phone_numbers||[])].map(normalizeSearch);
+    return (!city||String(c.city||"")===city)&&(!district||String(c.district||"")===district)&&(!query||searchable.some(value=>value.includes(query)));
+  });
   list.replaceChildren();
   if(!filtered.length){const empty=document.createElement("div");empty.className="empty";empty.textContent=allCompanies.length?"Filtrelerle eşleşen firma bulunamadı.":"Henüz kayıtlı firma yok.";list.append(empty);return;}
   const groups=new Map();
@@ -669,7 +673,10 @@ loginForm.addEventListener("submit",async event=>{
     showAuthenticated();await loadCompanies();await loadMeetingCompanies();await loadMeetings();await loadProducts();await loadQuoteCompanies();await loadQuoteProducts();await loadQuotes();
   }catch(error){loginError.textContent=error.message||"Giriş yapılamadı.";}
 });
-document.getElementById("company-search").addEventListener("input",renderCompanyList);
+const companySearchInput=document.getElementById("company-search");
+companySearchInput.addEventListener("input",renderCompanyList);
+companySearchInput.addEventListener("search",renderCompanyList);
+companySearchInput.addEventListener("change",renderCompanyList);
 ["city","district"].forEach(kind=>{const input=document.getElementById("company-filter-"+kind+"-search"),results=document.getElementById("company-filter-"+kind+"-options");input.addEventListener("input",()=>{const select=document.getElementById("company-filter-"+kind);if(input.value!==select.value){select.value="";if(kind==="city"){document.getElementById("company-filter-district").value="";document.getElementById("company-filter-district-search").value="";updateCompanyDistrictOptions();}renderCompanyList();}renderCompanyFilterOptions(kind,input.value);});input.addEventListener("focus",()=>renderCompanyFilterOptions(kind,input.value));input.addEventListener("keydown",event=>{if(event.key==="Escape"){results.classList.remove("open");input.setAttribute("aria-expanded","false");}});});
 function repeatedValues(selector){return [...document.querySelectorAll(selector)].map(input=>input.value.trim()).filter(Boolean);}
 function resetCompanyForm(){

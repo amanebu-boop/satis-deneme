@@ -739,7 +739,7 @@ async function loadQuotes(){
     const quotes=await response.json();rows.replaceChildren();
     if(!quotes.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent="Henüz kayıtlı teklif yok.";tr.append(td);rows.append(tr);return;}
     for(const quote of quotes){const tr=document.createElement("tr");
-      for(const value of [quote.company_name, String(quote.created_at||"").slice(0,10), quote.total+" "+quote.currency]){const td=document.createElement("td");td.textContent=value;tr.append(td);}
+      for(const value of [(quote.quote_number||"Teklif")+" · "+quote.company_name, String(quote.created_at||"").slice(0,10), quote.total+" "+quote.currency]){const td=document.createElement("td");td.textContent=value;tr.append(td);}
       const action=document.createElement("td");action.style.whiteSpace="nowrap";action.style.display="flex";action.style.flexWrap="wrap";action.style.gap="10px";
       const preview=document.createElement("a");preview.href="/api/quotes/"+encodeURIComponent(quote.id)+"/document";preview.target="_blank";preview.rel="noopener";preview.textContent="Genel önizleme / PDF";preview.className="link";
       const excel=document.createElement("a");excel.href="/api/quotes/"+encodeURIComponent(quote.id)+"/excel";excel.textContent="Şablonlu Excel";excel.className="link";

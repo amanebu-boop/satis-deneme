@@ -69,3 +69,21 @@ def test_unknown_agent_and_invalid_ttl_are_rejected(isolated_database):
     run = agents.create_run("audit", "inspect", "test-user")
     with pytest.raises(ValueError, match="ttl_seconds"):
         agents.request_approval(run["id"], "dangerous_action", {}, "test-user", ttl_seconds=0)
+
+
+def test_blocked_run_cannot_receive_approval(isolated_database):
+    run = agents.create_run("quotation", "prepare_draft", "test-user")
+
+    with pytest.raises(ValueError, match="not eligible"):
+        agents.request_approval(
+            run["id"], "create_quotation", {"company_id": "company-1"}, "test-user"
+        )
+
+
+def test_read_models_include_run_approval_and_audit_records(isolated_database):
+    run = agents.create_run(
+        "audit", "inspect_records", "test-user", idempotency_key="audit-run-1"
+    )
+    assert agents.list_runs()[0]["id"] == run["id"]
+    assert agents.list_audit_logs()[0]["event_type"] == "run_blocked"
+    assert agents.list_approvals() == []

@@ -232,6 +232,10 @@ def browser_session(request: Request):
     return response
 
 
+class AgentEnabledRequest(BaseModel):
+    enabled: bool
+
+
 class AgentRunRequest(BaseModel):
     agent_id: str = Field(min_length=1, max_length=80)
     task_type: str = Field(min_length=1, max_length=120)
@@ -255,6 +259,25 @@ class AgentApprovalReviewRequest(BaseModel):
 def browser_list_agents(request: Request) -> list[dict]:
     _require_browser_session(request)
     return agent_foundation.list_agents()
+
+
+@app.post("/api/agents/{agent_id}/status")
+def browser_set_agent_status(
+    agent_id: str, payload: AgentEnabledRequest, request: Request
+) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    # Initial rollout deliberately exposes control for reporting only.
+    if agent_id != "reporting":
+        raise HTTPException(status_code=403, detail="This agent is not enabled for manual control")
+    try:
+        return agent_foundation.set_agent_enabled(
+            agent_id, payload.enabled, str(session["subject"])
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown agent" else 422
+        raise HTTPException(status_code=status, detail=message) from exc
 
 
 @app.get("/api/agent-rules")

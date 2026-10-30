@@ -151,7 +151,7 @@ body{font-size:12.5px;line-height:1.4}
 .company-city-heading small{font-size:10px;color:var(--muted);font-weight:500}.company-city-records{padding:0 8px}
 .company-city-records .company-card{border:0;border-radius:0;border-bottom:1px solid var(--line);padding:9px 2px}.company-city-records .company-card:last-child{border-bottom:0}
 .autocomplete-results{display:none;max-height:190px;overflow:auto;border:1px solid var(--line);border-radius:7px;background:#fff;box-shadow:0 5px 16px rgba(23,43,69,.08);margin-top:4px;z-index:3}
-.autocomplete-results.open{display:block}.autocomplete-option{display:block;width:100%;border:0;border-bottom:1px solid #edf0f4;background:#fff;padding:7px 9px;text-align:left;font:inherit;color:var(--ink);cursor:pointer}.autocomplete-option:last-child{border-bottom:0}.autocomplete-option:hover,.autocomplete-option:focus{background:#f1f5f9}
+.location-picker{position:relative;min-width:0}.location-picker input{width:100%;min-height:42px;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}.location-options{position:relative;max-height:210px;overflow-y:auto;margin-top:3px;z-index:12}.location-options.open{display:block}.location-picker input[aria-expanded="true"]{border-color:#c89b35;box-shadow:0 0 0 3px #c89b3522}.autocomplete-results.open{display:block}.autocomplete-option{display:block;width:100%;border:0;border-bottom:1px solid #edf0f4;background:#fff;padding:7px 9px;text-align:left;font:inherit;color:var(--ink);cursor:pointer}.autocomplete-option:last-child{border-bottom:0}.autocomplete-option:hover,.autocomplete-option:focus{background:#f1f5f9}
 .meeting-product-lines{display:grid;gap:7px}.meeting-product-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(65px,.4fr) minmax(85px,.6fr) auto;gap:7px;align-items:end;padding:8px;border:1px solid var(--line);border-radius:7px}.meeting-product-row label{font-size:10.5px}.meeting-product-row .btn{min-height:30px}
 .meeting-products-summary{font-size:11px;color:var(--muted);margin-top:6px}.address-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.address-grid>div{min-width:0}
 @media(max-width:640px){.app{grid-template-columns:1fr}.content{padding:12px 9px 24px}.panel{padding:10px}.welcome h1{font-size:20px}.welcome .actions .btn{min-height:34px;padding:7px}.company-search-tools{grid-template-columns:1fr 1fr}.company-search-tools .search-wrap{grid-column:1/-1}.address-grid{grid-template-columns:1fr 1fr}.meeting-product-row{grid-template-columns:1fr 1fr}.meeting-product-row>div:first-child{grid-column:1/-1}.meeting-product-row .remove-meeting-product{grid-column:2}.quote-form{gap:7px}.meeting-company-picker,.quote-company-picker{gap:7px}.table-wrap table{min-width:500px}}
@@ -260,8 +260,8 @@ select:focus,.quote-form select:focus{outline:3px solid #c89b3533;border-color:#
 <div><label>Yetkili kişi</label><div id="company-people" class="repeat-list"><div class="repeat-row"><input class="company-person" maxlength="200" placeholder="Yetkili kişinin adı"><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div></div></div>
 <div><label>Telefon numarası</label><div id="company-phones" class="repeat-list"><div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" inputmode="tel" autocomplete="tel" placeholder="+90 5XX XXX XX XX veya 5XX XXX XX XX"><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div></div></div>
 <div class="address-grid">
-<div><label for="company-city">İl / şehir</label><select id="company-city"><option value="">İl seçin</option></select></div>
-<div><label for="company-district">İlçe</label><select id="company-district" disabled><option value="">Önce il seçin</option></select></div>
+<div class="location-picker"><label for="company-city">İl / şehir</label><input id="company-city" type="search" autocomplete="off" placeholder="İl seçin veya yazın" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="company-city-options"><div id="company-city-options" class="autocomplete-results location-options"></div></div>
+<div class="location-picker"><label for="company-district">İlçe</label><input id="company-district" type="search" autocomplete="off" placeholder="Önce il seçin" disabled role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="company-district-options"><div id="company-district-options" class="autocomplete-results location-options"></div></div>
 <div><label for="company-neighborhood">Mahalle</label><input id="company-neighborhood" maxlength="200" placeholder="Mahalle"></div>
 <div><label for="company-street">Cadde / sokak</label><input id="company-street" maxlength="250" placeholder="Cadde veya sokak"></div>
 <div><label for="company-building-number">Bina / kapı no</label><input id="company-building-number" maxlength="50" placeholder="Bina no"></div>
@@ -285,7 +285,7 @@ select:focus,.quote-form select:focus{outline:3px solid #c89b3533;border-color:#
 <div><label for="company-filter-district">İlçe filtresi</label><select id="company-filter-district"><option value="">Tüm ilçeler</option></select></div>
 </div>
 <div id="company-rows" class="company-list"><div class="empty">Firmalar yükleniyor…</div></div>
-</div>
+</div></section>
 <section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div><label for="meeting-company-search">Firma ara</label><input id="meeting-company-search" type="search" placeholder="Firma adını yazın…" autocomplete="off"><div id="meeting-company-results" class="autocomplete-results"></div></div><div><label for="meeting-company">Seçilen firma</label><select id="meeting-company" required><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><input id="meeting-date" type="datetime-local" required></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder="Örn. Ürün tanıtımı"></div></div><div><label for="meeting-notes">Görüşme notları (raporda gösterilmez)</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder="İhtiyaçlar, kararlar, detaylı notlar"></textarea></div>
 <div><div class="panel-head"><h3>Görüşmede konuşulan ürünler</h3><button class="btn" id="add-meeting-product" type="button">＋ Ürün ekle</button></div><div id="meeting-product-lines" class="meeting-product-lines"></div><p class="footer-note">Katalogdan seçin; miktar ve fiyatı kontrol edin. Kalıp kullanılan makinelerde 1 takım kalıp seti makina fiyatına dahildir; ekstra set bedelini görüşmede siz belirlersiniz.</p></div>
 <p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><select id="follow-up-company" required><option value="">Firma seç</option></select></div><div><label for="follow-up-date">Takip tarihi</label><input id="follow-up-date" type="date" required></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder="Örn. Teklif için cuma günü ara"></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div><div class="panel"><div class="panel-head"><h2>Yaklaşan görüşmeler</h2><button class="btn" type="button" id="refresh-upcoming">Yenile</button></div><div id="upcoming-meeting-list" class="list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="Firma, tarih, şekil veya konuda ara…" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
@@ -426,12 +426,80 @@ document.getElementById("logout-button").addEventListener("click",async()=>{
 });
 
 let turkeyProvinces=[];
-function fillSelect(select,items,placeholder,selected=""){select.replaceChildren(new Option(placeholder,""));items.forEach(item=>select.add(new Option(item.name,item.name)));if(selected&&!items.some(x=>x.name===selected))select.add(new Option(selected,selected));select.value=selected||"";}
-function setCompanyLocation(city,district=""){const citySelect=document.getElementById("company-city"),districtSelect=document.getElementById("company-district");if(city&&! [...citySelect.options].some(o=>o.value===city))citySelect.add(new Option(city,city));citySelect.value=city||"";const province=turkeyProvinces.find(p=>p.name===city);const districts=(province?.districts||[]).map(d=>({name:d.name})).sort((a,b)=>a.name.localeCompare(b.name,"tr"));fillSelect(districtSelect,districts,"İlçe seçin",district);districtSelect.disabled=!city;}
-async function loadDistrictsForCity(city,selected=""){const province=turkeyProvinces.find(p=>p.name===city);const districtSelect=document.getElementById("company-district");if(!province){fillSelect(districtSelect,[],"Önce il seçin",selected);districtSelect.disabled=true;return;}districtSelect.disabled=true;districtSelect.replaceChildren(new Option("İlçeler yükleniyor…",""));try{const response=await fetch("https://api.turkiyeapi.dev/v2/provinces/"+encodeURIComponent(province.id)+"/districts?limit=100&fields=id,name",{cache:"force-cache"});if(!response.ok)throw new Error("İlçeler alınamadı");const body=await response.json();const districts=(body.data||[]).map(d=>({name:d.name})).sort((a,b)=>a.name.localeCompare(b.name,"tr"));fillSelect(districtSelect,districts,"İlçe seçin",selected);districtSelect.disabled=false;}catch(_e){fillSelect(districtSelect,[], "İlçe listesi yüklenemedi",selected);districtSelect.disabled=false;}}
-async function loadTurkeyLocations(){const city=document.getElementById("company-city").value,district=document.getElementById("company-district").value;try{const response=await fetch("https://api.turkiyeapi.dev/v2/provinces?limit=100&fields=id,name",{cache:"force-cache"});if(!response.ok)throw new Error("İller alınamadı");const body=await response.json();turkeyProvinces=(body.data||[]).map(p=>({id:p.id,name:p.name})).sort((a,b)=>a.name.localeCompare(b.name,"tr"));fillSelect(document.getElementById("company-city"),turkeyProvinces,"İl seçin",city);if(city)await loadDistrictsForCity(city,district);else setCompanyLocation("","");}catch(_e){const citySelect=document.getElementById("company-city");if(!citySelect.options.length)citySelect.add(new Option("İl listesi yüklenemedi",""));}}
+let turkeyDistricts=[];
+function closeLocationOptions(kind){
+ const input=document.getElementById("company-"+kind),list=document.getElementById("company-"+kind+"-options");
+ if(input)input.setAttribute("aria-expanded","false");
+ if(list)list.classList.remove("open");
+}
+function renderLocationOptions(kind,query=""){
+ const input=document.getElementById("company-"+kind),list=document.getElementById("company-"+kind+"-options");
+ if(!input||!list)return;
+ const source=kind==="city"?turkeyProvinces:turkeyDistricts;
+ const normalized=String(query||"").trim().toLocaleLowerCase("tr-TR");
+ const matches=source.filter(item=>!normalized||item.name.toLocaleLowerCase("tr-TR").includes(normalized)).slice(0,60);
+ list.replaceChildren();
+ if(!matches.length){
+  const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent=kind==="city"?"İl bulunamadı":"Bu il için ilçe bulunamadı";list.append(empty);
+ }else{
+  matches.forEach(item=>{
+   const option=document.createElement("button");option.type="button";option.className="autocomplete-option";option.textContent=item.name;
+   option.addEventListener("click",()=>{
+    input.value=item.name;closeLocationOptions(kind);
+    if(kind==="city"){document.getElementById("company-district").value="";loadDistrictsForCity(item.name,"");}
+   });
+   list.append(option);
+  });
+ }
+ list.classList.add("open");input.setAttribute("aria-expanded","true");
+}
+function setCompanyLocation(city,district=""){
+ const cityInput=document.getElementById("company-city"),districtInput=document.getElementById("company-district");
+ cityInput.value=city||"";districtInput.value=district||"";districtInput.disabled=!city;
+ districtInput.placeholder=city?"İlçe seçin veya yazın":"Önce il seçin";
+}
+async function loadDistrictsForCity(city,selected=""){
+ const districtInput=document.getElementById("company-district");
+ const province=turkeyProvinces.find(p=>p.name===city);
+ turkeyDistricts=[];districtInput.value=selected||"";
+ if(!province){districtInput.disabled=true;districtInput.placeholder="Önce il seçin";closeLocationOptions("district");return;}
+ districtInput.disabled=true;districtInput.placeholder="İlçeler yükleniyor…";
+ try{
+  const response=await fetch("https://api.turkiyeapi.dev/v2/provinces/"+encodeURIComponent(province.id)+"/districts?limit=100&fields=id,name",{cache:"force-cache"});
+  if(!response.ok)throw new Error("İlçeler alınamadı");
+  const body=await response.json();
+  turkeyDistricts=(body.data||[]).map(d=>({name:d.name})).sort((a,b)=>a.name.localeCompare(b.name,"tr"));
+  districtInput.disabled=false;districtInput.placeholder="İlçe seçin veya yazın";
+  if(selected&&!turkeyDistricts.some(d=>d.name===selected))turkeyDistricts.push({name:selected});
+ }catch(_error){
+  districtInput.disabled=false;districtInput.placeholder="İlçe listesi yüklenemedi; yazabilirsiniz";
+  if(selected)turkeyDistricts=[{name:selected}];
+ }
+}
+async function loadTurkeyLocations(){
+ const cityInput=document.getElementById("company-city"),districtInput=document.getElementById("company-district");
+ const city=cityInput.value,district=districtInput.value;
+ try{
+  const response=await fetch("https://api.turkiyeapi.dev/v2/provinces?limit=100&fields=id,name",{cache:"force-cache"});
+  if(!response.ok)throw new Error("İller alınamadı");
+  const body=await response.json();
+  turkeyProvinces=(body.data||[]).map(p=>({id:p.id,name:p.name})).sort((a,b)=>a.name.localeCompare(b.name,"tr"));
+  cityInput.value=city;districtInput.value=district;
+  if(city)await loadDistrictsForCity(city,district);
+ }catch(_error){cityInput.placeholder="İl listesi yüklenemedi; yazabilirsiniz";}
+}
+const cityInput=document.getElementById("company-city"),districtInput=document.getElementById("company-district");
+cityInput.addEventListener("focus",()=>renderLocationOptions("city",cityInput.value));
+cityInput.addEventListener("click",()=>renderLocationOptions("city",cityInput.value));
+cityInput.addEventListener("input",()=>{document.getElementById("company-district").value="";turkeyDistricts=[];document.getElementById("company-district").disabled=true;renderLocationOptions("city",cityInput.value);});
+districtInput.addEventListener("focus",()=>{if(!districtInput.disabled)renderLocationOptions("district",districtInput.value);});
+districtInput.addEventListener("click",()=>{if(!districtInput.disabled)renderLocationOptions("district",districtInput.value);});
+districtInput.addEventListener("input",()=>renderLocationOptions("district",districtInput.value));
+document.addEventListener("click",event=>{
+ if(!event.target.closest("#company-city")&&!event.target.closest("#company-city-options"))closeLocationOptions("city");
+ if(!event.target.closest("#company-district")&&!event.target.closest("#company-district-options"))closeLocationOptions("district");
+});
 
-document.getElementById("company-city").addEventListener("change",()=>loadDistrictsForCity(document.getElementById("company-city").value,""));
 let allCompanies=[];
 function composeCompanyAddress(company){
  const clean=value=>String(value||"").trim().split(" ").filter(Boolean).join(" ");
@@ -539,7 +607,7 @@ function fillCompanyForm(company){
   document.getElementById("company-name").value=company.name||"";
   fillRepeat("company-people",company.authorized_people||[],"company-person","Yetkili kişinin adı");
   fillRepeat("company-phones",company.phone_numbers||[],"company-phone","Telefon numarası","tel");
-  setCompanyLocation(company.city||"",company.district||"");for(const [id,key] of [["company-neighborhood","neighborhood"],["company-street","street"],["company-building-number","building_number"],["company-postal-code","postal_code"],["company-address-extra","address_extra"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
+  setCompanyLocation(company.city||"",company.district||"");if(company.city)loadDistrictsForCity(company.city,company.district||"");for(const [id,key] of [["company-neighborhood","neighborhood"],["company-street","street"],["company-building-number","building_number"],["company-postal-code","postal_code"],["company-address-extra","address_extra"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
   if(!company.city&&!company.district&&!company.neighborhood&&!company.street&&!company.building_number&&!company.postal_code&&!company.address_extra)document.getElementById("company-address-extra").value=company.address||"";
   document.getElementById("save-company").textContent="Değişiklikleri kaydet";document.getElementById("cancel-company-edit").hidden=false;
   document.getElementById("company-message").textContent="Firma düzenleniyor.";

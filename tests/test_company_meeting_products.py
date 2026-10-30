@@ -246,3 +246,18 @@ def test_reportlab_pdf_fallback_keeps_template_artwork(tmp_path, monkeypatch):
     assert reader.pages
     assert "PDF Fallback Test" in (reader.pages[0].extract_text() or "")
     assert len(reader.pages[0].images) >= 2
+
+
+
+def test_profile_qr_endpoint_returns_local_png(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post("/api/login", json={"password": "a-secure-test-password-123"}, headers={"Origin": "https://testserver"})
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
+        response = client.post("/api/profile/qr", headers=headers, json={
+            "vcard": "BEGIN:VCARD\\nVERSION:3.0\\nFN:Test Kullanıcı\\nORG:Erşen Makina\\nEND:VCARD",
+        })
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("image/png")
+        assert response.content.startswith(b"\\x89PNG\\r\\n\\x1a\\n")

@@ -247,7 +247,7 @@ class AgentApprovalRequest(BaseModel):
 
 class AgentApprovalReviewRequest(BaseModel):
     decision: str = Field(pattern=r"^(approved|rejected)$")
-    current_payload: dict | None = None
+    current_payload: dict
 
 
 @app.get("/api/agents")

@@ -356,7 +356,8 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div class="panel">
   <div class="panel-head"><h2>Teklif taslağı oluştur</h2><span class="pill blue">Kaydedilebilir</span></div>
   <form id="quote-form" class="quote-form">
-    <div class="location-picker"><label for="quote-company-search">Firma seçimi (isteğe bağlı)</label><input id="quote-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false"><div id="quote-company-results" class="autocomplete-results"></div><select id="quote-company" hidden><option value="">Firma seç (isteğe bağlı)</option></select></div>
+    <div class="location-picker"><label for="quote-company-search">Firma seçimi</label><input id="quote-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="quote-company-results" class="autocomplete-results"></div><select id="quote-company" hidden required><option value="">Firma seç</option></select></div>
+    <section id="meeting-quote-picker" class="panel" hidden style="padding:12px"><div class="panel-head"><h3>Görüşmelerden makine seç</h3><span id="meeting-quote-count" class="pill">0 seçili</span></div><p class="footer-note">Aynı firmaya ait farklı görüşmelerdeki makineleri birlikte seçebilirsiniz.</p><div id="meeting-quote-options"></div><div class="actions" style="justify-content:flex-end;margin-top:10px"><button type="button" class="btn primary" id="apply-meeting-quote-selection" disabled>Seçilenleri teklife aktar</button></div></section>
     <input id="quote-currency" type="hidden" value="EUR"><p class="footer-note">Teklif para birimi EUR’dur. Fiyatlar KDV hariçtir; şablonda %20 KDV otomatik hesaplanır.</p>
     <div class="panel-head"><h3>Teklif kalemleri</h3><button class="btn" id="add-quote-line" type="button">＋ Kalem ekle</button></div>
     <div id="quote-lines">
@@ -775,7 +776,7 @@ function filterMeetingCompanyOptions(){
  if(meetingCompanyOptions.some(company=>String(company.id)===previous))select.value=previous;
  results.replaceChildren();
  if(!matches.length){const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent="Eşleşen firma bulunamadı.";results.append(empty);}
- for(const company of matches){const button=document.createElement("button");button.type="button";button.className="autocomplete-option";button.textContent=company.name+((company.city||company.district)?" · "+[company.district,company.city].filter(Boolean).join(", "):"");button.addEventListener("click",()=>{select.value=company.id;search.value=company.name;results.classList.remove("open");search.setAttribute("aria-expanded","false");});results.append(button);}
+ for(const company of matches){const button=document.createElement("button");button.type="button";button.className="autocomplete-option";button.textContent=company.name+((company.city||company.district)?" · "+[company.district,company.city].filter(Boolean).join(", "):"");button.addEventListener("click",()=>{select.value=company.id;search.value=company.name;results.classList.remove("open");search.setAttribute("aria-expanded","false");renderMeetingQuotePicker();});results.append(button);}
  results.classList.add("open");search.setAttribute("aria-expanded","true");
 }
 async function loadMeetingCompanies(){
@@ -826,29 +827,62 @@ document.getElementById("meeting-form").addEventListener("change",event=>{
  const lines=getMeetingProductLines(),currencies=lines.map(line=>productCatalog.find(p=>p.id===line.product_id)?.currency).filter(Boolean);
  document.getElementById("meeting-message").textContent=new Set(currencies).size>1?"Tek görüşmede aynı para birimindeki ürünleri kullanın.":"";
 });
-function transferMeetingToQuote(meeting){
- const lines=meeting.product_lines||[];
- if(!lines.length){document.getElementById("meeting-message").textContent="Bu görüşmede teklife aktarılacak ürün yok.";return;}
- const currencies=[...new Set(lines.map(line=>line.currency))];
- if(currencies.length!==1){document.getElementById("meeting-message").textContent="Ürünlerin para birimleri farklı olduğu için tek teklife aktarılamıyor.";return;}
- const currency=currencies[0];if(currency!=="EUR"){document.getElementById("meeting-message").textContent="Teklifler EUR olarak hazırlanır. Görüşme ürünlerinin para birimi EUR olmalıdır.";return;}document.getElementById("quote-currency").value="EUR";
- document.getElementById("quote-company").value=meeting.company_id||"";
- document.getElementById("quote-company-search").value=meeting.company_name||"";document.getElementById("quote-company-search").setAttribute("aria-expanded","false");
- document.getElementById("quote-company-results").classList.remove("open");
+let meetingQuoteSelection=[];
+function openMeetingQuotePicker(meeting){
+ const companyId=String(meeting.company_id||"");
+ const company=quoteCompanyOptions.find(c=>String(c.id)===companyId);
+ if(!company){document.getElementById("meeting-message").textContent="Firma bilgisi bulunamadı. Teklif ekranında firmayı seçerek devam edin.";return;}
+ const select=document.getElementById("quote-company"),search=document.getElementById("quote-company-search");
+ select.value=companyId;search.value=company.name;search.setAttribute("aria-expanded","false");document.getElementById("quote-company-results").classList.remove("open");
+ meetingQuoteSelection=[];renderMeetingQuotePicker();go("quotes");
+ document.getElementById("meeting-quote-picker").scrollIntoView({behavior:"smooth",block:"center"});
+}
+function renderMeetingQuotePicker(){
+ const panel=document.getElementById("meeting-quote-picker"),options=document.getElementById("meeting-quote-options");
+ const companyId=String(document.getElementById("quote-company").value||"");
+ options.replaceChildren();meetingQuoteSelection=[];
+ if(!companyId){panel.hidden=true;document.getElementById("meeting-quote-count").textContent="0 seçili";document.getElementById("apply-meeting-quote-selection").disabled=true;return;}
+ panel.hidden=false;
+ const records=allMeetings.filter(m=>String(m.company_id)===companyId&&Array.isArray(m.product_lines)&&m.product_lines.length).sort((a,b)=>String(b.meeting_date||"").localeCompare(String(a.meeting_date||"")));
+ if(!records.length){const empty=document.createElement("p");empty.className="empty";empty.textContent="Bu firmaya ait ürün içeren görüşme kaydı bulunamadı.";options.append(empty);return;}
+ records.forEach(meeting=>{
+  const group=document.createElement("div");group.style.cssText="border-top:1px solid var(--line);padding:10px 0";
+  const heading=document.createElement("strong");heading.textContent=String(meeting.meeting_date||"").replace("T"," ")+" · "+(meeting.topic||"Görüşme");group.append(heading);
+  meeting.product_lines.forEach((line,index)=>{
+   const key=String(meeting.id)+"::"+index;
+   const label=document.createElement("label");label.style.cssText="display:flex;align-items:flex-start;gap:8px;padding:8px 2px;font-weight:500;cursor:pointer";
+   const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.dataset.meetingLine=key;checkbox.style.cssText="width:auto;min-height:0;margin-top:3px";
+   const detail=document.createElement("span");detail.textContent=line.name+" × "+line.quantity+" · "+(line.unit_price==null||String(line.unit_price)===""?"Fiyat belirtilmedi":formatMoney(line.unit_price,line.currency));
+   label.append(checkbox,detail);group.append(label);
+   checkbox.addEventListener("change",()=>{const count=options.querySelectorAll("input[data-meeting-line]:checked").length;document.getElementById("meeting-quote-count").textContent=count+" seçili";document.getElementById("apply-meeting-quote-selection").disabled=count===0;});
+  });
+  options.append(group);
+ });
+}
+function applyMeetingQuoteSelection(){
+ const companyId=String(document.getElementById("quote-company").value||"");
+ if(!companyId){document.getElementById("quote-message").textContent="Önce firma seçin.";return;}
+ const checked=[...document.querySelectorAll("#meeting-quote-options input[data-meeting-line]:checked")];
+ if(!checked.length){document.getElementById("quote-message").textContent="Teklife aktarılacak en az bir makine seçin.";return;}
+ const selected=checked.map(box=>{const [meetingId,indexText]=box.dataset.meetingLine.split("::");const meeting=allMeetings.find(m=>String(m.id)===meetingId);const line=meeting?.product_lines?.[Number(indexText)];return {meeting,line};}).filter(x=>x.meeting&&x.line);
+ if(selected.some(x=>String(x.meeting.company_id)!==companyId)){document.getElementById("quote-message").textContent="Teklifte yalnızca aynı firmaya ait görüşmeler kullanılabilir.";return;}
+ if(selected.some(x=>x.line.currency!=="EUR")){document.getElementById("quote-message").textContent="Seçilen makinelerin tamamı EUR para biriminde olmalıdır.";return;}
  const container=document.getElementById("quote-lines");container.replaceChildren();
- lines.forEach(line=>{
-   addQuoteLine();const row=container.lastElementChild;
-   const missingPrice=line.unit_price==null||String(line.unit_price)==="";
-   row.querySelector(".line-description").value=line.name+(missingPrice?" — FİYAT BELİRTİLMEDİ":"");
-   row.querySelector(".line-quantity").value=String(Number(line.quantity)||1);
-   row.querySelector(".line-price").value=missingPrice?"0":String(Number(line.unit_price)||0);
-   const select=row.querySelector(".line-product");
-   if(line.product_id&&[...select.options].some(o=>o.value===line.product_id)){select.value=line.product_id;row.querySelector(".line-product-search").value=line.name||"";}
+ selected.forEach(({line})=>{
+  addQuoteLine();const row=container.lastElementChild;const missing=line.unit_price==null||String(line.unit_price)==="";
+  row.querySelector(".line-description").value=line.name+(missing?" — FİYAT BELİRTİLMEDİ":"");
+  row.querySelector(".line-quantity").value=String(Number(line.quantity)||1);
+  row.querySelector(".line-price").value=missing?"0":String(Number(line.unit_price)||0);
+  const select=row.querySelector(".line-product");
+  if(line.product_id&&[...select.options].some(o=>o.value===line.product_id)){select.value=line.product_id;row.querySelector(".line-product-search").value=line.name||"";}
  });
  updateLineButtons();updateQuoteTotals();
- document.getElementById("quote-message").textContent="Görüşmedeki ürünler teklif taslağına kopyalandı. Kaydetmeden önce miktarları ve fiyatları kontrol edin.";
- document.querySelector('[data-page="quotes"]').click();
+ document.getElementById("quote-message").textContent=selected.length+" makine, "+new Set(selected.map(x=>x.meeting.id)).size+" farklı görüşmeden teklif taslağına aktarıldı. Görüşme kayıtları değişmeden korunur.";
+ document.getElementById("meeting-quote-picker").hidden=true;
 }
+document.getElementById("apply-meeting-quote-selection").addEventListener("click",applyMeetingQuoteSelection);
+document.getElementById("quote-company").addEventListener("change",renderMeetingQuotePicker);
+
 let allMeetings=[];
 function normalizePhoneForStorage(value){const raw=String(value||"").trim();if(!raw)return "";const digits=raw.replace(/\D/g,"");return raw.startsWith("+")?"+"+digits:digits;}
 function formatPhoneDisplay(value){const raw=String(value||"").trim();const digits=raw.replace(/\D/g,"");if(digits.length===10)return digits.slice(0,3)+" "+digits.slice(3,6)+" "+digits.slice(6);if(digits.length===11&&digits.startsWith("0"))return digits.slice(0,4)+" "+digits.slice(4,7)+" "+digits.slice(7);if(digits.length===12&&digits.startsWith("90"))return "+90 "+digits.slice(2,5)+" "+digits.slice(5,8)+" "+digits.slice(8);if(raw.startsWith("+")&&digits.length>3)return "+"+digits.slice(0,Math.max(1,digits.length-10))+" "+digits.slice(Math.max(1,digits.length-10),Math.max(1,digits.length-7))+" "+digits.slice(Math.max(1,digits.length-7),Math.max(1,digits.length-4))+" "+digits.slice(-4);return raw;}
@@ -860,7 +894,7 @@ function createMeetingCard(meeting){
  const topic=document.createElement("div");topic.className="meeting-notes";topic.style.fontWeight="700";topic.textContent="Konu: "+String(meeting.topic||"Genel görüşme");item.append(topic);
  const noteText=String(meeting.notes||"");const noteBox=document.createElement(noteText.length>240?"details":"div");if(noteText.length>240){noteBox.className="meeting-notes-expand";const summary=document.createElement("summary");summary.textContent=noteText.slice(0,180)+"… (dokunup aç)";noteBox.append(summary);const full=document.createElement("p");full.textContent=noteText;noteBox.append(full);}else{noteBox.className="meeting-notes";noteBox.textContent=noteText;}item.append(noteBox);
  const meetingLines=meeting.product_lines||[];
- if(meetingLines.length){const summary=document.createElement("div");summary.className="meeting-products-summary";summary.textContent="Ürünler: "+meetingLines.map(p=>p.name+" × "+p.quantity+" · "+(p.unit_price==null||String(p.unit_price)===""?"Fiyat belirtilmedi":formatMoney(p.unit_price,p.currency))).join("; ");item.append(summary);const transfer=document.createElement("button");transfer.type="button";transfer.className="btn";transfer.textContent="Teklife aktar";transfer.style.marginTop="6px";transfer.addEventListener("click",()=>transferMeetingToQuote(meeting));item.append(transfer);}
+ if(meetingLines.length){const summary=document.createElement("div");summary.className="meeting-products-summary";summary.textContent="Ürünler: "+meetingLines.map(p=>p.name+" × "+p.quantity+" · "+(p.unit_price==null||String(p.unit_price)===""?"Fiyat belirtilmedi":formatMoney(p.unit_price,p.currency))).join("; ");item.append(summary);const transfer=document.createElement("button");transfer.type="button";transfer.className="btn";transfer.textContent="Bu görüşmeden teklif hazırla";transfer.style.marginTop="6px";transfer.addEventListener("click",()=>openMeetingQuotePicker(meeting));item.append(transfer);}
  const editor=document.createElement("form");editor.className="meeting-editor";editor.hidden=true;
  const di=document.createElement("input");di.type="datetime-local";di.lang="tr";di.step="60";di.required=true;di.value=String(meeting.meeting_date||"").slice(0,16);
  const ti=document.createElement("select");ti.add(new Option("Telefon görüşmesi","phone"));ti.add(new Option("Ziyaret","visit"));ti.value=meeting.meeting_type||"phone";
@@ -965,7 +999,7 @@ async function loadQuoteCompanies(){
  try{const response=await fetch("/api/companies?limit=500",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Firmalar yüklenemedi");quoteCompanyOptions=await response.json();filterQuoteCompanyOptions();}
  catch(error){document.getElementById("quote-message").textContent=error.message;}
 }
-document.getElementById("quote-company-search")?.addEventListener("input",()=>{const selected=quoteCompanyOptions.find(c=>String(c.id)===document.getElementById("quote-company").value);if(!selected||document.getElementById("quote-company-search").value!==selected.name)document.getElementById("quote-company").value="";filterQuoteCompanyOptions();});
+document.getElementById("quote-company-search")?.addEventListener("input",()=>{const selected=quoteCompanyOptions.find(c=>String(c.id)===document.getElementById("quote-company").value);if(!selected||document.getElementById("quote-company-search").value!==selected.name){document.getElementById("quote-company").value="";renderMeetingQuotePicker();}filterQuoteCompanyOptions();});
 document.getElementById("quote-company-search")?.addEventListener("focus",filterQuoteCompanyOptions);
 document.getElementById("meeting-company-search")?.addEventListener("focus",filterMeetingCompanyOptions);
 document.addEventListener("click",event=>{document.querySelectorAll(".autocomplete-results.open").forEach(list=>{if(!list.parentElement.contains(event.target)){list.classList.remove("open");const input=list.parentElement.querySelector("input");input?.setAttribute("aria-expanded","false");}});});
@@ -1152,7 +1186,7 @@ document.getElementById("quote-form").addEventListener("submit",async event=>{
     if(!csrfToken)await readCsrf();
     const lines=[...document.querySelectorAll(".quote-line")].map(row=>({description:row.querySelector(".line-description").value.trim(),quantity:row.querySelector(".line-quantity").value,unit_price:row.querySelector(".line-price").value}));
     if(lines.some(line=>!line.description||!Number.isInteger(Number(line.quantity))||Number(line.quantity)<=0||!Number.isInteger(Number(line.unit_price))||Number(line.unit_price)<0))throw new Error("Kalem açıklamalarını, tam sayı miktarları ve tam sayı birim fiyatlarını kontrol et.");
-    const payload={company_id:document.getElementById("quote-company").value||null,currency:"EUR",lines};
+    const companyId=document.getElementById("quote-company").value;if(!companyId)throw new Error("Teklif oluşturmak için firma seçmelisiniz.");const payload={company_id:companyId,currency:"EUR",lines};
     const response=await fetch("/api/quotes",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
     if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
     if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Teklif kaydedilemedi ("+response.status+")");}

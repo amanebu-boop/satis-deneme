@@ -269,25 +269,17 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div><div class="eyebrow">Çarşamba · Satış çalışma alanı</div><h1 id="page-title">Günaydın, satış ekibi</h1><p class="subtitle" id="page-subtitle">İşlerin, görüşmelerin ve tekliflerin tek yerde.</p></div>
 <div class="actions"><button class="btn" data-go="meetings">＋ Görüşme kaydet</button><button class="btn primary" data-go="companies">＋ Firma ekle</button></div>
 </section>
-<div class="notice"><strong>Veri durumu:</strong> Firma listesi oturum doğrulamasıyla yerel SQLite verisinden yüklenir. Genel bakış, görüşmeler, ürünler ve teklifler bu aşamada örnek veridir; bunları gerçek kayıt gibi kullanmayın.</div>
+
 <section class="page active" id="page-dashboard">
 <div class="stats">
-<button type="button" class="stat stat-link" data-go="companies" aria-label="Firmalar bölümünü aç"><div class="stat-top">Aktif firma <span class="stat-icon">▤</span></div><div class="stat-value">24</div><div class="stat-foot">Demo kayıtları</div></button>
-<button type="button" class="stat stat-link" data-go="meetings" aria-label="Görüşmeler bölümünü aç"><div class="stat-top">Bu hafta görüşme <span class="stat-icon">◷</span></div><div class="stat-value">8</div><div class="stat-foot">2 takip bekliyor</div></button>
-<button type="button" class="stat stat-link" data-go="quotes" aria-label="Teklifler bölümünü aç"><div class="stat-top">Taslak teklif <span class="stat-icon">▧</span></div><div class="stat-value">5</div><div class="stat-foot">Henüz onaylanmadı</div></button>
-<div class="stat"><div class="stat-top">Teklif toplamı <span class="stat-icon">₺</span></div><div class="stat-value">₺186 B</div><div class="stat-foot">Örnek tutar · tahmini</div></div>
+<button type="button" class="stat stat-link" data-go="companies" aria-label="Firmalar bölümünü aç"><div class="stat-top">Aktif firma <span class="stat-icon">▤</span></div><div class="stat-value" id="dashboard-company-count">—</div><div class="stat-foot">Kayıtlı firma</div></button>
+<button type="button" class="stat stat-link" data-go="meetings" aria-label="Görüşmeler bölümünü aç"><div class="stat-top">Bu hafta görüşme <span class="stat-icon">◷</span></div><div class="stat-value" id="dashboard-meeting-count">—</div><div class="stat-foot" id="dashboard-meeting-foot">Kayıtlı görüşmeler</div></button>
+<button type="button" class="stat stat-link" data-go="quotes" aria-label="Teklifler bölümünü aç"><div class="stat-top">Kayıtlı teklif <span class="stat-icon">▧</span></div><div class="stat-value" id="dashboard-quote-count">—</div><div class="stat-foot">Toplam teklif kaydı</div></button>
+<div class="stat"><div class="stat-top">Teklif toplamı <span class="stat-icon">€</span></div><div class="stat-value" id="dashboard-quote-total">—</div><div class="stat-foot" id="dashboard-quote-foot">Kayıtlı tekliflerin toplamı</div></div>
 </div>
 <div class="columns">
-<div class="panel"><div class="panel-head"><h2>Son görüşmeler</h2><button class="link" data-go="meetings">Tümünü gör →</button></div><div class="list">
-<div class="item"><div><div class="item-title">Anadolu Endüstri</div><div class="item-sub">Bugün, 10:30 · Ürün demosu</div><div class="item-sub">Teknik ekipten ihtiyaç listesi beklenecek.</div></div><span class="pill amber">Takip et</span></div>
-<div class="item"><div><div class="item-title">Mavi Teknoloji</div><div class="item-sub">Dün, 14:00 · Fiyat görüşmesi</div><div class="item-sub">Revize teklif hazırlanacak.</div></div><span class="pill blue">Teklif</span></div>
-<div class="item"><div><div class="item-title">Kuzey Lojistik</div><div class="item-sub">Pazartesi, 11:00 · İlk görüşme</div><div class="item-sub">Karar vericiyle ikinci toplantı planlanacak.</div></div><span class="pill green">Tamamlandı</span></div>
-</div></div>
-<div class="panel"><div class="panel-head"><h2>Takip listesi</h2><span class="pill amber">2 bekliyor</span></div><div class="list">
-<div class="item"><div><div class="item-title">Anadolu Endüstri</div><div class="item-sub">İhtiyaç listesini iste</div><div class="item-sub">Son tarih: 29 Ekim</div></div><span>→</span></div>
-<div class="item"><div><div class="item-title">Mavi Teknoloji</div><div class="item-sub">Teklif revizyonu gönder</div><div class="item-sub">Son tarih: 30 Ekim</div></div><span>→</span></div>
-<div class="item"><div><div class="item-title">Kuzey Lojistik</div><div class="item-sub">Toplantı tarihi belirle</div><div class="item-sub">Son tarih: 2 Kasım</div></div><span>→</span></div>
-</div></div>
+<div class="panel"><div class="panel-head"><h2>Son görüşmeler</h2><button class="link" data-go="meetings">Tümünü gör →</button></div><div class="list" id="dashboard-recent-meetings"><div class="empty">Görüşmeler yükleniyor…</div></div></div>
+<div class="panel"><div class="panel-head"><h2>Takip listesi</h2><span class="pill amber" id="dashboard-follow-up-count">Yükleniyor</span></div><div class="list" id="dashboard-follow-ups"><div class="empty">Takip görevleri yükleniyor…</div></div></div>
 </div>
 </section>
 <section class="page" id="page-companies"><div class="panel">
@@ -539,12 +531,43 @@ document.addEventListener("click",event=>{
 });
 
 let allCompanies=[];
+
+function dashboardDate(value){if(!value)return "";const d=new Date(value);return Number.isNaN(d.getTime())?String(value).replace("T"," ").slice(0,16):new Intl.DateTimeFormat("tr-TR",{timeZone:"Europe/Istanbul",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}).format(d);}
+function renderDashboardCompanies(){const el=document.getElementById("dashboard-company-count");if(el)el.textContent=String(allCompanies.length);}
+function renderDashboardMeetings(){
+ const el=document.getElementById("dashboard-recent-meetings");if(!el)return;el.replaceChildren();
+ const sorted=[...allMeetings].sort((a,b)=>String(b.meeting_date||"").localeCompare(String(a.meeting_date||"")));
+ const count=document.getElementById("dashboard-meeting-count"),foot=document.getElementById("dashboard-meeting-foot");
+ const now=new Date(),weekStart=new Date(now);weekStart.setDate(now.getDate()-((now.getDay()+6)%7));weekStart.setHours(0,0,0,0);
+ const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+7);
+ const thisWeek=allMeetings.filter(m=>{const d=new Date(m.meeting_date);return !Number.isNaN(d.getTime())&&d>=weekStart&&d<weekEnd;}).length;
+ if(count)count.textContent=String(thisWeek);if(foot)foot.textContent="Toplam "+allMeetings.length+" kayıt";
+ if(!sorted.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="Henüz kaydedilmiş görüşme yok.";el.append(empty);return;}
+ sorted.slice(0,5).forEach(m=>{const row=document.createElement("div");row.className="item";const info=document.createElement("div");const name=document.createElement("div");name.className="item-title";name.textContent=m.company_name||"Firma";const meta=document.createElement("div");meta.className="item-sub";meta.textContent=dashboardDate(m.meeting_date)+" · "+(m.meeting_type==="visit"?"Ziyaret":"Telefon görüşmesi");const topic=document.createElement("div");topic.className="item-sub";topic.textContent=m.topic||"Konu belirtilmemiş";info.append(name,meta,topic);row.append(info);el.append(row);});
+}
+function renderDashboardFollowUps(tasks){
+ const list=document.getElementById("dashboard-follow-ups");if(!list)return;list.replaceChildren();
+ const pending=tasks.filter(t=>t.status!=="done").sort((a,b)=>String(a.due_date||"").localeCompare(String(b.due_date||"")));
+ const count=document.getElementById("dashboard-follow-up-count");if(count)count.textContent=pending.length+" bekliyor";
+ if(!pending.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="Bekleyen takip görevi yok.";list.append(empty);return;}
+ const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Istanbul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+ pending.slice(0,5).forEach(t=>{const row=document.createElement("div");row.className="item";const info=document.createElement("div");const title=document.createElement("div");title.className="item-title";title.textContent=t.title||"Takip görevi";const meta=document.createElement("div");meta.className="item-sub";meta.textContent=(t.company_name||"Firma")+" · Son tarih: "+(t.due_date||"Belirtilmedi");info.append(title,meta);const status=document.createElement("span");status.className="pill "+(t.due_date<today?"amber":"blue");status.textContent=t.due_date<today?"Gecikti":"Bekliyor";row.append(info,status);list.append(row);});
+}
+function renderDashboardQuotes(quotes){
+ const count=document.getElementById("dashboard-quote-count"),total=document.getElementById("dashboard-quote-total"),foot=document.getElementById("dashboard-quote-foot");
+ if(count)count.textContent=String(quotes.length);
+ const sums={};quotes.forEach(q=>{const currency=String(q.currency||"EUR").toUpperCase();sums[currency]=(sums[currency]||0)+(Number(q.total)||0);});
+ const entries=Object.entries(sums);
+ if(total)total.textContent=entries.length?entries.map(([c,v])=>new Intl.NumberFormat("tr-TR",{style:"currency",currency:c,maximumFractionDigits:2}).format(v)).join(" · "):"0,00 EUR";
+ if(foot)foot.textContent=quotes.length?"Kayıtlı tekliflerin toplamı":"Henüz teklif kaydı yok";
+}
+
 function composeCompanyAddress(company){
  const clean=value=>String(value||"").trim().split(" ").filter(Boolean).join(" ");
  let road=clean(company.street);const lowerRoad=road.toLocaleLowerCase("tr-TR");
- if(road){if(lowerRoad.endsWith(" sokak"))road=road.slice(0,-6).trim()+" Sok.";else if(lowerRoad.endsWith(" sok."))road=road.slice(0,-4).trim()+" Sok.";else if(lowerRoad.endsWith(" cadde"))road=road.slice(0,-6).trim()+" Cad.";else if(lowerRoad.endsWith(" cad."))road=road.slice(0,-4).trim()+" Cad.";else if(lowerRoad.endsWith(" bulvar"))road=road.slice(0,-7).trim()+" Bulv.";else if(lowerRoad.endsWith(" bulv."))road=road.slice(0,-6).trim()+" Bulv.";else road+=" Sok.";}
+ if(road){if(lowerRoad.endsWith(" sokak"))road=road.slice(0,-6).trim()+" Sokak";else if(lowerRoad.endsWith(" sok."))road=road.slice(0,-4).trim()+" Sokak";else if(lowerRoad.endsWith(" cadde"))road=road.slice(0,-6).trim()+" Caddesi";else if(lowerRoad.endsWith(" cad."))road=road.slice(0,-4).trim()+" Caddesi";else if(lowerRoad.endsWith(" bulvar"))road=road.slice(0,-7).trim()+" Bulvarı";else if(lowerRoad.endsWith(" bulv."))road=road.slice(0,-6).trim()+" Bulvarı";else road+=" Sokak";}
  let neighborhood=clean(company.neighborhood);const lowerNeighborhood=neighborhood.toLocaleLowerCase("tr-TR");
- if(neighborhood){if(lowerNeighborhood.endsWith(" mahalle"))neighborhood=neighborhood.slice(0,-8).trim();else if(lowerNeighborhood.endsWith(" mah."))neighborhood=neighborhood.slice(0,-4).trim();neighborhood+=" Mah.";}
+ if(neighborhood){if(lowerNeighborhood.endsWith(" mahalle"))neighborhood=neighborhood.slice(0,-8).trim();else if(lowerNeighborhood.endsWith(" mah."))neighborhood=neighborhood.slice(0,-4).trim();neighborhood+=" Mahallesi";}
  const building=company.building_number?"No: "+company.building_number:"";
  const locality=[company.district,company.city].filter(Boolean).join(" / ");
  const formatted=[neighborhood,road,building,locality,company.postal_code,company.address_extra].filter(Boolean).join(" ");
@@ -593,7 +616,7 @@ function renderCompanyList(){
       const people=(company.authorized_people||[]).filter(Boolean).join(", "),phones=(company.phone_numbers||[]).filter(Boolean);contacts.textContent=people;
       phones.forEach(phone=>{if(contacts.childNodes.length)contacts.append(document.createTextNode(" · "));const link=document.createElement("a");link.href="tel:"+phone.replace(/[^+\d]/g,"");link.className="company-card-link";link.textContent=formatPhoneDisplay(phone);contacts.append(link);});
       if(!contacts.textContent&&!contacts.childNodes.length)contacts.textContent="Yetkili kişi veya telefon belirtilmemiş";card.append(contacts);
-      const addressText=company.address||composeCompanyAddress(company);
+      const addressText=composeCompanyAddress(company);
       if(addressText){const address=document.createElement("a");address.className="company-card-line company-card-link";address.textContent=addressText;address.href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(addressText);address.target="_blank";address.rel="noopener noreferrer";address.setAttribute("aria-label","Adresi Google Haritalar'da aç");card.append(address);}
       const webMail=document.createElement("div");webMail.className="company-card-line";
       if(company.website){const raw=String(company.website).trim(),safeUrl=/^https?:\/\//i.test(raw)?raw:"https://"+raw.replace(/^\/+/, "");try{const parsed=new URL(safeUrl);if(parsed.protocol==="http:"||parsed.protocol==="https:"){const a=document.createElement("a");a.href=parsed.href;a.target="_blank";a.rel="noopener noreferrer";a.textContent=raw;a.className="company-card-link";webMail.append(a);}}catch{}}
@@ -614,7 +637,7 @@ async function loadCompanies(){
   try{
     const response=await fetch("/api/companies?limit=500",{credentials:"same-origin",cache:"no-store"});
     if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Firma listesi alınamadı ("+response.status+")");
-    allCompanies=await response.json();
+    allCompanies=await response.json();renderDashboardCompanies();
     const citySelect=document.getElementById("company-filter-city"),previous=citySelect.value;
     const cities=[...new Set(allCompanies.map(c=>String(c.city||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"tr"));
     citySelect.replaceChildren(new Option("Tüm şehirler",""));cities.forEach(c=>citySelect.add(new Option(c,c)));
@@ -835,7 +858,7 @@ function renderUpcomingMeetings(){
  if(!upcoming.length){const e=document.createElement("div");e.className="empty";e.textContent="Yaklaşan görüşme kaydı yok.";list.append(e);return;}
  for(const m of upcoming){const row=document.createElement("div");row.className="list-item";const info=document.createElement("div");const name=document.createElement("strong");name.textContent=m.company_name||"Firma";const meta=document.createElement("div");meta.className="item-sub";meta.textContent=String(m.meeting_date||"").replace("T"," ")+" · "+(m.meeting_type==="visit"?"Ziyaret":"Telefon görüşmesi");const topic=document.createElement("div");topic.className="item-sub";topic.textContent=m.topic||"Genel görüşme";info.append(name,meta,topic);row.append(info);list.append(row);}
 }
-async function loadMeetings(){const list=document.getElementById("meeting-list");if(!list)return;try{const response=await fetch("/api/meetings",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Görüşmeler yüklenemedi");allMeetings=await response.json();renderMeetings();renderUpcomingMeetings();}catch(err){list.replaceChildren();const e=document.createElement("div");e.className="empty";e.textContent=err.message||"Görüşmeler yüklenemedi.";list.append(e);}}
+async function loadMeetings(){const list=document.getElementById("meeting-list");if(!list)return;try{const response=await fetch("/api/meetings",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Görüşmeler yüklenemedi");allMeetings=await response.json();renderMeetings();renderUpcomingMeetings();renderDashboardMeetings();}catch(err){list.replaceChildren();const e=document.createElement("div");e.className="empty";e.textContent=err.message||"Görüşmeler yüklenemedi.";list.append(e);}}
 document.getElementById("meeting-search")?.addEventListener("input",renderMeetings);
 document.getElementById("refresh-meetings").addEventListener("click",loadMeetings);
 document.getElementById("refresh-upcoming").addEventListener("click",loadMeetings);
@@ -846,9 +869,9 @@ async function loadFollowUpCompanies(){
 }
 async function loadFollowUps(){
  const list=document.getElementById("follow-up-list");if(!list)return;
- try{const response=await fetch("/api/follow-ups",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Takip görevleri yüklenemedi");const tasks=await response.json();list.replaceChildren();
+ try{const response=await fetch("/api/follow-ups",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Takip görevleri yüklenemedi");const tasks=await response.json();renderDashboardFollowUps(tasks);list.replaceChildren();
  if(!tasks.length){const e=document.createElement("div");e.className="empty";e.textContent="Henüz takip görevi yok.";list.append(e);return;}
- const today=new Date().toISOString().slice(0,10);
+ const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Istanbul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
  for(const t of tasks){const row=document.createElement("div");row.className="list-item";const info=document.createElement("div");const title=document.createElement("strong");title.textContent=t.title;const meta=document.createElement("div");meta.className="item-sub";meta.textContent=t.company_name+" · "+t.due_date+(t.status==="done"?" · Tamamlandı":t.due_date<today?" · GECİKTİ":"");if(t.status==="done")title.style.textDecoration="line-through";info.append(title,meta);row.append(info);
  if(t.status!=="done"){const b=document.createElement("button");b.type="button";b.className="btn";b.textContent="Tamamla";b.addEventListener("click",async()=>{b.disabled=true;try{if(!csrfToken)await readCsrf();const res=await fetch("/api/follow-ups/"+encodeURIComponent(t.id)+"/complete",{method:"POST",credentials:"same-origin",headers:{"X-CSRF-Token":csrfToken}});if(!res.ok)throw new Error("Görev tamamlanamadı");await loadFollowUps();}catch(e){alert(e.message);}finally{b.disabled=false;}});row.append(b);}list.append(row);}
  }catch(e){list.textContent=e.message||"Takip görevleri yüklenemedi";}
@@ -910,7 +933,7 @@ document.addEventListener("click",event=>{document.querySelectorAll(".autocomple
 async function loadQuotes(){
   const rows=document.getElementById("quote-rows");if(!rows)return;
   try{const response=await fetch("/api/quotes",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Teklifler yüklenemedi");
-    const quotes=await response.json();rows.replaceChildren();
+    const quotes=await response.json();renderDashboardQuotes(quotes);rows.replaceChildren();
     if(!quotes.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent="Henüz kayıtlı teklif yok.";tr.append(td);rows.append(tr);return;}
     for(const quote of quotes){const tr=document.createElement("tr");
       for(const value of [(quote.quote_number||"Teklif")+" · "+quote.company_name, String(quote.created_at||"").slice(0,10), quote.total+" "+quote.currency]){const td=document.createElement("td");td.textContent=value;tr.append(td);}

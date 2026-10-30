@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 import ipaddress
 from datetime import datetime, timezone
+from io import BytesIO
 from decimal import Decimal
 import hmac
 import logging

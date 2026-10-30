@@ -256,8 +256,8 @@ def test_profile_qr_endpoint_returns_local_png(tmp_path, monkeypatch):
         login = client.post("/api/login", json={"password": "a-secure-test-password-123"}, headers={"Origin": "https://testserver"})
         headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
         response = client.post("/api/profile/qr", headers=headers, json={
-            "vcard": "BEGIN:VCARD\\nVERSION:3.0\\nFN:Test Kullanıcı\\nORG:Erşen Makina\\nEND:VCARD",
+            "vcard": "BEGIN:VCARD\nVERSION:3.0\nFN:Test Kullanıcı\nORG:Erşen Makina\nEND:VCARD",
         })
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("image/png")
-        assert response.content.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
+        assert response.content.startswith(b"\x89PNG\r\n\x1a\n")

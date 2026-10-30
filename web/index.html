@@ -199,6 +199,8 @@ select:disabled{opacity:.65;cursor:not-allowed}
 .avatar.has-photo img{width:100%;height:100%;object-fit:cover}
 @media(max-width:640px){#login-screen{margin:7vh 12px 0}.login-brand{margin-bottom:24px}.topbar{min-height:66px;padding:10px 12px}.topbar-brand img{width:150px}.meeting-tabs{display:grid;grid-template-columns:1fr 1fr}.meeting-tab{padding:8px 7px;font-size:11px}}
 
+/* Görüşme firma seçimi tek satır tam genişlikte kullanılır */
+#meeting-form .meeting-company-picker{grid-template-columns:minmax(0,1fr)}
 /* Aramalı seçim alanları: firma kaydındaki il/ilçe kontrolüyle aynı görünüm */
 .location-picker input{width:100%;min-height:42px;padding:10px 12px;border:1px solid #d9e1eb;border-radius:9px;background:#fff;color:var(--ink);font:inherit;line-height:1.4;box-shadow:0 1px 2px #292a2a08}
 .location-picker input:focus{outline:none;border-color:#c89b35;box-shadow:0 0 0 3px #c89b3522}

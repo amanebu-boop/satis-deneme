@@ -265,6 +265,7 @@ def review_approval(
             connection.execute(
                 "UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,)
             )
+            connection.commit()
             raise ValueError("approval has expired")
         stored_payload = json.loads(row["payload_json"])
         candidate = stored_payload if current_payload is None else current_payload

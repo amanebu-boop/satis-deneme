@@ -898,6 +898,11 @@ def browser_generate_template(
     return response
 
 
+@app.get("/agents")
+def agent_management_page():
+    return FileResponse(Path(__file__).resolve().parent.parent / "web" / "agents.html")
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "stage": "prototype", "storage": "sqlite"}

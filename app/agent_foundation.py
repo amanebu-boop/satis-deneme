@@ -178,6 +178,14 @@ def create_run(
                 "SELECT * FROM agent_runs WHERE idempotency_key = ?", (idempotency_key,)
             ).fetchone()
             if existing is not None:
+                same_request = (
+                    existing["agent_id"] == agent_id
+                    and existing["task_type"] == task_type.strip()
+                    and existing["requested_by"] == requested_by.strip()
+                    and existing["input_json"] == serialized
+                )
+                if not same_request:
+                    raise ValueError("idempotency key was already used for a different request")
                 return dict(existing)
         agent = connection.execute("SELECT enabled FROM agents WHERE id = ?", (agent_id,)).fetchone()
         if agent is None:

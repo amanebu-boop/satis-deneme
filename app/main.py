@@ -2,10 +2,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 import ipaddress
 from datetime import datetime, timezone
+from io import BytesIO
 from decimal import Decimal
 import hmac
 import logging
 import os
+import re
+import qrcode
 import time
 from threading import Lock
 from uuid import uuid4
@@ -230,13 +233,13 @@ def browser_session(request: Request):
 def browser_list_companies(
     request: Request,
     q: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1),
+    limit: int = Query(default=500, ge=1),
     offset: int = Query(default=0, ge=0, le=100000),
 ):
     _require_browser_session(request)
     if q is not None and len(q) > 200:
         raise HTTPException(status_code=400, detail="Search query is too long")
-    return db.list_companies_page(q, limit=min(limit, 50), offset=offset)
+    return db.list_companies_page(q, limit=min(limit, 500), offset=offset)
 
 
 @app.get("/api/companies/{company_id}")
@@ -253,6 +256,13 @@ class CompanyCreate(BaseModel):
     authorized_people: list[str] = Field(default_factory=list, max_length=50)
     phone_numbers: list[str] = Field(default_factory=list, max_length=50)
     address: str | None = Field(default=None, max_length=3000)
+    city: str | None = Field(default=None, max_length=100)
+    district: str | None = Field(default=None, max_length=100)
+    neighborhood: str | None = Field(default=None, max_length=200)
+    street: str | None = Field(default=None, max_length=250)
+    building_number: str | None = Field(default=None, max_length=50)
+    postal_code: str | None = Field(default=None, max_length=20)
+    address_extra: str | None = Field(default=None, max_length=3000)
     website: str | None = Field(default=None, max_length=300)
     email: str | None = Field(default=None, max_length=320)
     tax_office: str | None = Field(default=None, max_length=200)
@@ -300,12 +310,19 @@ class ContactCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=5000)
 
 
+class MeetingProductInput(BaseModel):
+    product_id: str = Field(min_length=1, max_length=100)
+    quantity: int = Field(ge=1, le=999999)
+    unit_price: int | None = Field(default=None, ge=0, le=99999999)
+
+
 class MeetingCreate(BaseModel):
     company_id: str
     meeting_date: str = Field(min_length=1, max_length=40)
     notes: str = Field(min_length=1, max_length=10000)
     meeting_type: str = Field(default="phone", pattern=r"^(phone|visit)$")
     topic: str = Field(default="Genel görüşme", min_length=1, max_length=200)
+    product_lines: list[MeetingProductInput] = Field(default_factory=list, max_length=50)
 
     @field_validator("meeting_date")
     @classmethod
@@ -334,7 +351,26 @@ def browser_create_meeting(payload: MeetingCreate, request: Request) -> dict:
     _require_csrf(request, session)
     if not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; meeting was not saved")
-    record = {"id": str(uuid4()), **payload.model_dump()}
+    data = payload.model_dump()
+    product_lines = []
+    for line in data.get("product_lines") or []:
+        product = db.get_product(line["product_id"])
+        if product is None:
+            raise HTTPException(status_code=404, detail="Seçilen ürün katalogda bulunamadı")
+        product_lines.append({
+            "product_id": product["id"],
+            "sku": product["sku"],
+            "name": product["name"],
+            "product_type": product.get("product_type", "machine"),
+            "parent_product_id": product.get("parent_product_id"),
+            "quantity": line["quantity"],
+            "unit_price": str(line["unit_price"]) if line["unit_price"] is not None else "",
+            "currency": product["currency"],
+        })
+    selected_machines = {item["product_id"] for item in product_lines if item["product_type"] == "machine"}
+    if any(item["product_type"] == "option" and item["parent_product_id"] not in selected_machines for item in product_lines):
+        raise HTTPException(status_code=422, detail="Bir opsiyonun bağlı olduğu ana makine de görüşmeye eklenmelidir")
+    record = {"id": str(uuid4()), **data, "product_lines": product_lines}
     saved = db.create_meeting(record)
     company = db.get_company(payload.company_id)
     return {**saved, "company_name": company["name"] if company else "Firma bulunamadı"}
@@ -346,11 +382,35 @@ def browser_update_meeting(meeting_id: str, payload: MeetingCreate, request: Req
     _require_csrf(request, session)
     if not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; meeting was not updated")
-    updated = db.update_meeting(meeting_id, payload.model_dump())
+    data = payload.model_dump()
+    existing = next((item for item in db.list_meetings() if item["id"] == meeting_id), None)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    previous_by_product = {item.get("product_id"): item for item in (existing.get("product_lines") or [])}
+    product_lines = []
+    for line in data.get("product_lines") or []:
+        product = db.get_product(line["product_id"])
+        if product is None:
+            raise HTTPException(status_code=404, detail="Seçilen ürün katalogda bulunamadı")
+        previous = previous_by_product.get(product["id"])
+        product_lines.append({
+            "product_id": product["id"],
+            "sku": previous.get("sku") if previous else product["sku"],
+            "name": previous.get("name") if previous else product["name"],
+            "product_type": previous.get("product_type") if previous else product.get("product_type", "machine"),
+            "parent_product_id": previous.get("parent_product_id") if previous else product.get("parent_product_id"),
+            "quantity": line["quantity"],
+            "unit_price": str(line["unit_price"]) if line["unit_price"] is not None else "",
+            "currency": previous.get("currency") if previous else product["currency"],
+        })
+    selected_machines = {item["product_id"] for item in product_lines if item["product_type"] == "machine"}
+    if any(item["product_type"] == "option" and item["parent_product_id"] not in selected_machines for item in product_lines):
+        raise HTTPException(status_code=422, detail="Bir opsiyonun bağlı olduğu ana makine de görüşmeye eklenmelidir")
+    data["product_lines"] = product_lines
+    updated = db.update_meeting(meeting_id, data)
     if updated is None:
         raise HTTPException(status_code=404, detail="Meeting not found")
     return updated
-
 
 class FollowUpCreate(BaseModel):
     company_id: str
@@ -441,13 +501,15 @@ class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
-    currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
-    unit_price: int = Field(ge=0, le=99999999)
+    currency: str = Field(default="EUR", pattern=r"^EUR$")
+    unit_price: int | None = Field(default=None, ge=0, le=99999999)
+    product_type: str = Field(default="machine", pattern=r"^(machine|option|service)$")
+    parent_product_id: str | None = Field(default=None, max_length=100)
 
 
 class QuoteRequest(BaseModel):
     company_id: str | None = None
-    currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    currency: str = Field(default="EUR", pattern=r"^EUR$")
     lines: list[QuoteLine] = Field(min_length=1, max_length=100)
 
 
@@ -456,6 +518,71 @@ def browser_list_products(request: Request) -> list[dict]:
     """List catalog items for the authenticated quotation editor."""
     _require_browser_session(request)
     return db.list_products()
+
+@app.post("/api/products", status_code=201)
+def browser_create_product(payload: ProductCreate, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    sku = payload.sku.strip()
+    name = payload.name.strip()
+    if not sku or not name:
+        raise HTTPException(status_code=422, detail="Ürün kodu ve ürün adı boş olamaz")
+    data = payload.model_dump()
+    parent_id = data.get("parent_product_id")
+    if data["product_type"] == "option":
+        parent = db.get_product(parent_id) if parent_id else None
+        if parent is None or parent.get("product_type", "machine") != "machine":
+            raise HTTPException(status_code=422, detail="Opsiyon için katalogdan bir ana makine seçin")
+    elif parent_id:
+        raise HTTPException(status_code=422, detail="Yalnızca opsiyonlar bir ana makineye bağlanabilir")
+    record = {
+        **data,
+        "id": str(uuid4()),
+        "sku": sku,
+        "name": name,
+        "description": payload.description.strip() if payload.description else None,
+        "unit_price": str(payload.unit_price) if payload.unit_price is not None else "",
+    }
+    try:
+        return db.create_product(record)
+    except Exception as exc:
+        if "UNIQUE constraint failed: products.sku" in str(exc):
+            raise HTTPException(status_code=409, detail="SKU already exists") from exc
+        raise
+
+
+@app.put("/api/products/{product_id}")
+def browser_update_product(product_id: str, payload: ProductCreate, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    sku, name = payload.sku.strip(), payload.name.strip()
+    if not sku or not name:
+        raise HTTPException(status_code=422, detail="Ürün kodu ve ürün adı boş olamaz")
+    parent_id = payload.parent_product_id
+    if payload.product_type == "option":
+        parent = db.get_product(parent_id) if parent_id else None
+        if parent is None or parent.get("product_type", "machine") != "machine":
+            raise HTTPException(status_code=422, detail="Opsiyon için katalogdan bir ana makine seçin")
+        if parent_id == product_id:
+            raise HTTPException(status_code=422, detail="Ürün kendisine bağlı olamaz")
+    elif parent_id:
+        raise HTTPException(status_code=422, detail="Yalnızca opsiyonlar bir ana makineye bağlanabilir")
+    record = {
+        **payload.model_dump(),
+        "sku": sku,
+        "name": name,
+        "description": payload.description.strip() if payload.description else None,
+        "unit_price": str(payload.unit_price) if payload.unit_price is not None else "",
+    }
+    try:
+        updated = db.update_product(product_id, record)
+    except Exception as exc:
+        if "UNIQUE constraint failed: products.sku" in str(exc):
+            raise HTTPException(status_code=409, detail="SKU already exists") from exc
+        raise
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return updated
 
 
 @app.get("/api/quotes")
@@ -466,6 +593,8 @@ def browser_list_quotes(request: Request) -> list[dict]:
     return [
         {
             "id": row["id"],
+            "quote_number": row.get("quote_number"),
+            "revision": row.get("revision", 0),
             "company_id": row.get("company_id"),
             "company_name": companies.get(row.get("company_id"), "Firma belirtilmedi"),
             "currency": row["currency"],
@@ -475,6 +604,15 @@ def browser_list_quotes(request: Request) -> list[dict]:
         }
         for row in records
     ]
+
+
+@app.delete("/api/quotes/{quotation_id}", status_code=204)
+def browser_delete_quote(quotation_id: str, request: Request) -> Response:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    if not db.delete_quotation(quotation_id):
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    return Response(status_code=204)
 
 
 @app.post("/api/quotes", status_code=201)
@@ -508,6 +646,36 @@ def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
     return db.create_quotation(record)
 
 
+def _quote_filename_base(record: dict, company: dict | None) -> str:
+    name = str((company or {}).get("name") or "Firma").strip()
+    number = str(record.get("quote_number") or "Teklif").strip()
+    transliteration = str.maketrans({"ç":"c","Ç":"C","ğ":"g","Ğ":"G","ı":"i","İ":"I","ö":"o","Ö":"O","ş":"s","Ş":"S","ü":"u","Ü":"U"})
+    safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", name.translate(transliteration)).strip("_") or "Firma"
+    safe_number = re.sub(r"[^A-Za-z0-9_-]+", "_", number) or "Teklif"
+    return f"{safe_name}_{safe_number}"
+
+
+class ProfileQrRequest(BaseModel):
+    vcard: str = Field(min_length=1, max_length=2048)
+
+
+@app.post("/api/profile/qr")
+def browser_profile_qr(payload: ProfileQrRequest, request: Request) -> Response:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    image = qrcode.make(
+        payload.vcard,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=4,
+    )
+    output = BytesIO()
+    image.save(output, format="PNG")
+    response = Response(content=output.getvalue(), media_type="image/png")
+    response.headers["Cache-Control"] = "no-store, private"
+    return response
+
+
 @app.get("/api/quotes/{quotation_id}/excel")
 def browser_quotation_excel(quotation_id: str, request: Request) -> Response:
     _require_browser_session(request)
@@ -519,14 +687,14 @@ def browser_quotation_excel(quotation_id: str, request: Request) -> Response:
     response = Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="Teklif_{quotation_id[:8].upper()}.xlsx"'},
+        headers={"Content-Disposition": f'attachment; filename="{_quote_filename_base(record, company)}.xlsx"'},
     )
     response.headers["Cache-Control"] = "no-store, private"
     return response
 
 
 @app.get("/api/quotes/{quotation_id}/pdf")
-def browser_quotation_pdf(quotation_id: str, request: Request) -> Response:
+def browser_quotation_pdf(quotation_id: str, request: Request, download: bool = Query(default=False)) -> Response:
     """Convert the exact Ersen Makina workbook output to PDF using LibreOffice."""
     _require_browser_session(request)
     record = db.get_quotation(quotation_id)
@@ -538,24 +706,29 @@ def browser_quotation_pdf(quotation_id: str, request: Request) -> Response:
     response = Response(
         content=pdf_content,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="Teklif_{quotation_id[:8].upper()}.pdf"'},
+        headers={"Content-Disposition": f'{"attachment" if download else "inline"}; filename="{_quote_filename_base(record, company)}.pdf"'},
     )
     response.headers["Cache-Control"] = "no-store, private"
     return response
 
 
-@app.get("/api/quotes/{quotation_id}/document", response_class=HTMLResponse)
-def browser_quotation_document(quotation_id: str, request: Request) -> HTMLResponse:
+@app.get("/api/quotes/{quotation_id}/document")
+def browser_quotation_document(quotation_id: str, request: Request) -> Response:
+    """Show the same Ersen Makina template PDF used by the dedicated PDF action."""
     _require_browser_session(request)
     record = db.get_quotation(quotation_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Quotation not found")
     company = db.get_company(record["company_id"]) if record.get("company_id") else None
-    response = HTMLResponse(render_quotation_html(record, company))
-    response.headers["Content-Disposition"] = 'inline; filename="teklif-taslagi.html"'
+    excel_content = render_quote_excel(record, company)
+    pdf_content = convert_excel_to_pdf(excel_content)
+    response = Response(
+        content=pdf_content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{_quote_filename_base(record, company)}.pdf"'},
+    )
     response.headers["Cache-Control"] = "no-store, private"
     return response
-
 
 class TemplateGenerationRequest(BaseModel):
     values: dict[str, str] = Field(default_factory=dict, max_length=500)

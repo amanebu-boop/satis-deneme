@@ -132,3 +132,24 @@ def test_catalog_allows_unknown_price_and_requires_machine_for_option(tmp_path, 
             },
         )
         assert invalid_meeting.status_code == 422
+
+
+def test_quote_numbers_are_sequential_and_currency_is_eur(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post(
+            "/api/login",
+            json={"password": "a-secure-test-password-123"},
+            headers={"Origin": "https://testserver"},
+        )
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
+        payload = {"currency": "EUR", "lines": [{"description": "Test makinesi", "quantity": 1, "unit_price": 1000}]}
+        first = client.post("/api/quotes", headers=headers, json=payload)
+        second = client.post("/api/quotes", headers=headers, json=payload)
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert first.json()["quote_number"].startswith("ERS-2026-")
+        assert second.json()["quote_number"].endswith(f"{int(first.json()['quote_number'][-4:]) + 1:04d}")
+        rejected = client.post("/api/quotes", headers=headers, json={**payload, "currency": "TRY"})
+        assert rejected.status_code == 422

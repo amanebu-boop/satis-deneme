@@ -380,20 +380,25 @@ def browser_update_meeting(meeting_id: str, payload: MeetingCreate, request: Req
     if not db.company_exists(payload.company_id):
         raise HTTPException(status_code=404, detail="Company not found; meeting was not updated")
     data = payload.model_dump()
+    existing = next((item for item in db.list_meetings() if item["id"] == meeting_id), None)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    previous_by_product = {item.get("product_id"): item for item in (existing.get("product_lines") or [])}
     product_lines = []
     for line in data.get("product_lines") or []:
         product = db.get_product(line["product_id"])
         if product is None:
             raise HTTPException(status_code=404, detail="Seçilen ürün katalogda bulunamadı")
+        previous = previous_by_product.get(product["id"])
         product_lines.append({
             "product_id": product["id"],
-            "sku": product["sku"],
-            "name": product["name"],
-            "product_type": product.get("product_type", "machine"),
-            "parent_product_id": product.get("parent_product_id"),
+            "sku": previous.get("sku") if previous else product["sku"],
+            "name": previous.get("name") if previous else product["name"],
+            "product_type": previous.get("product_type") if previous else product.get("product_type", "machine"),
+            "parent_product_id": previous.get("parent_product_id") if previous else product.get("parent_product_id"),
             "quantity": line["quantity"],
             "unit_price": str(line["unit_price"]) if line["unit_price"] is not None else "",
-            "currency": product["currency"],
+            "currency": previous.get("currency") if previous else product["currency"],
         })
     selected_machines = {item["product_id"] for item in product_lines if item["product_type"] == "machine"}
     if any(item["product_type"] == "option" and item["parent_product_id"] not in selected_machines for item in product_lines):
@@ -403,7 +408,6 @@ def browser_update_meeting(meeting_id: str, payload: MeetingCreate, request: Req
     if updated is None:
         raise HTTPException(status_code=404, detail="Meeting not found")
     return updated
-
 
 class FollowUpCreate(BaseModel):
     company_id: str
@@ -628,6 +632,15 @@ def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
         ],
     }
     return db.create_quotation(record)
+
+
+def _quote_filename_base(record: dict, company: dict | None) -> str:
+    name = str((company or {}).get("name") or "Firma").strip()
+    number = str(record.get("quote_number") or "Teklif").strip()
+    transliteration = str.maketrans({"ç":"c","Ç":"C","ğ":"g","Ğ":"G","ı":"i","İ":"I","ö":"o","Ö":"O","ş":"s","Ş":"S","ü":"u","Ü":"U"})
+    safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", name.translate(transliteration)).strip("_") or "Firma"
+    safe_number = re.sub(r"[^A-Za-z0-9_-]+", "_", number) or "Teklif"
+    return f"{safe_name}_{safe_number}"
 
 
 @app.get("/api/quotes/{quotation_id}/excel")

@@ -271,39 +271,39 @@ select:disabled{opacity:.65;cursor:not-allowed}
 <div class="panel-head"><h2>Firma kaydı</h2><span class="pill blue">Kalıcı kayıt</span></div>
 <form id="company-form" class="quote-form" style="margin:16px 0">
 <input id="company-id" type="hidden">
-<div><label for="company-name">Firma unvanı *</label><input id="company-name" maxlength="200" required placeholder="Resmî firma unvanı"></div>
-<div><label>Yetkili kişi</label><div id="company-people" class="repeat-list"><div class="repeat-row"><input class="company-person" maxlength="200" placeholder="Yetkili kişinin adı"><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div></div></div>
-<div><label>Telefon numarası</label><div id="company-phones" class="repeat-list"><div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" inputmode="tel" autocomplete="tel" placeholder="+90 5XX XXX XX XX veya 5XX XXX XX XX"><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div></div></div>
+<div><label for="company-name">Firma unvanı *</label><input id="company-name" maxlength="200" required placeholder=""></div>
+<div><label>Yetkili kişi</label><div id="company-people" class="repeat-list"><div class="repeat-row"><input class="company-person" maxlength="200" placeholder=""><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div></div></div>
+<div><label>Telefon numarası</label><div id="company-phones" class="repeat-list"><div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" inputmode="tel" autocomplete="tel" placeholder=""><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div></div></div>
 <div class="address-grid">
-<div class="location-picker"><label for="company-city">İl / şehir</label><input id="company-city" type="search" autocomplete="off" placeholder="İl seçin veya yazın" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="company-city-options"><div id="company-city-options" class="autocomplete-results location-options"></div></div>
-<div class="location-picker"><label for="company-district">İlçe</label><input id="company-district" type="search" autocomplete="off" placeholder="Önce il seçin" disabled role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="company-district-options"><div id="company-district-options" class="autocomplete-results location-options"></div></div>
-<div><label for="company-neighborhood">Mahalle</label><input id="company-neighborhood" maxlength="200" placeholder="Mahalle"></div>
-<div><label for="company-street">Cadde / sokak</label><input id="company-street" maxlength="250" placeholder="Cadde veya sokak"></div>
-<div><label for="company-building-number">Bina / kapı no</label><input id="company-building-number" maxlength="50" placeholder="Bina no"></div>
-<div><label for="company-postal-code">Posta kodu</label><input id="company-postal-code" maxlength="20" placeholder="Posta kodu"></div>
+<div class="location-picker"><label for="company-city">İl / şehir</label><input id="company-city" type="search" autocomplete="off" placeholder="" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="company-city-options"><div id="company-city-options" class="autocomplete-results location-options"></div></div>
+<div class="location-picker"><label for="company-district">İlçe</label><input id="company-district" type="search" autocomplete="off" placeholder="" disabled role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="company-district-options"><div id="company-district-options" class="autocomplete-results location-options"></div></div>
+<div><label for="company-neighborhood">Mahalle</label><input id="company-neighborhood" maxlength="200" placeholder=""></div>
+<div><label for="company-street">Cadde / sokak</label><input id="company-street" maxlength="250" placeholder=""></div>
+<div><label for="company-building-number">Bina / kapı no</label><input id="company-building-number" maxlength="50" placeholder=""></div>
+<div><label for="company-postal-code">Posta kodu</label><input id="company-postal-code" maxlength="20" placeholder=""></div>
 </div>
-<div><label for="company-address-extra">Adres tarifi / eski açık adres</label><textarea id="company-address-extra" maxlength="3000" rows="2" placeholder="Bina, kat, tarif veya mevcut açık adres"></textarea></div>
-<div><label for="company-website">Web sitesi</label><input id="company-website" maxlength="300" type="text" inputmode="url" autocomplete="url" placeholder="www.ornek.com"></div>
-<div><label for="company-email">Mail adresi</label><input id="company-email" maxlength="320" type="email" placeholder="ornek@firma.com"></div>
+<div><label for="company-address-extra">Adres tarifi / eski açık adres</label><textarea id="company-address-extra" maxlength="3000" rows="2" placeholder=""></textarea></div>
+<div><label for="company-website">Web sitesi</label><input id="company-website" maxlength="300" type="text" inputmode="url" autocomplete="url" placeholder=""></div>
+<div><label for="company-email">Mail adresi</label><input id="company-email" maxlength="320" type="email" placeholder=""></div>
 <div class="quote-fields">
-<div><label for="company-tax-office">Vergi dairesi</label><input id="company-tax-office" maxlength="200" placeholder="Vergi dairesi"></div>
-<div><label for="company-tax-number">Vergi numarası</label><input id="company-tax-number" maxlength="50" inputmode="numeric" placeholder="Vergi numarası"></div>
-<div><label for="company-mersis">MERSİS numarası</label><input id="company-mersis" maxlength="50" inputmode="numeric" placeholder="MERSİS numarası"></div>
+<div><label for="company-tax-office">Vergi dairesi</label><input id="company-tax-office" maxlength="200" placeholder=""></div>
+<div><label for="company-tax-number">Vergi numarası</label><input id="company-tax-number" maxlength="50" inputmode="numeric" placeholder=""></div>
+<div><label for="company-mersis">MERSİS numarası</label><input id="company-mersis" maxlength="50" inputmode="numeric" placeholder=""></div>
 </div>
-<div><label for="company-notes">Notlar</label><textarea id="company-notes" maxlength="5000" rows="3" placeholder="Firma hakkında notlar"></textarea></div>
+<div><label for="company-notes">Notlar</label><textarea id="company-notes" maxlength="5000" rows="3" placeholder=""></textarea></div>
 <p id="company-message" class="footer-note" role="status" aria-live="polite"></p>
 <div class="actions"><button class="btn primary" id="save-company" type="submit">Firmayı kaydet</button><button class="btn" id="cancel-company-edit" type="button" hidden>Vazgeç</button></div>
 </form>
 <div class="company-search-tools">
-<div class="search-wrap"><label for="company-search">Firma ara</label><input class="search" id="company-search" placeholder="Unvan, şehir, e-posta veya vergi no…" aria-label="Firma ara"></div>
-<div class="location-picker"><label for="company-filter-city-search">Şehir filtresi</label><input id="company-filter-city-search" type="search" placeholder="Tüm şehirler" autocomplete="off" aria-expanded="false"><div id="company-filter-city-options" class="autocomplete-results"></div><select id="company-filter-city" hidden><option value="">Tüm şehirler</option></select></div>
-<div class="location-picker"><label for="company-filter-district-search">İlçe filtresi</label><input id="company-filter-district-search" type="search" placeholder="Tüm ilçeler" autocomplete="off" aria-expanded="false"><div id="company-filter-district-options" class="autocomplete-results"></div><select id="company-filter-district" hidden><option value="">Tüm ilçeler</option></select></div>
+<div class="search-wrap"><label for="company-search">Firma ara</label><input class="search" id="company-search" placeholder="" aria-label="Firma ara"></div>
+<div class="location-picker"><label for="company-filter-city-search">Şehir filtresi</label><input id="company-filter-city-search" type="search" placeholder="" autocomplete="off" aria-expanded="false"><div id="company-filter-city-options" class="autocomplete-results"></div><select id="company-filter-city" hidden><option value="">Tüm şehirler</option></select></div>
+<div class="location-picker"><label for="company-filter-district-search">İlçe filtresi</label><input id="company-filter-district-search" type="search" placeholder="" autocomplete="off" aria-expanded="false"><div id="company-filter-district-options" class="autocomplete-results"></div><select id="company-filter-district" hidden><option value="">Tüm ilçeler</option></select></div>
 </div>
 <div id="company-rows" class="company-list"><div class="empty">Firmalar yükleniyor…</div></div>
 </div></section>
-<section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div class="location-picker"><label for="meeting-company-search">Firma seçimi</label><input id="meeting-company-search" type="search" placeholder="Firma adını yazın…" autocomplete="off" aria-expanded="false" required><div id="meeting-company-results" class="autocomplete-results"></div><select id="meeting-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><input id="meeting-date" type="datetime-local" required></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder="Örn. Ürün tanıtımı"></div></div><div><label for="meeting-notes">Görüşme notları (raporda gösterilmez)</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder="İhtiyaçlar, kararlar, detaylı notlar"></textarea></div>
+<section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div class="location-picker"><label for="meeting-company-search">Firma seçimi</label><input id="meeting-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="meeting-company-results" class="autocomplete-results"></div><select id="meeting-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><input id="meeting-date" type="datetime-local" required></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder=""></div></div><div><label for="meeting-notes">Görüşme notları (raporda gösterilmez)</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea></div>
 <div><div class="panel-head"><h3>Görüşmede konuşulan ürünler</h3><button class="btn" id="add-meeting-product" type="button">＋ Ürün ekle</button></div><div id="meeting-product-lines" class="meeting-product-lines"></div><p class="footer-note">Katalogdan seçin; miktar ve fiyatı kontrol edin. Kalıp kullanılan makinelerde 1 takım kalıp seti makina fiyatına dahildir; ekstra set bedelini görüşmede siz belirlersiniz.</p></div>
-<p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><select id="follow-up-company" required><option value="">Firma seç</option></select></div><div><label for="follow-up-date">Takip tarihi</label><input id="follow-up-date" type="date" required></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder="Örn. Teklif için cuma günü ara"></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div><div class="panel"><div class="panel-head"><h2>Yaklaşan görüşmeler</h2><button class="btn" type="button" id="refresh-upcoming">Yenile</button></div><div id="upcoming-meeting-list" class="list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="Firma, tarih, şekil veya konuda ara…" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
+<p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><select id="follow-up-company" required><option value="">Firma seç</option></select></div><div><label for="follow-up-date">Takip tarihi</label><input id="follow-up-date" type="date" required></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder=""></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div><div class="panel"><div class="panel-head"><h2>Yaklaşan görüşmeler</h2><button class="btn" type="button" id="refresh-upcoming">Yenile</button></div><div id="upcoming-meeting-list" class="list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
 <section class="page" id="page-products">
 <div class="panel">
   <div class="panel-head"><h2>Ürün kataloğu</h2><span class="pill blue">Kalıcı kayıt</span></div>
@@ -311,13 +311,13 @@ select:disabled{opacity:.65;cursor:not-allowed}
   <form id="product-form" class="quote-form" style="margin-top:18px">
     <input id="product-id" type="hidden">
     <div class="quote-fields">
-      <div><label for="product-sku">Ürün kodu (SKU)</label><input id="product-sku" maxlength="80" required placeholder="Örn. URN-001"></div>
-      <div><label for="product-name">Ürün adı</label><input id="product-name" maxlength="200" required placeholder="Ürün veya hizmet adı"></div>
+      <div><label for="product-sku">Ürün kodu (SKU)</label><input id="product-sku" maxlength="80" required placeholder=""></div>
+      <div><label for="product-name">Ürün adı</label><input id="product-name" maxlength="200" required placeholder=""></div>
     </div>
-    <div><label for="product-description">Açıklama (isteğe bağlı)</label><textarea id="product-description" maxlength="2000" rows="2" placeholder="Ürün hakkında kısa açıklama"></textarea></div>
-    <input id="product-currency" type="hidden" value="EUR"><div><label for="product-price">Birim fiyat (EUR, tam sayı)</label><input id="product-price" type="number" min="0" max="99999999" step="1" inputmode="numeric" placeholder="Bilinmiyorsa boş bırak"></div>
+    <div><label for="product-description">Açıklama (isteğe bağlı)</label><textarea id="product-description" maxlength="2000" rows="2" placeholder=""></textarea></div>
+    <input id="product-currency" type="hidden" value="EUR"><div><label for="product-price">Birim fiyat (EUR, tam sayı)</label><input id="product-price" type="number" min="0" max="99999999" step="1" inputmode="numeric" placeholder=""></div>
     <div class="quote-fields">
-      <div class="location-picker"><label for="product-type-search">Kayıt türü</label><input id="product-type-search" type="search" placeholder="Kayıt türü seçin…" autocomplete="off" aria-expanded="false" required><div id="product-type-options" class="autocomplete-results"></div><select id="product-type" hidden><option value="machine">Ana makine</option><option value="option">Makine opsiyonu</option><option value="service">Diğer ürün / hizmet</option></select></div>
+      <div class="location-picker"><label for="product-type-search">Kayıt türü</label><input id="product-type-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="product-type-options" class="autocomplete-results"></div><select id="product-type" hidden><option value="machine">Ana makine</option><option value="option">Makine opsiyonu</option><option value="service">Diğer ürün / hizmet</option></select></div>
       <div id="product-parent-wrap" hidden><label for="product-parent">Bağlı olduğu ana makine</label><select id="product-parent"><option value="">Ana makine seç</option></select></div>
     </div>
     <p class="footer-note">Fiyatı bilinmeyen ürünü boş bırakabilirsiniz. Opsiyonlar ana makineye bağlanır; fiyatı görüşmede belirleyebilirsiniz.</p>
@@ -327,7 +327,7 @@ select:disabled{opacity:.65;cursor:not-allowed}
 </div>
 <div class="panel">
   <div class="panel-head"><h2>Kayıtlı ürünler</h2><button class="btn" id="refresh-products" type="button">Yenile</button></div>
-  <input class="search" id="product-search" type="search" placeholder="Ürün adı, ürün kodu veya açıklamada ara…" aria-label="Ürün kataloğunda ara">
+  <input class="search" id="product-search" type="search" placeholder="" aria-label="Ürün kataloğunda ara">
   <div class="table-wrap"><table><thead><tr><th>Ürün</th><th>Ürün kodu</th><th>Tür / ana makine</th><th>Birim fiyat</th><th>Para birimi</th><th>İşlem</th></tr></thead><tbody id="product-rows"><tr><td colspan="6">Ürünler yükleniyor…</td></tr></tbody></table></div>
   <p id="product-count" class="footer-note"></p>
 </div>
@@ -336,11 +336,11 @@ select:disabled{opacity:.65;cursor:not-allowed}
 <div class="panel">
   <div class="panel-head"><h2>Teklif taslağı oluştur</h2><span class="pill blue">Kaydedilebilir</span></div>
   <form id="quote-form" class="quote-form">
-    <div class="location-picker"><label for="quote-company-search">Firma seçimi (isteğe bağlı)</label><input id="quote-company-search" type="search" placeholder="Firma adını yazın…" autocomplete="off" aria-expanded="false"><div id="quote-company-results" class="autocomplete-results"></div><select id="quote-company" hidden><option value="">Firma seç (isteğe bağlı)</option></select></div>
+    <div class="location-picker"><label for="quote-company-search">Firma seçimi (isteğe bağlı)</label><input id="quote-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false"><div id="quote-company-results" class="autocomplete-results"></div><select id="quote-company" hidden><option value="">Firma seç (isteğe bağlı)</option></select></div>
     <input id="quote-currency" type="hidden" value="EUR"><p class="footer-note">Teklif para birimi EUR’dur. Fiyatlar KDV hariçtir; şablonda %20 KDV otomatik hesaplanır.</p>
     <div class="panel-head"><h3>Teklif kalemleri</h3><button class="btn" id="add-quote-line" type="button">＋ Kalem ekle</button></div>
     <div id="quote-lines">
-      <div class="quote-line"><div class="line-product-wrap"><label>Katalogdan ürün ara (isteğe bağlı)</label><input class="line-product-search" type="search" placeholder="Ürün adı veya kodu…" autocomplete="off"><div class="autocomplete-results line-product-results"></div><select class="line-product" hidden><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="1" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
+      <div class="quote-line"><div class="line-product-wrap"><label>Katalogdan ürün ara (isteğe bağlı)</label><input class="line-product-search" type="search" placeholder="" autocomplete="off"><div class="autocomplete-results line-product-results"></div><select class="line-product" hidden><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder=""></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="1" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır" disabled>−</button></div>
     </div>
     <div class="quote-totals" aria-live="polite" aria-label="Teklif toplamları"><div class="quote-total-row"><span>Ara toplam (EUR)</span><strong id="quote-subtotal">0,00 EUR</strong></div><div class="quote-total-row"><span>KDV %20</span><strong id="quote-tax-total">0,00 EUR</strong></div><div class="quote-total-row quote-total-grand"><span>Genel toplam</span><strong id="quote-grand-total">0,00 EUR</strong></div><p class="quote-product-empty">Tutarlar anlık tahmindir; kaydederken sunucu tarafından yeniden hesaplanır.</p></div>
     <p id="quote-message" role="status" aria-live="polite" class="footer-note"></p>
@@ -386,10 +386,10 @@ select:disabled{opacity:.65;cursor:not-allowed}
 <dialog id="profile-dialog" class="profile-dialog">
   <div class="panel-head"><h2 id="profile-dialog-title">Profil ve ayarlar</h2><button type="button" class="btn" id="profile-close">Kapat</button></div>
   <form id="profile-form" class="quote-form">
-    <div><label for="profile-name">Ad soyad</label><input id="profile-name" maxlength="120" required placeholder="Adınız soyadınız"></div>
-    <div><label for="profile-title">Görev / unvan</label><input id="profile-title" maxlength="120" placeholder="Satış temsilcisi"></div>
-    <div><label for="profile-phone">Telefon</label><input id="profile-phone" type="tel" maxlength="40" placeholder="+90 5XX XXX XX XX"></div>
-    <div><label for="profile-email">E-posta</label><input id="profile-email" type="email" maxlength="200" placeholder="ad@ersenmakina.com"></div>
+    <div><label for="profile-name">Ad soyad</label><input id="profile-name" maxlength="120" required placeholder=""></div>
+    <div><label for="profile-title">Görev / unvan</label><input id="profile-title" maxlength="120" placeholder=""></div>
+    <div><label for="profile-phone">Telefon</label><input id="profile-phone" type="tel" maxlength="40" placeholder=""></div>
+    <div><label for="profile-email">E-posta</label><input id="profile-email" type="email" maxlength="200" placeholder=""></div>
     <div><label for="profile-company">Firma</label><input id="profile-company" value="Erşen Makina" maxlength="120"></div>
     <div><label for="profile-photo-input">Profil fotoğrafı</label><input id="profile-photo-input" type="file" accept="image/png,image/jpeg,image/webp"><div id="profile-photo-preview" class="profile-photo-preview"></div></div>
     <p class="footer-note">Profil bilgileri bu tarayıcıda saklanır; şirket veri tabanına gönderilmez.</p>
@@ -471,23 +471,23 @@ function renderLocationOptions(kind,query=""){
 function setCompanyLocation(city,district=""){
  const cityInput=document.getElementById("company-city"),districtInput=document.getElementById("company-district");
  cityInput.value=city||"";districtInput.value=district||"";districtInput.disabled=!city;
- districtInput.placeholder=city?"İlçe seçin veya yazın":"Önce il seçin";
+ districtInput.placeholder="";
 }
 async function loadDistrictsForCity(city,selected=""){
  const districtInput=document.getElementById("company-district");
  const province=turkeyProvinces.find(p=>p.name===city);
  turkeyDistricts=[];districtInput.value=selected||"";
- if(!province){districtInput.disabled=true;districtInput.placeholder="Önce il seçin";closeLocationOptions("district");return;}
- districtInput.disabled=true;districtInput.placeholder="İlçeler yükleniyor…";
+ if(!province){districtInput.disabled=true;districtInput.placeholder="";closeLocationOptions("district");return;}
+ districtInput.disabled=true;districtInput.placeholder="";
  try{
   const response=await fetch("https://api.turkiyeapi.dev/v2/provinces/"+encodeURIComponent(province.id)+"/districts?limit=100&fields=id,name",{cache:"force-cache"});
   if(!response.ok)throw new Error("İlçeler alınamadı");
   const body=await response.json();
   turkeyDistricts=(body.data||[]).map(d=>({name:d.name})).sort((a,b)=>a.name.localeCompare(b.name,"tr"));
-  districtInput.disabled=false;districtInput.placeholder="İlçe seçin veya yazın";
+  districtInput.disabled=false;districtInput.placeholder="";
   if(selected&&!turkeyDistricts.some(d=>d.name===selected))turkeyDistricts.push({name:selected});
  }catch(_error){
-  districtInput.disabled=false;districtInput.placeholder="İlçe listesi yüklenemedi; yazabilirsiniz";
+  districtInput.disabled=false;districtInput.placeholder="";
   if(selected)turkeyDistricts=[{name:selected}];
  }
 }
@@ -501,7 +501,7 @@ async function loadTurkeyLocations(){
   turkeyProvinces=(body.data||[]).map(p=>({id:p.id,name:p.name})).sort((a,b)=>a.name.localeCompare(b.name,"tr"));
   cityInput.value=city;districtInput.value=district;
   if(city)await loadDistrictsForCity(city,district);
- }catch(_error){cityInput.placeholder="İl listesi yüklenemedi; yazabilirsiniz";}
+ }catch(_error){cityInput.placeholder="";}
 }
 const cityInput=document.getElementById("company-city"),districtInput=document.getElementById("company-district");
 cityInput.addEventListener("focus",()=>renderLocationOptions("city",cityInput.value));
@@ -533,7 +533,7 @@ function renderCompanyFilterOptions(kind,query=""){
  const values=kind==="city"?[...new Set(allCompanies.map(c=>String(c.city||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"tr")):[...new Set(allCompanies.filter(c=>!selectFilterValue("city")||String(c.city||"")===selectFilterValue("city")).map(c=>String(c.district||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"tr"));
  const q=String(query).trim().toLocaleLowerCase("tr-TR"),matches=values.filter(v=>v.toLocaleLowerCase("tr-TR").includes(q)).slice(0,50);
  results.replaceChildren();
- const add=(label,value)=>{const button=document.createElement("button");button.type="button";button.className="autocomplete-option";button.textContent=label;button.addEventListener("click",()=>{select.value=value;input.value=value;input.placeholder=kind==="city"?"Tüm şehirler":"Tüm ilçeler";input.setAttribute("aria-expanded","false");results.classList.remove("open");if(kind==="city"){const district=document.getElementById("company-filter-district"),districtSearch=document.getElementById("company-filter-district-search");district.value="";districtSearch.value="";updateCompanyDistrictOptions();}renderCompanyList();});results.append(button);};
+ const add=(label,value)=>{const button=document.createElement("button");button.type="button";button.className="autocomplete-option";button.textContent=label;button.addEventListener("click",()=>{select.value=value;input.value=value;input.placeholder="";input.setAttribute("aria-expanded","false");results.classList.remove("open");if(kind==="city"){const district=document.getElementById("company-filter-district"),districtSearch=document.getElementById("company-filter-district-search");district.value="";districtSearch.value="";updateCompanyDistrictOptions();}renderCompanyList();});results.append(button);};
  add(kind==="city"?"Tüm şehirler":"Tüm ilçeler","");
  matches.forEach(v=>add(v,v));
  if(!matches.length&&q){const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent="Eşleşme bulunamadı.";results.append(empty);}
@@ -615,14 +615,14 @@ document.getElementById("company-search").addEventListener("input",renderCompany
 function repeatedValues(selector){return [...document.querySelectorAll(selector)].map(input=>input.value.trim()).filter(Boolean);}
 function resetCompanyForm(){
   document.getElementById("company-form").reset();document.getElementById("company-id").value="";setCompanyLocation("","");
-  document.getElementById("company-people").innerHTML='<div class="repeat-row"><input class="company-person" maxlength="200" placeholder="Yetkili kişinin adı"><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div>';
-  document.getElementById("company-phones").innerHTML='<div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" placeholder="Telefon numarası"><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div>';
+  document.getElementById("company-people").innerHTML='<div class="repeat-row"><input class="company-person" maxlength="200" placeholder=""><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div>';
+  document.getElementById("company-phones").innerHTML='<div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" placeholder=""><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div>';
   document.getElementById("save-company").textContent="Firmayı kaydet";document.getElementById("cancel-company-edit").hidden=true;
 }
 function fillRepeat(containerId,values,cls,placeholder,type="text"){
   const container=document.getElementById(containerId);container.replaceChildren();
   const items=values&&values.length?values:[""];
-  items.forEach((value,index)=>{const row=document.createElement("div");row.className="repeat-row";const input=document.createElement("input");input.className=cls;input.type=type;input.maxLength=type==="tel"?50:200;input.placeholder=type==="tel"?"+90 5XX XXX XX XX veya 5XX XXX XX XX":placeholder;if(type==="tel"){input.inputMode="tel";input.autocomplete="tel";}input.value=value||"";const button=document.createElement("button");button.className="btn repeat-add";button.type="button";button.dataset.repeat=containerId;button.setAttribute("aria-label",index===0?"Yeni satır ekle":"Satırı kaldır");button.textContent=index===0?"＋":"−";if(index>0)button.classList.add("repeat-remove");row.append(input,button);container.append(row);});
+  items.forEach((value,index)=>{const row=document.createElement("div");row.className="repeat-row";const input=document.createElement("input");input.className=cls;input.type=type;input.maxLength=type==="tel"?50:200;input.placeholder="";if(type==="tel"){input.inputMode="tel";input.autocomplete="tel";}input.value=value||"";const button=document.createElement("button");button.className="btn repeat-add";button.type="button";button.dataset.repeat=containerId;button.setAttribute("aria-label",index===0?"Yeni satır ekle":"Satırı kaldır");button.textContent=index===0?"＋":"−";if(index>0)button.classList.add("repeat-remove");row.append(input,button);container.append(row);});
   updateRepeatButtons(containerId);
 }
 function updateRepeatButtons(containerId){
@@ -714,7 +714,7 @@ function addMeetingProductRow(prefill=null,targetId="meeting-product-lines"){
  const container=document.getElementById(targetId);if(!container)return;
  const row=document.createElement("div");row.className="meeting-product-row";
  const productWrap=document.createElement("div"),productLabel=document.createElement("label");productLabel.textContent="Ürün veya opsiyon ara";
- const search=document.createElement("input");search.type="search";search.className="meeting-product-search";search.placeholder="Ürün adı veya kodu…";search.autocomplete="off";
+ const search=document.createElement("input");search.type="search";search.className="meeting-product-search";search.placeholder="";search.autocomplete="off";
  const results=document.createElement("div");results.className="autocomplete-results";
  const productSelect=document.createElement("select");productSelect.className="meeting-product";productSelect.hidden=true;
  const products=Array.isArray(productCatalog)?productCatalog:[];
@@ -735,7 +735,7 @@ function addMeetingProductRow(prefill=null,targetId="meeting-product-lines"){
  search.addEventListener("input",renderResults);search.addEventListener("focus",renderResults);
  productWrap.append(productLabel,search,results,productSelect);
  const quantityWrap=document.createElement("div"),quantityLabel=document.createElement("label");quantityLabel.textContent="Miktar";const quantity=document.createElement("input");quantity.className="meeting-product-quantity";quantity.type="number";quantity.min="1";quantity.max="999999";quantity.step="1";quantity.value=prefill?.quantity||"1";quantity.required=true;quantity.inputMode="numeric";quantityLabel.append(quantity);quantityWrap.append(quantityLabel);
- const priceWrap=document.createElement("div"),priceLabel=document.createElement("label");priceLabel.textContent="Birim fiyat";const price=document.createElement("input");price.className="meeting-product-price";price.type="number";price.min="0";price.max="99999999";price.step="1";price.value=prefill?.unit_price==null||String(prefill?.unit_price)===""?"":String(prefill.unit_price);price.placeholder="Bilinmiyorsa boş";price.inputMode="numeric";priceLabel.append(price);priceWrap.append(priceLabel);
+ const priceWrap=document.createElement("div"),priceLabel=document.createElement("label");priceLabel.textContent="Birim fiyat";const price=document.createElement("input");price.className="meeting-product-price";price.type="number";price.min="0";price.max="99999999";price.step="1";price.value=prefill?.unit_price==null||String(prefill?.unit_price)===""?"":String(prefill.unit_price);price.placeholder="";price.inputMode="numeric";priceLabel.append(price);priceWrap.append(priceLabel);
  const remove=document.createElement("button");remove.type="button";remove.className="btn remove-meeting-product";remove.textContent="−";remove.setAttribute("aria-label","Ürünü kaldır");remove.addEventListener("click",()=>row.remove());
  row.append(productWrap,quantityWrap,priceWrap,remove);container.append(row);
 }
@@ -1020,7 +1020,7 @@ function populateProductSelect(select){
 }
 function addQuoteLine(){
   const container=document.getElementById("quote-lines");const row=document.createElement("div");row.className="quote-line";
-  row.innerHTML='<div class="line-product-wrap"><label>Katalogdan ürün ara (isteğe bağlı)</label><input class="line-product-search" type="search" placeholder="Ürün adı veya kodu…" autocomplete="off"><div class="autocomplete-results line-product-results"></div><select class="line-product" hidden><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder="Ürün veya hizmet"></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="1" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
+  row.innerHTML='<div class="line-product-wrap"><label>Katalogdan ürün ara (isteğe bağlı)</label><input class="line-product-search" type="search" placeholder="" autocomplete="off"><div class="autocomplete-results line-product-results"></div><select class="line-product" hidden><option value="">Serbest ürün / hizmet</option></select></div><div><label>Açıklama</label><input class="line-description" maxlength="300" required placeholder=""></div><div><label>Miktar</label><input class="line-quantity" type="number" min="1" max="999999999" step="1" inputmode="numeric" value="1" required></div><div><label>Birim fiyat</label><input class="line-price" type="number" min="0" max="99999999" step="1" value="0" required></div><button type="button" class="btn remove-line" aria-label="Kalemi kaldır">−</button>';
   container.append(row);populateProductSelect(row.querySelector(".line-product"));updateLineButtons();updateQuoteTotals();
 }
 function updateLineButtons(){const buttons=[...document.querySelectorAll(".remove-line")];buttons.forEach(button=>button.disabled=buttons.length===1);}
@@ -1120,7 +1120,7 @@ function selectTemplate(template){
     const wrapper=document.createElement("div");
     const label=document.createElement("label");label.htmlFor="template-field-"+field;label.textContent=field;
     const input=document.createElement("input");input.id=label.htmlFor;input.dataset.templateField=field;
-    input.maxLength=5000;input.required=true;input.placeholder=field+" değerini gir";
+    input.maxLength=5000;input.required=true;input.placeholder="";
     wrapper.append(label,input);inputs.append(wrapper);
   }
   document.getElementById("template-generation-message").textContent="";

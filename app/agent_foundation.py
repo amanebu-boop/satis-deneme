@@ -138,6 +138,39 @@ def init_agent_foundation() -> None:
         _audit(connection, "agent_foundation_initialized", details={"agents_seeded": len(AGENT_DEFINITIONS)})
 
 
+def set_agent_enabled(agent_id: str, enabled: bool, actor: str) -> dict[str, Any]:
+    """Explicitly enable or disable one registered agent and audit the change."""
+    if not isinstance(enabled, bool):
+        raise ValueError("enabled must be a boolean")
+    if not actor or not actor.strip():
+        raise ValueError("actor must be non-empty")
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT id, name, enabled FROM agents WHERE id = ?", (agent_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError("unknown agent")
+        previous = bool(row["enabled"])
+        connection.execute(
+            "UPDATE agents SET enabled = ?, updated_at = ? WHERE id = ?",
+            (1 if enabled else 0, _now(), agent_id),
+        )
+        if previous != enabled:
+            _audit(
+                connection,
+                "agent_enabled" if enabled else "agent_disabled",
+                actor=actor.strip(),
+                agent_id=agent_id,
+                details={"previous_enabled": previous, "enabled": enabled},
+            )
+        updated = connection.execute(
+            """SELECT id, name, description, enabled, created_at, updated_at
+               FROM agents WHERE id = ?""",
+            (agent_id,),
+        ).fetchone()
+    return {**dict(updated), "enabled": bool(updated["enabled"])}
+
+
 def list_agents() -> list[dict[str, Any]]:
     with db.connect() as connection:
         rows = connection.execute(

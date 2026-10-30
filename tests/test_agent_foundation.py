@@ -125,3 +125,25 @@ def test_expired_approval_state_is_persisted(isolated_database):
         agents.review_approval(approval["id"], "approved", "reviewer")
 
     assert agents.list_approvals()[0]["status"] == "expired"
+
+
+def test_reporting_agent_can_be_explicitly_enabled_and_disabled_with_audit(isolated_database):
+    enabled = agents.set_agent_enabled("reporting", True, "test-user")
+    assert enabled["enabled"] is True
+
+    disabled = agents.set_agent_enabled("reporting", False, "test-user")
+    assert disabled["enabled"] is False
+
+    events = [item["event_type"] for item in agents.list_audit_logs()]
+    assert events[:2] == ["agent_disabled", "agent_enabled"]
+
+
+def test_agent_status_change_rejects_unknown_agent_and_invalid_actor(isolated_database):
+    with pytest.raises(ValueError, match="unknown agent"):
+        agents.set_agent_enabled("missing", True, "test-user")
+
+    with pytest.raises(ValueError, match="actor"):
+        agents.set_agent_enabled("reporting", True, "")
+
+    with pytest.raises(ValueError, match="boolean"):
+        agents.set_agent_enabled("reporting", 1, "test-user")

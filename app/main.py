@@ -661,7 +661,7 @@ def browser_quotation_excel(quotation_id: str, request: Request) -> Response:
 
 
 @app.get("/api/quotes/{quotation_id}/pdf")
-def browser_quotation_pdf(quotation_id: str, request: Request) -> Response:
+def browser_quotation_pdf(quotation_id: str, request: Request, download: bool = Query(default=False)) -> Response:
     """Convert the exact Ersen Makina workbook output to PDF using LibreOffice."""
     _require_browser_session(request)
     record = db.get_quotation(quotation_id)
@@ -673,7 +673,7 @@ def browser_quotation_pdf(quotation_id: str, request: Request) -> Response:
     response = Response(
         content=pdf_content,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="{_quote_filename_base(record, company)}.pdf"'},
+        headers={"Content-Disposition": f'{"attachment" if download else "inline"}; filename="{_quote_filename_base(record, company)}.pdf"'},
     )
     response.headers["Cache-Control"] = "no-store, private"
     return response

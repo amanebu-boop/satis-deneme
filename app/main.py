@@ -231,6 +231,104 @@ def browser_session(request: Request):
     return response
 
 
+class AgentRunRequest(BaseModel):
+    agent_id: str = Field(min_length=1, max_length=80)
+    task_type: str = Field(min_length=1, max_length=120)
+    input_data: dict = Field(default_factory=dict)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class AgentApprovalRequest(BaseModel):
+    run_id: str = Field(min_length=1, max_length=80)
+    action_type: str = Field(min_length=1, max_length=120)
+    payload: dict = Field(default_factory=dict)
+    ttl_seconds: int = Field(default=900, ge=1, le=86400)
+
+
+class AgentApprovalReviewRequest(BaseModel):
+    decision: str = Field(pattern=r"^(approved|rejected)$")
+    current_payload: dict | None = None
+
+
+@app.get("/api/agents")
+def browser_list_agents(request: Request) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_agents()
+
+
+@app.get("/api/agent-rules")
+def browser_list_agent_rules(request: Request) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_rules()
+
+
+@app.get("/api/agent-runs")
+def browser_list_agent_runs(request: Request, limit: int = Query(default=100, ge=1, le=500)) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_runs(limit)
+
+
+@app.get("/api/agent-approvals")
+def browser_list_agent_approvals(request: Request, limit: int = Query(default=100, ge=1, le=500)) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_approvals(limit)
+
+
+@app.get("/api/agent-audit")
+def browser_list_agent_audit(request: Request, limit: int = Query(default=100, ge=1, le=500)) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_audit_logs(limit)
+
+
+@app.post("/api/agent-runs", status_code=201)
+def browser_create_agent_run(payload: AgentRunRequest, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    try:
+        return agent_foundation.create_run(
+            payload.agent_id, payload.task_type, str(session["subject"]),
+            payload.input_data, payload.idempotency_key,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown agent" else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/agent-approvals", status_code=201)
+def browser_request_agent_approval(payload: AgentApprovalRequest, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    try:
+        return agent_foundation.request_approval(
+            payload.run_id, payload.action_type, payload.payload,
+            str(session["subject"]), payload.ttl_seconds,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown run" else 409 if message == "run is not eligible for approval" else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/agent-approvals/{approval_id}/review")
+def browser_review_agent_approval(
+    approval_id: str, payload: AgentApprovalReviewRequest, request: Request
+) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    try:
+        return agent_foundation.review_approval(
+            approval_id, payload.decision, str(session["subject"]), payload.current_payload,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown approval" else 409 if (
+            message in {"approval is no longer pending", "approval has expired",
+                        "approval payload changed; request a new approval"}
+        ) else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
 @app.get("/api/companies")
 def browser_list_companies(
     request: Request,

@@ -74,3 +74,19 @@ def test_unsupported_task_does_not_start(isolated_database):
         agent_runtime.execute_run(run["id"], "test-user")
 
     assert foundation.list_runs()[0]["status"] == "queued"
+
+
+def test_invalid_reporting_input_is_marked_failed(isolated_database):
+    from app import db
+
+    with db.connect() as connection:
+        connection.execute("UPDATE agents SET enabled = 1 WHERE id = 'reporting'")
+
+    run = foundation.create_run(
+        "reporting", "sales_overview", "test-user", {"unexpected": "value"}
+    )
+    with pytest.raises(ValueError, match="does not accept"):
+        agent_runtime.execute_run(run["id"], "test-user")
+
+    assert foundation.list_runs()[0]["status"] == "failed"
+    assert foundation.list_audit_logs()[0]["event_type"] == "run_failed"

@@ -546,3 +546,9 @@ def list_quotations() -> list[dict[str, Any]]:
                FROM quotations ORDER BY created_at DESC, id DESC"""
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def delete_quotation(quotation_id: str) -> bool:
+    with connect() as connection:
+        cursor = connection.execute("DELETE FROM quotations WHERE id = ?", (quotation_id,))
+        return cursor.rowcount > 0

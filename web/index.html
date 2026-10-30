@@ -609,7 +609,7 @@ loginForm.addEventListener("submit",async event=>{
   }catch(error){loginError.textContent=error.message||"Giriş yapılamadı.";}
 });
 document.getElementById("company-search").addEventListener("input",renderCompanyList);
-["city","district"].forEach(kind=>{const input=document.getElementById("company-filter-"+kind+"-search"),results=document.getElementById("company-filter-"+kind+"-options");input.addEventListener("input",()=>renderCompanyFilterOptions(kind,input.value));input.addEventListener("focus",()=>renderCompanyFilterOptions(kind,input.value));input.addEventListener("keydown",event=>{if(event.key==="Escape"){results.classList.remove("open");input.setAttribute("aria-expanded","false");}});});
+["city","district"].forEach(kind=>{const input=document.getElementById("company-filter-"+kind+"-search"),results=document.getElementById("company-filter-"+kind+"-options");input.addEventListener("input",()=>{const select=document.getElementById("company-filter-"+kind);if(input.value!==select.value){select.value="";if(kind==="city"){document.getElementById("company-filter-district").value="";document.getElementById("company-filter-district-search").value="";updateCompanyDistrictOptions();}renderCompanyList();}renderCompanyFilterOptions(kind,input.value);});input.addEventListener("focus",()=>renderCompanyFilterOptions(kind,input.value));input.addEventListener("keydown",event=>{if(event.key==="Escape"){results.classList.remove("open");input.setAttribute("aria-expanded","false");}});});
 function repeatedValues(selector){return [...document.querySelectorAll(selector)].map(input=>input.value.trim()).filter(Boolean);}
 function resetCompanyForm(){
   document.getElementById("company-form").reset();document.getElementById("company-id").value="";setCompanyLocation("","");
@@ -698,7 +698,6 @@ function filterMeetingCompanyOptions(){
  select.replaceChildren(new Option("Firma seç",""));for(const company of meetingCompanyOptions)select.add(new Option(company.name,company.id));
  if(meetingCompanyOptions.some(company=>String(company.id)===previous))select.value=previous;
  results.replaceChildren();
- if(!query){results.classList.remove("open");search.setAttribute("aria-expanded","false");return;}
  if(!matches.length){const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent="Eşleşen firma bulunamadı.";results.append(empty);}
  for(const company of matches){const button=document.createElement("button");button.type="button";button.className="autocomplete-option";button.textContent=company.name+((company.city||company.district)?" · "+[company.district,company.city].filter(Boolean).join(", "):"");button.addEventListener("click",()=>{select.value=company.id;search.value=company.name;results.classList.remove("open");search.setAttribute("aria-expanded","false");});results.append(button);}
  results.classList.add("open");search.setAttribute("aria-expanded","true");
@@ -708,7 +707,7 @@ async function loadMeetingCompanies(){
  try{const response=await fetch("/api/companies?limit=500",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Firmalar yüklenemedi");meetingCompanyOptions=await response.json();filterMeetingCompanyOptions();}
  catch(error){document.getElementById("meeting-message").textContent=error.message||"Firmalar yüklenemedi.";}
 }
-document.getElementById("meeting-company-search")?.addEventListener("input",filterMeetingCompanyOptions);
+document.getElementById("meeting-company-search")?.addEventListener("input",()=>{const selected=meetingCompanyOptions.find(c=>String(c.id)===document.getElementById("meeting-company").value);if(!selected||document.getElementById("meeting-company-search").value!==selected.name)document.getElementById("meeting-company").value="";filterMeetingCompanyOptions();});
 function addMeetingProductRow(prefill=null,targetId="meeting-product-lines"){
  const container=document.getElementById(targetId);if(!container)return;
  const row=document.createElement("div");row.className="meeting-product-row";
@@ -870,7 +869,6 @@ function filterQuoteCompanyOptions(){
  select.replaceChildren(new Option("Firma seç (isteğe bağlı)",""));for(const company of quoteCompanyOptions)select.add(new Option(company.name,company.id));
  if(quoteCompanyOptions.some(company=>String(company.id)===previous))select.value=previous;
  results.replaceChildren();
- if(!query){results.classList.remove("open");search.setAttribute("aria-expanded","false");return;}
  if(!matches.length){const empty=document.createElement("div");empty.className="autocomplete-option";empty.textContent="Eşleşen firma bulunamadı.";results.append(empty);}
  for(const company of matches){const button=document.createElement("button");button.type="button";button.className="autocomplete-option";button.textContent=company.name+((company.city||company.district)?" · "+[company.district,company.city].filter(Boolean).join(", "):"");button.addEventListener("click",()=>{select.value=company.id;search.value=company.name;results.classList.remove("open");search.setAttribute("aria-expanded","false");});results.append(button);}
  results.classList.add("open");search.setAttribute("aria-expanded","true");
@@ -880,7 +878,7 @@ async function loadQuoteCompanies(){
  try{const response=await fetch("/api/companies?limit=500",{credentials:"same-origin",cache:"no-store"});if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Firmalar yüklenemedi");quoteCompanyOptions=await response.json();filterQuoteCompanyOptions();}
  catch(error){document.getElementById("quote-message").textContent=error.message;}
 }
-document.getElementById("quote-company-search")?.addEventListener("input",filterQuoteCompanyOptions);
+document.getElementById("quote-company-search")?.addEventListener("input",()=>{const selected=quoteCompanyOptions.find(c=>String(c.id)===document.getElementById("quote-company").value);if(!selected||document.getElementById("quote-company-search").value!==selected.name)document.getElementById("quote-company").value="";filterQuoteCompanyOptions();});
 document.getElementById("quote-company-search")?.addEventListener("focus",filterQuoteCompanyOptions);
 document.getElementById("meeting-company-search")?.addEventListener("focus",filterMeetingCompanyOptions);
 document.addEventListener("click",event=>{document.querySelectorAll(".autocomplete-results.open").forEach(list=>{if(!list.parentElement.contains(event.target)){list.classList.remove("open");const input=list.parentElement.querySelector("input");input?.setAttribute("aria-expanded","false");}});});
@@ -917,6 +915,7 @@ function renderProductTypeOptions(query=""){
 const productTypeSearch=document.getElementById("product-type-search");
 productTypeSearch.addEventListener("input",()=>{const selected=productTypeChoices.find(item=>item.value===document.getElementById("product-type").value);if(productTypeSearch.value!==selected?.label)document.getElementById("product-type").value="";renderProductTypeOptions(productTypeSearch.value);});
 productTypeSearch.addEventListener("focus",()=>renderProductTypeOptions(productTypeSearch.value));
+syncProductTypeSearch();
 function syncProductTypeSearch(){const choice=productTypeChoices.find(item=>item.value===document.getElementById("product-type").value);productTypeSearch.value=choice?.label||"";}
 function updateProductTypeFields(){
  const type=document.getElementById("product-type").value,isOption=type==="option";

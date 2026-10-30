@@ -1,4 +1,7 @@
+from io import BytesIO
+
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 
 from app.main import app
 
@@ -153,3 +156,70 @@ def test_quote_numbers_are_sequential_and_currency_is_eur(tmp_path, monkeypatch)
         assert second.json()["quote_number"].endswith(f"{int(first.json()['quote_number'][-4:]) + 1:04d}")
         rejected = client.post("/api/quotes", headers=headers, json={**payload, "currency": "TRY"})
         assert rejected.status_code == 422
+
+
+
+def test_catalog_update_does_not_change_existing_meeting_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post("/api/login", json={"password": "a-secure-test-password-123"}, headers={"Origin": "https://testserver"})
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
+        company = client.post("/api/companies", headers=headers, json={"name": "Snapshot Test"})
+        product = client.post("/api/products", headers=headers, json={
+            "sku": "SNAP-001", "name": "Eski Makine Adı", "currency": "EUR", "unit_price": 22000,
+        })
+        meeting = client.post("/api/meetings", headers=headers, json={
+            "company_id": company.json()["id"], "meeting_date": "2026-10-30T10:00",
+            "topic": "Snapshot", "notes": "Eski fiyat ve isim korunmalı.",
+            "product_lines": [{"product_id": product.json()["id"], "quantity": 1, "unit_price": 21500}],
+        })
+        assert meeting.status_code == 201
+        update = client.put("/api/products/" + product.json()["id"], headers=headers, json={
+            "sku": "SNAP-001-NEW", "name": "Yeni Makine Adı", "currency": "EUR", "unit_price": 25000,
+        })
+        assert update.status_code == 200
+        stored = client.get("/api/meetings").json()[0]["product_lines"][0]
+        assert stored["name"] == "Eski Makine Adı"
+        assert stored["sku"] == "SNAP-001"
+        assert stored["unit_price"] == "21500"
+        edited = client.put("/api/meetings/" + meeting.json()["id"], headers=headers, json={
+            "company_id": company.json()["id"], "meeting_date": "2026-10-30T11:00",
+            "meeting_type": "phone", "topic": "Snapshot düzenlendi", "notes": "Not güncellendi.",
+            "product_lines": [{"product_id": product.json()["id"], "quantity": 1, "unit_price": 21500}],
+        })
+        assert edited.status_code == 200
+        assert edited.json()["product_lines"][0]["name"] == "Eski Makine Adı"
+        assert edited.json()["product_lines"][0]["sku"] == "SNAP-001"
+        assert edited.json()["product_lines"][0]["unit_price"] == "21500"
+
+
+def test_quote_exports_use_template_images_serial_and_matching_pdf(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post("/api/login", json={"password": "a-secure-test-password-123"}, headers={"Origin": "https://testserver"})
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
+        company = client.post("/api/companies", headers=headers, json={"name": "PDF Deneme Ltd"})
+        quote = client.post("/api/quotes", headers=headers, json={
+            "currency": "EUR", "company_id": company.json()["id"],
+            "lines": [{"description": "Şablonlu makine", "quantity": 1, "unit_price": 1000}],
+        })
+        assert quote.status_code == 201
+        quote_number = quote.json()["quote_number"]
+        excel = client.get("/api/quotes/" + quote.json()["id"] + "/excel")
+        assert excel.status_code == 200
+        workbook = load_workbook(BytesIO(excel.content), data_only=False)
+        sheet = workbook["Teklif"]
+        assert sheet["C28"].value == 1
+        assert len(sheet._images) >= 2
+        workbook.close()
+        expected_name = "PDF_Deneme_Ltd_" + quote_number
+        assert expected_name in excel.headers["content-disposition"]
+        pdf = client.get("/api/quotes/" + quote.json()["id"] + "/pdf")
+        preview = client.get("/api/quotes/" + quote.json()["id"] + "/document")
+        download = client.get("/api/quotes/" + quote.json()["id"] + "/pdf?download=true")
+        assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF-")
+        assert preview.status_code == 200 and preview.content.startswith(b"%PDF-")
+        assert download.status_code == 200 and "attachment" in download.headers["content-disposition"]
+        assert expected_name in preview.headers["content-disposition"]

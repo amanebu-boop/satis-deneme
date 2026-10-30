@@ -606,6 +606,15 @@ def browser_list_quotes(request: Request) -> list[dict]:
     ]
 
 
+@app.delete("/api/quotes/{quotation_id}", status_code=204)
+def browser_delete_quote(quotation_id: str, request: Request) -> Response:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    if not db.delete_quotation(quotation_id):
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    return Response(status_code=204)
+
+
 @app.post("/api/quotes", status_code=201)
 def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
     session = _require_browser_session(request)

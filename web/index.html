@@ -627,7 +627,7 @@ function transferMeetingToQuote(meeting){
    row.querySelector(".line-quantity").value=String(Number(line.quantity)||1);
    row.querySelector(".line-price").value=missingPrice?"0":String(Number(line.unit_price)||0);
    const select=row.querySelector(".line-product");
-   if(line.product_id&&[...select.options].some(o=>o.value===line.product_id))select.value=line.product_id;
+   if(line.product_id&&[...select.options].some(o=>o.value===line.product_id)){select.value=line.product_id;row.querySelector(".line-product-search").value=line.name||"";}
  });
  updateLineButtons();updateQuoteTotals();
  document.getElementById("quote-message").textContent="Görüşmedeki ürünler teklif taslağına kopyalandı. Kaydetmeden önce miktarları ve fiyatları kontrol edin.";

@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 from app import db
 from app import session_store
 from app import agent_foundation
+from app import agent_runtime
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
@@ -325,6 +326,20 @@ def browser_review_agent_approval(
         status = 404 if message == "unknown approval" else 409 if (
             message in {"approval is no longer pending", "approval has expired",
                         "approval payload changed; request a new approval"}
+        ) else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/agent-runs/{run_id}/execute")
+def browser_execute_agent_run(run_id: str, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    try:
+        return agent_runtime.execute_run(run_id, str(session["subject"]))
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown run" else 409 if (
+            message in {"agent is disabled", "run is not queued", "unsupported agent task"}
         ) else 422
         raise HTTPException(status_code=status, detail=message) from exc
 

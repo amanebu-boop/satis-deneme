@@ -44,6 +44,9 @@ def test_disabled_agent_run_is_blocked_and_idempotent(isolated_database):
 
 
 def test_approval_is_bound_to_exact_payload_and_can_be_reviewed(isolated_database):
+    from app import db
+    with db.connect() as connection:
+        connection.execute("UPDATE agents SET enabled = 1 WHERE id = 'quotation'")
     run = agents.create_run("quotation", "prepare_draft", "test-user")
     approval = agents.request_approval(
         run["id"], "create_quotation", {"company_id": "company-1"}, "test-user"
@@ -106,6 +109,8 @@ def test_expired_approval_state_is_persisted(isolated_database):
     from datetime import datetime, timedelta, timezone
     from app import db
 
+    with db.connect() as connection:
+        connection.execute("UPDATE agents SET enabled = 1 WHERE id = 'audit'")
     run = agents.create_run("audit", "inspect_records", "test-user")
     approval = agents.request_approval(
         run["id"], "inspect", {"scope": "audit"}, "test-user"

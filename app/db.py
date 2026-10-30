@@ -345,7 +345,8 @@ def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
              record.get("meeting_type", "phone"), record.get("topic", "Genel görüşme")),
         )
         _save_meeting_products(connection, record["id"], record.get("product_lines") or [])
-    return {**record, "product_lines": record.get("product_lines") or []}
+        saved_lines = _meeting_products(connection, record["id"])
+    return {**record, "product_lines": saved_lines}
 
 
 def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | None:

@@ -124,3 +124,11 @@ def test_template_excel_can_be_converted_to_pdf_when_libreoffice_is_installed():
     assert pdf_content.startswith(b"%PDF-")
     reader = PdfReader(BytesIO(pdf_content), strict=True)
     assert len(reader.pages) >= 1
+
+
+def test_pdf_renderer_never_substitutes_a_different_layout_when_libreoffice_is_missing(monkeypatch):
+    monkeypatch.setattr("app.quote_pdf.shutil.which", lambda _name: None)
+    with pytest.raises(HTTPException) as exc:
+        convert_excel_to_pdf(b"template workbook bytes")
+    assert exc.value.status_code == 503
+    assert "LibreOffice" in str(exc.value.detail)

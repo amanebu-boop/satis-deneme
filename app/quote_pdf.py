@@ -22,7 +22,7 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
         import reportlab
@@ -88,6 +88,8 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         styles.add(ParagraphStyle(name="BodyTR", parent=styles["BodyText"], fontName=regular_font, fontSize=8.5, leading=12, textColor=colors.HexColor("#292A2A")))
         styles.add(ParagraphStyle(name="SmallRight", parent=styles["BodyText"], fontName=regular_font, fontSize=8, leading=11, alignment=TA_RIGHT))
         styles.add(ParagraphStyle(name="SectionTR", parent=styles["Heading2"], fontName=bold_font, fontSize=10, leading=13, textColor=colors.HexColor("#292A2A"), spaceBefore=8, spaceAfter=5))
+        styles.add(ParagraphStyle(name="TemplateRow", parent=styles["BodyText"], fontName=regular_font, fontSize=6.2, leading=7.4, textColor=colors.HexColor("#292A2A"), spaceAfter=0))
+        styles.add(ParagraphStyle(name="TemplateSection", parent=styles["Heading3"], fontName=bold_font, fontSize=7.5, leading=8.5, textColor=colors.HexColor("#292A2A"), spaceBefore=2, spaceAfter=1))
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=16*mm, leftMargin=16*mm, topMargin=13*mm, bottomMargin=15*mm, title=f"{company} {quote_number}")
@@ -99,8 +101,11 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
             try:
                 raw = workbook_image._data()
                 image = RLImage(BytesIO(raw))
-                image._restrictSize(52*mm, 22*mm)
                 anchor_row = getattr(getattr(workbook_image, "anchor", None), "_from", None)
+                if anchor_row and getattr(anchor_row, "row", 0) >= 20:
+                    image._restrictSize(30*mm, 12*mm)
+                else:
+                    image._restrictSize(52*mm, 22*mm)
                 if anchor_row and getattr(anchor_row, "row", 0) >= 20:
                     bottom_images.append(image)
                 else:
@@ -153,11 +158,53 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         total_table=Table(totals,colWidths=[125*mm,53*mm],hAlign="RIGHT")
         total_table.setStyle(TableStyle([("ALIGN",(1,0),(1,-1),"RIGHT"),("FONTNAME",(0,2),(-1,2),bold_font),("FONTSIZE",(0,0),(-1,-1),9),("LINEABOVE",(0,2),(-1,2),1,colors.HexColor("#C89B35")),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5),("BACKGROUND",(0,2),(-1,2),colors.HexColor("#F6EFDD"))]))
         story.append(Spacer(1,4*mm));story.append(total_table)
+        # The fallback renderer must retain the template's two-page reading order:
+        # sections 1-6 on page one, then section 7 onward on page two. Locate the
+        # section from workbook content instead of hard-coding a row number.
+        section_seven_row = None
+        for row_index in range(1, sheet.max_row + 1):
+            row_values = [
+                str(sheet.cell(row_index, column_index).value or "").strip()
+                for column_index in range(1, sheet.max_column + 1)
+            ]
+            if any(__import__("re").match(r"^7\s*[.)]", value) for value in row_values):
+                section_seven_row = row_index
+                break
+
+        def append_template_rows(first_row: int, last_row: int) -> None:
+            for row_index in range(first_row, last_row + 1):
+                values = []
+                for column_index in range(1, sheet.max_column + 1):
+                    value = sheet.cell(row_index, column_index).value
+                    if value is None or (isinstance(value, str) and value.startswith("=")):
+                        continue
+                    text_value = str(value).strip()
+                    if text_value and text_value not in values:
+                        values.append(text_value)
+                if not values:
+                    continue
+                row_text = " · ".join(values)
+                if __import__("re").match(r"^[1-9]\s*[.)]", row_text):
+                    story.append(Paragraph(escape(row_text), styles["TemplateSection"]))
+                else:
+                    story.append(Paragraph(escape(row_text), styles["TemplateRow"]))
+
+        if section_seven_row is not None:
+            # Include the remainder of sections 1-6 on page one.
+            append_template_rows(49, section_seven_row - 1)
+            story.append(PageBreak())
+            # Page two begins with the actual section 7 heading from the workbook.
+            append_template_rows(section_seven_row, sheet.max_row)
+        else:
+            # Fail visibly rather than silently claiming the required pagination
+            # when the workbook no longer contains the expected section heading.
+            raise ValueError("Excel şablonunda 7. Garanti ve Kabul bölümü bulunamadı.")
+
         if bottom_images:
-            story.append(Spacer(1,10*mm))
+            story.append(Spacer(1, 5*mm))
             for image in bottom_images[:3]:
                 story.append(image)
-        story.append(Spacer(1,8*mm))
+        story.append(Spacer(1,4*mm))
         story.append(Paragraph("Erşen Makina · Bu teklif kayıtlı teklif verileri ve teklif şablonu esas alınarak oluşturulmuştur.", styles["Subtle"]))
         doc.build(story)
         return buffer.getvalue()

@@ -130,6 +130,22 @@ def test_template_excel_can_be_converted_to_pdf_when_libreoffice_is_installed():
     assert "Deneme Makinesi" in rendered_text
 
 
+def test_pdf_fallback_uses_a4_and_starts_second_page_at_section_seven(monkeypatch):
+    monkeypatch.setattr("app.quote_pdf.shutil.which", lambda _name: None)
+    workbook = quote_excel.render_quote_excel(sample_quote(), sample_company())
+    pdf = convert_excel_to_pdf(workbook)
+    reader = PdfReader(BytesIO(pdf), strict=True)
+
+    assert len(reader.pages) == 2
+    for page in reader.pages:
+        assert abs(float(page.mediabox.width) - 595.2756) < 1.0
+        assert abs(float(page.mediabox.height) - 841.8898) < 1.0
+
+    second_page_text = reader.pages[1].extract_text() or ""
+    assert "7." in second_page_text[:100]
+    assert "GARANTİ" in second_page_text.upper()
+
+
 def test_pdf_renderer_uses_workbook_template_when_libreoffice_is_missing(monkeypatch):
     monkeypatch.setattr("app.quote_pdf.shutil.which", lambda _name: None)
     workbook = quote_excel.render_quote_excel(sample_quote(), sample_company())

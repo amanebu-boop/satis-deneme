@@ -166,36 +166,42 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
 
 
 def convert_excel_to_pdf(excel_content: bytes) -> bytes:
-    """Prefer exact LibreOffice workbook rendering; use a branded workbook-based fallback otherwise."""
+    """Prefer LibreOffice's exact workbook rendering; otherwise render the workbook's own template artwork and values."""
     converter = shutil.which("libreoffice") or shutil.which("soffice")
-    if not converter:
-        return _reportlab_pdf(excel_content)
-    with tempfile.TemporaryDirectory(prefix="quote-pdf-") as temp_dir:
-        workdir = Path(temp_dir)
-        input_path = workdir / "quotation.xlsx"
-        output_path = workdir / "quotation.pdf"
-        profile_path = workdir / "lo-profile"
-        input_path.write_bytes(excel_content)
-        command = [
-            converter, "--headless", f"-env:UserInstallation={profile_path.as_uri()}",
-            "--convert-to", "pdf", "--outdir", str(workdir), str(input_path),
-        ]
-        try:
-            completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=60)
-        except subprocess.TimeoutExpired as exc:
-            raise HTTPException(status_code=504, detail="Excel şablonunun PDF dönüşümü zaman aşımına uğradı.") from exc
-        except OSError as exc:
-            raise HTTPException(status_code=503, detail="PDF dönüştürücüsü başlatılamadı.") from exc
-        if completed.returncode != 0 or not output_path.is_file():
-            return _reportlab_pdf(excel_content)
-        pdf_content = output_path.read_bytes()
-        if not pdf_content.startswith(b"%PDF-"):
-            return _reportlab_pdf(excel_content)
-        try:
-            reader = PdfReader(BytesIO(pdf_content), strict=True)
-            if reader.is_encrypted or not reader.pages:
-                raise ValueError("PDF has no readable pages")
-            _ = len(reader.pages)
-        except Exception:
-            return _reportlab_pdf(excel_content)
+    if converter:
+        with tempfile.TemporaryDirectory(prefix="quote-pdf-") as temp_dir:
+            workdir = Path(temp_dir)
+            input_path = workdir / "quotation.xlsx"
+            output_path = workdir / "quotation.pdf"
+            profile_path = workdir / "lo-profile"
+            input_path.write_bytes(excel_content)
+            command = [
+                converter, "--headless", f"-env:UserInstallation={profile_path.as_uri()}",
+                "--convert-to", "pdf", "--outdir", str(workdir), str(input_path),
+            ]
+            try:
+                completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=60)
+                if completed.returncode == 0 and output_path.is_file():
+                    pdf_content = output_path.read_bytes()
+                    if pdf_content.startswith(b"%PDF-"):
+                        reader = PdfReader(BytesIO(pdf_content), strict=True)
+                        if not reader.is_encrypted and len(reader.pages):
+                            return pdf_content
+            except (subprocess.TimeoutExpired, OSError, Exception):
+                # Use the workbook-backed renderer below if the system converter fails.
+                pass
+    try:
+        # This renderer reads the filled Erşen Makina workbook, including its embedded
+        # logo/signature artwork and customer/quote cells; it does not create a generic report.
+        pdf_content = _reportlab_pdf(excel_content)
+        reader = PdfReader(BytesIO(pdf_content), strict=True)
+        if reader.is_encrypted or not reader.pages:
+            raise ValueError("PDF has no readable pages")
         return pdf_content
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Erşen Makina teklif şablonundan PDF üretilemedi. Excel teklif dosyası indirilebilir.",
+        ) from exc

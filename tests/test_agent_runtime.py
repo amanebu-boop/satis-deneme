@@ -142,3 +142,65 @@ def test_completed_run_cannot_execute_twice(isolated_database):
     with pytest.raises(ValueError, match="not queued"):
         agent_runtime.execute_run(run["id"], "test-user")
     assert foundation.list_runs()[0]["status"] == "succeeded"
+
+
+def test_prepare_quotation_from_meeting_returns_preview_without_creating_quote(isolated_database):
+    from app import db
+    _enable("quotation")
+    with db.connect() as connection:
+        connection.execute("INSERT INTO companies (id, name) VALUES ('c1', 'Firma A')")
+        connection.execute("INSERT INTO meetings (id, company_id, meeting_date, notes) VALUES ('m1', 'c1', '2026-10-31', 'private note')")
+        connection.execute("INSERT INTO products (id, sku, name, currency, unit_price) VALUES ('p1', 'SKU1', 'Makine', 'EUR', '100')")
+        connection.executemany(
+            """INSERT INTO meeting_products
+               (id, meeting_id, product_id, sku, name, quantity, unit_price, currency)
+               VALUES (?, 'm1', ?, ?, ?, ?, ?, 'EUR')""",
+            [("mp1", "p1", "SKU1", "Makine", "1", "100"),
+             ("mp2", "p1", "SKU1", "Makine", "2", "100")],
+        )
+    run = foundation.create_run("quotation", "prepare_from_meeting", "test-user", {"meeting_id": "m1"})
+    output = agent_runtime.execute_run(run["id"], "test-user")["output"]
+    assert output["company_id"] == "c1"
+    assert output["line_count"] == 2
+    assert output["subtotal"] == "300"
+    assert output["discount"] == "none"
+    assert output["lines"][0]["quantity"] == 1
+    assert "private note" not in str(output)
+    assert db.list_quotations() == []
+
+
+def test_prepare_quotation_from_meeting_rejects_missing_price(isolated_database):
+    from app import db
+    _enable("quotation")
+    with db.connect() as connection:
+        connection.execute("INSERT INTO companies (id, name) VALUES ('c1', 'Firma A')")
+        connection.execute("INSERT INTO meetings (id, company_id, meeting_date, notes) VALUES ('m1', 'c1', '2026-10-31', 'note')")
+        connection.execute(
+            """INSERT INTO meeting_products
+               (id, meeting_id, name, quantity, unit_price, currency)
+               VALUES ('mp1', 'm1', 'Makine', '1', '', 'EUR')"""
+        )
+    run = foundation.create_run("quotation", "prepare_from_meeting", "test-user", {"meeting_id": "m1"})
+    with pytest.raises(ValueError, match="tam sayı değil"):
+        agent_runtime.execute_run(run["id"], "test-user")
+    assert db.list_quotations() == []
+
+
+def test_successful_preview_can_be_submitted_for_hash_bound_approval(isolated_database):
+    from app import db
+    _enable("quotation")
+    with db.connect() as connection:
+        connection.execute("INSERT INTO companies (id, name) VALUES ('c1', 'Firma A')")
+        connection.execute("INSERT INTO meetings (id, company_id, meeting_date, notes) VALUES ('m1', 'c1', '2026-10-31', 'note')")
+        connection.execute(
+            """INSERT INTO meeting_products
+               (id, meeting_id, name, quantity, unit_price, currency)
+               VALUES ('mp1', 'm1', 'Makine', '1', '100', 'EUR')"""
+        )
+    run = foundation.create_run("quotation", "prepare_from_meeting", "test-user", {"meeting_id": "m1"})
+    preview = agent_runtime.execute_run(run["id"], "test-user")["output"]
+    approval = foundation.request_approval(run["id"], "quotation.create_from_meeting", preview, "test-user")
+    reviewed = foundation.review_approval(approval["id"], "approved", "test-user", preview)
+    assert reviewed["status"] == "approved"
+    assert foundation.list_approvals()[0]["payload"] == preview
+    assert foundation.list_runs()[0]["status"] == "pending_approval"

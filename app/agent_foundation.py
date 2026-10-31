@@ -327,12 +327,6 @@ def review_approval(
         candidate = stored_payload if current_payload is None else current_payload
         digest = sha256(_json(candidate).encode("utf-8")).hexdigest()
         if digest != row["payload_sha256"]:
-            connection.execute("UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,))
-            connection.execute(
-                "UPDATE agent_runs SET status = 'cancelled', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
-                (now.isoformat(timespec="seconds"), row["run_id"]),
-            )
-            connection.commit()
             raise ValueError("approval payload changed; request a new approval")
         connection.execute(
             """UPDATE agent_approvals
@@ -385,7 +379,7 @@ def list_runs(limit: int = 100) -> list[dict[str, Any]]:
                ORDER BY r.created_at DESC, r.rowid DESC LIMIT ?""",
             (limit,),
         ).fetchall()
-    return [{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows]
+    return [dict(row) for row in rows]
 
 
 def list_approvals(limit: int = 100) -> list[dict[str, Any]]:

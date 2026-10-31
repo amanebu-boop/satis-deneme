@@ -119,6 +119,12 @@ def init_agent_foundation() -> None:
                 ON agent_approvals(status, expires_at);
             CREATE INDEX IF NOT EXISTS idx_agent_audit_created
                 ON agent_audit_logs(created_at);
+            CREATE TABLE IF NOT EXISTS agent_approval_actions (
+                approval_id TEXT PRIMARY KEY REFERENCES agent_approvals(id),
+                action_type TEXT NOT NULL,
+                quotation_id TEXT NOT NULL UNIQUE,
+                executed_at TEXT NOT NULL
+            );
             """
         )
         now = _now()
@@ -259,10 +265,13 @@ def request_approval(
     now = datetime.now(timezone.utc)
     approval_id = str(uuid4())
     with db.connect() as connection:
-        run = connection.execute("SELECT id, agent_id, status FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
+        run = connection.execute("SELECT id, agent_id, task_type, status FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
         if run is None:
             raise ValueError("unknown run")
-        if run["status"] not in {"queued", "running", "pending_approval"}:
+        if run["status"] not in {"queued", "running", "pending_approval"} and not (
+            run["status"] == "succeeded" and run["agent_id"] == "quotation"
+            and run["task_type"] == "prepare_from_meeting"
+        ):
             raise ValueError("run is not eligible for approval")
         connection.execute(
             """INSERT INTO agent_approvals
@@ -308,6 +317,10 @@ def review_approval(
             connection.execute(
                 "UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,)
             )
+            connection.execute(
+                "UPDATE agent_runs SET status = 'cancelled', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+                (now.isoformat(timespec="seconds"), row["run_id"]),
+            )
             connection.commit()
             raise ValueError("approval has expired")
         stored_payload = json.loads(row["payload_json"])
@@ -323,6 +336,11 @@ def review_approval(
         run = connection.execute(
             "SELECT agent_id FROM agent_runs WHERE id = ?", (row["run_id"],)
         ).fetchone()
+        if decision == "rejected":
+            connection.execute(
+                "UPDATE agent_runs SET status = 'cancelled', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+                (now.isoformat(timespec="seconds"), row["run_id"]),
+            )
         _audit(
             connection, "approval_" + decision, actor=reviewed_by,
             agent_id=run["agent_id"] if run else None, run_id=row["run_id"],
@@ -370,7 +388,7 @@ def list_approvals(limit: int = 100) -> list[dict[str, Any]]:
     with db.connect() as connection:
         rows = connection.execute(
             """SELECT p.id, p.run_id, r.agent_id, a.name AS agent_name,
-                      p.action_type, p.status, p.requested_by, p.reviewed_by,
+                      p.action_type, p.payload_json, p.payload_sha256, p.status, p.requested_by, p.reviewed_by,
                       p.created_at, p.expires_at, p.reviewed_at
                FROM agent_approvals p
                JOIN agent_runs r ON r.id = p.run_id
@@ -378,4 +396,4 @@ def list_approvals(limit: int = 100) -> list[dict[str, Any]]:
                ORDER BY p.created_at DESC, p.rowid DESC LIMIT ?""",
             (limit,),
         ).fetchall()
-    return [dict(row) for row in rows]
+    return [{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows]

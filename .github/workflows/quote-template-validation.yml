@@ -2,7 +2,7 @@ name: Quote template validation
 
 on:
   push:
-    branches: [feature/quote-template-file, feature/company-address-meeting-products, feature/agent-runtime-readonly, feature/agent-controls, feature/report-readable-output, feature/agent-workflows-bundle]
+    branches: [feature/quote-template-file, feature/company-address-meeting-products, feature/agent-runtime-readonly, feature/agent-controls, feature/report-readable-output, feature/agent-workflows-bundle, feature/meeting-to-quotation-approval]
   pull_request:
     branches: [main]
 

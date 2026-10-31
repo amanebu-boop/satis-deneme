@@ -267,9 +267,9 @@ def browser_set_agent_status(
 ) -> dict:
     session = _require_browser_session(request)
     _require_csrf(request, session)
-    # Initial rollout deliberately exposes control for reporting only.
-    if agent_id != "reporting":
-        raise HTTPException(status_code=403, detail="This agent is not enabled for manual control")
+    # Only agents with implemented, read-only workflows can be enabled in this rollout.
+    if agent_id not in {"company", "product", "meeting", "quotation", "reporting"}:
+        raise HTTPException(status_code=403, detail="This agent is not available for activation")
     try:
         return agent_foundation.set_agent_enabled(
             agent_id, payload.enabled, str(session["subject"])

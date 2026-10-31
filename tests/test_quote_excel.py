@@ -130,9 +130,14 @@ def test_template_excel_can_be_converted_to_pdf_when_libreoffice_is_installed():
     assert "Deneme Makinesi" in rendered_text
 
 
-def test_pdf_renderer_never_substitutes_a_different_layout_when_libreoffice_is_missing(monkeypatch):
+def test_pdf_renderer_uses_workbook_template_when_libreoffice_is_missing(monkeypatch):
     monkeypatch.setattr("app.quote_pdf.shutil.which", lambda _name: None)
-    with pytest.raises(HTTPException) as exc:
-        convert_excel_to_pdf(b"template workbook bytes")
-    assert exc.value.status_code == 503
-    assert "LibreOffice" in str(exc.value.detail)
+    workbook = quote_excel.render_quote_excel(sample_quote(), sample_company())
+    pdf = convert_excel_to_pdf(workbook)
+    reader = PdfReader(BytesIO(pdf), strict=True)
+    assert len(reader.pages) >= 1
+    text = "\\n".join(page.extract_text() or "" for page in reader.pages)
+    assert "ERS-12345678" in text
+    assert "Örnek Sanayi A.Ş." in text
+    assert "Deneme Makinesi" in text
+    assert pdf.startswith(b"%PDF-")

@@ -6,7 +6,7 @@ def test_meeting_and_follow_up_use_in_app_date_popovers():
 
     assert 'id="meeting-date-display"' in html
     assert 'id="follow-up-date-display"' in html
-    assert 'id="meeting-date-calendar"' in html
-    assert 'id="follow-up-date-calendar"' in html
+    assert 'aria-controls="meeting-date-calendar"' in html
+    assert 'aria-controls="follow-up-date-calendar"' in html
     assert "Uygula" in html
     assert "new Intl.DateTimeFormat(\"tr-TR\"" in html

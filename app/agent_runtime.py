@@ -120,12 +120,57 @@ def _quotation_pipeline_overview(input_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+def _prepare_quotation_from_meeting(input_data: dict[str, Any]) -> dict[str, Any]:
+    meeting_id = input_data.get("meeting_id")
+    if set(input_data) != {"meeting_id"} or not isinstance(meeting_id, str) or not meeting_id.strip():
+        raise ValueError("prepare_from_meeting requires only a valid meeting_id")
+    with db.connect() as connection:
+        meeting = connection.execute(
+            """SELECT m.id, m.company_id, c.name AS company_name
+               FROM meetings m JOIN companies c ON c.id = m.company_id WHERE m.id = ?""",
+            (meeting_id.strip(),),
+        ).fetchone()
+        if meeting is None:
+            raise ValueError("Görüşme veya bağlı firma bulunamadı")
+        rows = connection.execute(
+            """SELECT id, product_id, sku, name, quantity, unit_price, currency
+               FROM meeting_products WHERE meeting_id = ? ORDER BY rowid""",
+            (meeting_id.strip(),),
+        ).fetchall()
+    if not rows:
+        raise ValueError("Görüşmede teklif taslağına aktarılacak ürün bulunmuyor")
+    currencies = {str(row["currency"] or "").strip() for row in rows}
+    if len(currencies) != 1 or "" in currencies:
+        raise ValueError("Görüşme ürünlerinin para birimleri aynı ve tanımlı olmalıdır")
+    currency = next(iter(currencies))
+    if currency != "EUR":
+        raise ValueError("Mevcut teklif altyapısı yalnızca EUR para birimini destekliyor")
+    lines = []
+    for index, row in enumerate(rows, start=1):
+        try:
+            quantity_text, price_text = str(row["quantity"]).strip(), str(row["unit_price"]).strip()
+            quantity, unit_price = int(quantity_text), int(price_text)
+        except (TypeError, ValueError):
+            raise ValueError(f"{index}. ürün satırında miktar veya birim fiyat tam sayı değil")
+        if str(quantity) != quantity_text or str(unit_price) != price_text or quantity < 1 or unit_price < 0:
+            raise ValueError(f"{index}. ürün satırında miktar en az 1, fiyat sıfır veya üzeri tam sayı olmalıdır")
+        lines.append({"description": str(row["name"]).strip(), "quantity": quantity, "unit_price": unit_price,
+                      "meeting_product_id": row["id"], "product_id": row["product_id"], "sku": row["sku"]})
+    return {"report": "quotation_prepare_from_meeting", "scope": "draft_preview_only",
+            "meeting_id": meeting["id"], "company_id": meeting["company_id"], "company_name": meeting["company_name"],
+            "currency": currency, "lines": lines, "line_count": len(lines),
+            "subtotal": str(sum(line["quantity"] * line["unit_price"] for line in lines)),
+            "discount": "none", "tax_rate": "0.20", "action": "quotation.create_from_meeting"}
+
+
 HANDLERS = {
     ("reporting", "sales_overview"): _sales_overview,
     ("company", "directory_overview"): _company_directory_overview,
     ("product", "catalog_overview"): _product_catalog_overview,
     ("meeting", "activity_overview"): _meeting_activity_overview,
     ("quotation", "pipeline_overview"): _quotation_pipeline_overview,
+    ("quotation", "prepare_from_meeting"): _prepare_quotation_from_meeting,
 }
 
 

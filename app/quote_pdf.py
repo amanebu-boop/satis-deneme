@@ -88,6 +88,8 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         styles.add(ParagraphStyle(name="BodyTR", parent=styles["BodyText"], fontName=regular_font, fontSize=8.5, leading=12, textColor=colors.HexColor("#292A2A")))
         styles.add(ParagraphStyle(name="SmallRight", parent=styles["BodyText"], fontName=regular_font, fontSize=8, leading=11, alignment=TA_RIGHT))
         styles.add(ParagraphStyle(name="SectionTR", parent=styles["Heading2"], fontName=bold_font, fontSize=10, leading=13, textColor=colors.HexColor("#292A2A"), spaceBefore=8, spaceAfter=5))
+        styles.add(ParagraphStyle(name="TemplateRow", parent=styles["BodyText"], fontName=regular_font, fontSize=6.2, leading=7.4, textColor=colors.HexColor("#292A2A"), spaceAfter=0))
+        styles.add(ParagraphStyle(name="TemplateSection", parent=styles["Heading3"], fontName=bold_font, fontSize=7.5, leading=8.5, textColor=colors.HexColor("#292A2A"), spaceBefore=2, spaceAfter=1))
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=16*mm, leftMargin=16*mm, topMargin=13*mm, bottomMargin=15*mm, title=f"{company} {quote_number}")
@@ -99,8 +101,11 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
             try:
                 raw = workbook_image._data()
                 image = RLImage(BytesIO(raw))
-                image._restrictSize(52*mm, 22*mm)
                 anchor_row = getattr(getattr(workbook_image, "anchor", None), "_from", None)
+                if anchor_row and getattr(anchor_row, "row", 0) >= 20:
+                    image._restrictSize(30*mm, 12*mm)
+                else:
+                    image._restrictSize(52*mm, 22*mm)
                 if anchor_row and getattr(anchor_row, "row", 0) >= 20:
                     bottom_images.append(image)
                 else:
@@ -180,10 +185,9 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
                     continue
                 row_text = " · ".join(values)
                 if __import__("re").match(r"^[1-9]\s*[.)]", row_text):
-                    story.append(Paragraph(escape(row_text), styles["SectionTR"]))
+                    story.append(Paragraph(escape(row_text), styles["TemplateSection"]))
                 else:
-                    story.append(Paragraph(escape(row_text), styles["BodyTR"]))
-                    story.append(Spacer(1, 1.2*mm))
+                    story.append(Paragraph(escape(row_text), styles["TemplateRow"]))
 
         if section_seven_row is not None:
             # Include the remainder of sections 1-6 on page one.

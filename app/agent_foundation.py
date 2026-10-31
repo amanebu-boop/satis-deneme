@@ -402,4 +402,4 @@ def list_approvals(limit: int = 100) -> list[dict[str, Any]]:
                ORDER BY p.created_at DESC, p.rowid DESC LIMIT ?""",
             (limit,),
         ).fetchall()
-    return [dict(row) for row in rows]
+    return [{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows]

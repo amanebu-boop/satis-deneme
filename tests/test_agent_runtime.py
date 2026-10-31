@@ -204,3 +204,12 @@ def test_successful_preview_can_be_submitted_for_hash_bound_approval(isolated_da
     assert reviewed["status"] == "approved"
     assert foundation.list_approvals()[0]["payload"] == preview
     assert foundation.list_runs()[0]["status"] == "pending_approval"
+
+
+
+def test_succeeded_non_quotation_run_cannot_request_approval(isolated_database):
+    _enable("reporting")
+    run = foundation.create_run("reporting", "sales_overview", "test-user")
+    agent_runtime.execute_run(run["id"], "test-user")
+    with pytest.raises(ValueError, match="not eligible"):
+        foundation.request_approval(run["id"], "arbitrary.action", {}, "test-user")

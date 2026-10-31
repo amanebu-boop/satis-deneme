@@ -402,6 +402,10 @@ def browser_execute_approved_action(approval_id: str, request: Request) -> dict:
             raise HTTPException(status_code=409, detail="İşlem için önce onay verilmelidir")
         if now >= datetime.fromisoformat(approval["expires_at"]):
             connection.execute("UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,))
+            connection.execute(
+                "UPDATE agent_runs SET status = 'cancelled', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+                (now.isoformat(timespec="seconds"), approval["run_id"]),
+            )
             connection.commit()
             raise HTTPException(status_code=409, detail="Onay süresi dolmuş")
         if approval["action_type"] != "quotation.create_from_meeting" or approval["agent_id"] != "quotation":

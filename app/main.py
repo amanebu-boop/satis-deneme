@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from io import BytesIO
 from decimal import Decimal
 import hmac
+import hashlib
 import logging
 import os
 import re
@@ -351,6 +352,124 @@ def browser_review_agent_approval(
                         "approval payload changed; request a new approval"}
         ) else 422
         raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/meetings/{meeting_id}/quotation-draft", status_code=201)
+def browser_prepare_meeting_quotation(meeting_id: str, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    try:
+        run = agent_foundation.create_run(
+            "quotation", "prepare_from_meeting", str(session["subject"]),
+            {"meeting_id": meeting_id}, str(uuid4()),
+        )
+        result = agent_runtime.execute_run(run["id"], str(session["subject"]))
+        preview = result["output"]
+        approval = agent_foundation.request_approval(
+            run["id"], "quotation.create_from_meeting", preview,
+            str(session["subject"]), 900,
+        )
+        return {"run_id": run["id"], "approval_id": approval["id"], "preview": preview,
+                "approval_status": approval["status"], "expires_at": approval["expires_at"]}
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message in {"unknown agent", "unknown run"} else 409 if (
+            message in {"agent is disabled", "run is not queued", "unsupported agent task"}
+        ) else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/agent-approvals/{approval_id}/execute")
+def browser_execute_approved_action(approval_id: str, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    now = datetime.now(timezone.utc)
+    with db.connect() as connection:
+        approval = connection.execute(
+            """SELECT p.*, r.agent_id, r.id AS run_id
+               FROM agent_approvals p JOIN agent_runs r ON r.id = p.run_id
+               WHERE p.id = ?""", (approval_id,)
+        ).fetchone()
+        if approval is None:
+            raise HTTPException(status_code=404, detail="Onay kaydı bulunamadı")
+        existing = connection.execute(
+            "SELECT quotation_id FROM agent_approval_actions WHERE approval_id = ?",
+            (approval_id,),
+        ).fetchone()
+        if existing is not None:
+            return {"status": "already_executed", "quotation_id": existing["quotation_id"]}
+        if approval["status"] != "approved":
+            raise HTTPException(status_code=409, detail="İşlem için önce onay verilmelidir")
+        if now >= datetime.fromisoformat(approval["expires_at"]):
+            connection.execute("UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,))
+            raise HTTPException(status_code=409, detail="Onay süresi dolmuş")
+        if approval["action_type"] != "quotation.create_from_meeting" or approval["agent_id"] != "quotation":
+            raise HTTPException(status_code=403, detail="Bu işlem türü desteklenmiyor")
+        stored_payload = __import__("json").loads(approval["payload_json"])
+        if stored_payload.get("action") != "quotation.create_from_meeting":
+            raise HTTPException(status_code=422, detail="Onay içeriği geçersiz")
+    try:
+        current_payload = agent_runtime._prepare_quotation_from_meeting(
+            {"meeting_id": stored_payload["meeting_id"]}
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=f"Görüşme değişmiş veya teklif hazırlanamıyor: {exc}") from exc
+    digest = hashlib.sha256(agent_foundation._json(current_payload).encode("utf-8")).hexdigest()
+    if digest != approval["payload_sha256"]:
+        raise HTTPException(status_code=409, detail="Görüşme veya ürün bilgileri değişti; yeni onay talebi oluşturun")
+    quote_lines = [
+        QuoteLine(description=line["description"], quantity=line["quantity"], unit_price=line["unit_price"])
+        for line in current_payload["lines"]
+    ]
+    calculated = calculate_quote(quote_lines, current_payload["currency"])
+    quotation_id = str(uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+    with db.connect() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        already = connection.execute(
+            "SELECT quotation_id FROM agent_approval_actions WHERE approval_id = ?", (approval_id,)
+        ).fetchone()
+        if already:
+            return {"status": "already_executed", "quotation_id": already["quotation_id"]}
+        year = int(created_at[:4])
+        sequence = connection.execute(
+            "SELECT last_number FROM quote_sequences WHERE quote_year = ?", (year,)
+        ).fetchone()
+        next_number = int(sequence["last_number"]) + 1 if sequence else 1
+        connection.execute(
+            """INSERT INTO quote_sequences (quote_year, last_number) VALUES (?, ?)
+               ON CONFLICT(quote_year) DO UPDATE SET last_number = excluded.last_number""",
+            (year, next_number),
+        )
+        quote_number = f"ERS-{year}-{next_number:04d}"
+        connection.execute(
+            """INSERT INTO quotations
+               (id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, 'draft', ?)""",
+            (quotation_id, quote_number, current_payload["company_id"], calculated["currency"],
+             calculated["subtotal"], calculated["tax_rate"], calculated["tax_amount"], calculated["total"], created_at),
+        )
+        for line in calculated["lines"]:
+            connection.execute(
+                """INSERT INTO quotation_lines
+                   (id, quotation_id, description, quantity, unit_price, line_total)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (str(uuid4()), quotation_id, line["description"], line["quantity"], line["unit_price"], line["line_total"]),
+            )
+        connection.execute(
+            """INSERT INTO agent_approval_actions (approval_id, action_type, quotation_id, executed_at)
+               VALUES (?, ?, ?, ?)""",
+            (approval_id, approval["action_type"], quotation_id, created_at),
+        )
+        agent_foundation._audit(
+            connection, "approved_quotation_created", actor=str(session["subject"]),
+            agent_id="quotation", run_id=approval["run_id"],
+            details={"approval_id": approval_id, "quotation_id": quotation_id,
+                     "quote_number": quote_number, "line_count": len(quote_lines)},
+        )
+    return {"status": "executed", "quotation_id": quotation_id, "quote_number": quote_number,
+            "company_id": current_payload["company_id"], "line_count": len(quote_lines),
+            "currency": calculated["currency"], "total": calculated["total"]}
 
 
 @app.post("/api/agent-runs/{run_id}/execute")

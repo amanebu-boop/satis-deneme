@@ -124,6 +124,10 @@ def test_template_excel_can_be_converted_to_pdf_when_libreoffice_is_installed():
     assert pdf_content.startswith(b"%PDF-")
     reader = PdfReader(BytesIO(pdf_content), strict=True)
     assert len(reader.pages) >= 1
+    rendered_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    assert "ERS-12345678" in rendered_text
+    assert "Örnek Sanayi A.Ş." in rendered_text
+    assert "Deneme Makinesi" in rendered_text
 
 
 def test_pdf_renderer_never_substitutes_a_different_layout_when_libreoffice_is_missing(monkeypatch):

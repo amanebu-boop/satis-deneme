@@ -228,11 +228,12 @@ def test_quote_exports_use_template_images_serial_and_matching_pdf(tmp_path, mon
 
 
 
-def test_pdf_generation_refuses_different_layout_when_template_converter_missing(tmp_path, monkeypatch):
+def test_pdf_generation_uses_quote_template_when_converter_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
     from app import quote_pdf
     from app.quote_excel import render_quote_excel
-    from fastapi import HTTPException
+    from io import BytesIO
+    from pypdf import PdfReader
 
     company = {"name": "PDF Template Test", "address": "Kayseri"}
     quote = {
@@ -242,10 +243,13 @@ def test_pdf_generation_refuses_different_layout_when_template_converter_missing
     }
     xlsx = render_quote_excel(quote, company)
     monkeypatch.setattr(quote_pdf.shutil, "which", lambda _name: None)
-    with pytest.raises(HTTPException) as exc:
-        quote_pdf.convert_excel_to_pdf(xlsx)
-    assert exc.value.status_code == 503
-    assert "LibreOffice" in str(exc.value.detail)
+    pdf = quote_pdf.convert_excel_to_pdf(xlsx)
+    reader = PdfReader(BytesIO(pdf), strict=True)
+    assert len(reader.pages) >= 1
+    rendered_text = "\\n".join(page.extract_text() or "" for page in reader.pages)
+    assert "ERS-2026-9999" in rendered_text
+    assert "PDF Template Test" in rendered_text
+    assert "Test Makinesi" in rendered_text
 
 
 def test_profile_qr_endpoint_returns_local_png(tmp_path, monkeypatch):

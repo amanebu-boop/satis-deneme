@@ -265,10 +265,13 @@ def request_approval(
     now = datetime.now(timezone.utc)
     approval_id = str(uuid4())
     with db.connect() as connection:
-        run = connection.execute("SELECT id, agent_id, status FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
+        run = connection.execute("SELECT id, agent_id, task_type, status FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
         if run is None:
             raise ValueError("unknown run")
-        if run["status"] not in {"queued", "running", "pending_approval", "succeeded"}:
+        if run["status"] not in {"queued", "running", "pending_approval"} and not (
+            run["status"] == "succeeded" and run["agent_id"] == "quotation"
+            and run["task_type"] == "prepare_from_meeting"
+        ):
             raise ValueError("run is not eligible for approval")
         connection.execute(
             """INSERT INTO agent_approvals

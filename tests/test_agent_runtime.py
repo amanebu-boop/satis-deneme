@@ -62,7 +62,7 @@ def test_company_directory_overview_reads_real_company_and_contact_tables(isolat
         connection.executemany("INSERT INTO companies (id, name) VALUES (?, ?)", [("c1", "A"), ("c2", "B")])
         connection.execute("INSERT INTO contacts (id, company_id, name) VALUES ('ct1', 'c1', 'Person')")
         connection.execute("INSERT INTO meetings (id, company_id, meeting_date, notes) VALUES ('m1', 'c1', '2026-10-30', 'note')")
-        connection.execute("INSERT INTO follow_up_tasks (id, company_id, title, due_date) VALUES ('f1', 'c2', 'Call', '2026-11-01')")
+        connection.execute("INSERT INTO follow_up_tasks (id, company_id, title, due_date, created_at) VALUES ('f1', 'c2', 'Call', '2026-11-01', '2026-10-31')")
     run = foundation.create_run("company", "directory_overview", "test-user")
     output = agent_runtime.execute_run(run["id"], "test-user")["output"]
     assert output == {

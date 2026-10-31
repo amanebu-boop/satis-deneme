@@ -402,6 +402,7 @@ def browser_execute_approved_action(approval_id: str, request: Request) -> dict:
             raise HTTPException(status_code=409, detail="İşlem için önce onay verilmelidir")
         if now >= datetime.fromisoformat(approval["expires_at"]):
             connection.execute("UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,))
+            connection.commit()
             raise HTTPException(status_code=409, detail="Onay süresi dolmuş")
         if approval["action_type"] != "quotation.create_from_meeting" or approval["agent_id"] != "quotation":
             raise HTTPException(status_code=403, detail="Bu işlem türü desteklenmiyor")
@@ -460,6 +461,10 @@ def browser_execute_approved_action(approval_id: str, request: Request) -> dict:
             """INSERT INTO agent_approval_actions (approval_id, action_type, quotation_id, executed_at)
                VALUES (?, ?, ?, ?)""",
             (approval_id, approval["action_type"], quotation_id, created_at),
+        )
+        connection.execute(
+            "UPDATE agent_runs SET status = 'succeeded', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+            (created_at, approval["run_id"]),
         )
         agent_foundation._audit(
             connection, "approved_quotation_created", actor=str(session["subject"]),

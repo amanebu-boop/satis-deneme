@@ -122,7 +122,7 @@ def init_agent_foundation() -> None:
             CREATE TABLE IF NOT EXISTS agent_approval_actions (
                 approval_id TEXT PRIMARY KEY REFERENCES agent_approvals(id),
                 action_type TEXT NOT NULL,
-                quotation_id TEXT NOT NULL UNIQUE REFERENCES quotations(id),
+                quotation_id TEXT NOT NULL UNIQUE,
                 executed_at TEXT NOT NULL
             );
             """

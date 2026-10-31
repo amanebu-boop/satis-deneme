@@ -166,10 +166,13 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
 
 
 def convert_excel_to_pdf(excel_content: bytes) -> bytes:
-    """Prefer exact LibreOffice workbook rendering; use a branded workbook-based fallback otherwise."""
+    """Render the populated Erşen Makina workbook itself; never substitute a different PDF layout."""
     converter = shutil.which("libreoffice") or shutil.which("soffice")
     if not converter:
-        return _reportlab_pdf(excel_content)
+        raise HTTPException(
+            status_code=503,
+            detail="Erşen Makina Excel şablonunu PDF'e dönüştürmek için LibreOffice sunucuda bulunamadı.",
+        )
     with tempfile.TemporaryDirectory(prefix="quote-pdf-") as temp_dir:
         workdir = Path(temp_dir)
         input_path = workdir / "quotation.xlsx"
@@ -183,19 +186,19 @@ def convert_excel_to_pdf(excel_content: bytes) -> bytes:
         try:
             completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=60)
         except subprocess.TimeoutExpired as exc:
-            raise HTTPException(status_code=504, detail="Excel şablonunun PDF dönüşümü zaman aşımına uğradı.") from exc
+            raise HTTPException(status_code=504, detail="Erşen Makina teklif şablonunun PDF dönüşümü zaman aşımına uğradı.") from exc
         except OSError as exc:
-            raise HTTPException(status_code=503, detail="PDF dönüştürücüsü başlatılamadı.") from exc
+            raise HTTPException(status_code=503, detail="Erşen Makina teklif şablonu PDF dönüştürücüsü başlatılamadı.") from exc
         if completed.returncode != 0 or not output_path.is_file():
-            return _reportlab_pdf(excel_content)
+            raise HTTPException(status_code=503, detail="Erşen Makina teklif şablonu PDF'e dönüştürülemedi; farklı tasarımlı PDF üretilmedi.")
         pdf_content = output_path.read_bytes()
         if not pdf_content.startswith(b"%PDF-"):
-            return _reportlab_pdf(excel_content)
+            raise HTTPException(status_code=503, detail="Teklif şablonundan geçerli PDF çıktısı alınamadı.")
         try:
             reader = PdfReader(BytesIO(pdf_content), strict=True)
             if reader.is_encrypted or not reader.pages:
                 raise ValueError("PDF has no readable pages")
             _ = len(reader.pages)
-        except Exception:
-            return _reportlab_pdf(excel_content)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="Teklif şablonundan okunabilir PDF çıktısı alınamadı.") from exc
         return pdf_content

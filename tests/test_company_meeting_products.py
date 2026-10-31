@@ -1,5 +1,7 @@
 from io import BytesIO
 
+import pytest
+
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
@@ -226,27 +228,24 @@ def test_quote_exports_use_template_images_serial_and_matching_pdf(tmp_path, mon
 
 
 
-def test_reportlab_pdf_fallback_keeps_template_artwork(tmp_path, monkeypatch):
+def test_pdf_generation_refuses_different_layout_when_template_converter_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
-    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
     from app import quote_pdf
     from app.quote_excel import render_quote_excel
-    from pypdf import PdfReader
+    from fastapi import HTTPException
 
-    company = {"name": "PDF Fallback Test", "address": "X Mah. Y Sok. No: 1 Kayseri"}
+    company = {"name": "PDF Template Test", "address": "Kayseri"}
     quote = {
-        "id": "fallback-test", "quote_number": "ERS-2026-9999",
+        "id": "template-test", "quote_number": "ERS-2026-9999",
         "currency": "EUR", "created_at": "2026-10-30T00:00:00+00:00",
         "lines": [{"description": "Test Makinesi", "quantity": "1", "unit_price": "12000"}],
     }
     xlsx = render_quote_excel(quote, company)
     monkeypatch.setattr(quote_pdf.shutil, "which", lambda _name: None)
-    pdf = quote_pdf.convert_excel_to_pdf(xlsx)
-    reader = PdfReader(BytesIO(pdf))
-    assert reader.pages
-    assert "PDF Fallback Test" in (reader.pages[0].extract_text() or "")
-    assert len(reader.pages[0].images) >= 2
-
+    with pytest.raises(HTTPException) as exc:
+        quote_pdf.convert_excel_to_pdf(xlsx)
+    assert exc.value.status_code == 503
+    assert "LibreOffice" in str(exc.value.detail)
 
 
 def test_profile_qr_endpoint_returns_local_png(tmp_path, monkeypatch):

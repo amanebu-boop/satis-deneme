@@ -317,12 +317,22 @@ def review_approval(
             connection.execute(
                 "UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,)
             )
+            connection.execute(
+                "UPDATE agent_runs SET status = 'cancelled', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+                (now.isoformat(timespec="seconds"), row["run_id"]),
+            )
             connection.commit()
             raise ValueError("approval has expired")
         stored_payload = json.loads(row["payload_json"])
         candidate = stored_payload if current_payload is None else current_payload
         digest = sha256(_json(candidate).encode("utf-8")).hexdigest()
         if digest != row["payload_sha256"]:
+            connection.execute("UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,))
+            connection.execute(
+                "UPDATE agent_runs SET status = 'cancelled', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+                (now.isoformat(timespec="seconds"), row["run_id"]),
+            )
+            connection.commit()
             raise ValueError("approval payload changed; request a new approval")
         connection.execute(
             """UPDATE agent_approvals
@@ -332,6 +342,11 @@ def review_approval(
         run = connection.execute(
             "SELECT agent_id FROM agent_runs WHERE id = ?", (row["run_id"],)
         ).fetchone()
+        if decision == "rejected":
+            connection.execute(
+                "UPDATE agent_runs SET status = 'cancelled', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+                (now.isoformat(timespec="seconds"), row["run_id"]),
+            )
         _audit(
             connection, "approval_" + decision, actor=reviewed_by,
             agent_id=run["agent_id"] if run else None, run_id=row["run_id"],

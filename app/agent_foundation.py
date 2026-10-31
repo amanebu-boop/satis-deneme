@@ -119,6 +119,12 @@ def init_agent_foundation() -> None:
                 ON agent_approvals(status, expires_at);
             CREATE INDEX IF NOT EXISTS idx_agent_audit_created
                 ON agent_audit_logs(created_at);
+            CREATE TABLE IF NOT EXISTS agent_approval_actions (
+                approval_id TEXT PRIMARY KEY REFERENCES agent_approvals(id),
+                action_type TEXT NOT NULL,
+                quotation_id TEXT NOT NULL UNIQUE REFERENCES quotations(id),
+                executed_at TEXT NOT NULL
+            );
             """
         )
         now = _now()
@@ -262,7 +268,7 @@ def request_approval(
         run = connection.execute("SELECT id, agent_id, status FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
         if run is None:
             raise ValueError("unknown run")
-        if run["status"] not in {"queued", "running", "pending_approval"}:
+        if run["status"] not in {"queued", "running", "pending_approval", "succeeded"}:
             raise ValueError("run is not eligible for approval")
         connection.execute(
             """INSERT INTO agent_approvals
@@ -361,7 +367,7 @@ def list_runs(limit: int = 100) -> list[dict[str, Any]]:
                ORDER BY r.created_at DESC, r.rowid DESC LIMIT ?""",
             (limit,),
         ).fetchall()
-    return [dict(row) for row in rows]
+    return [{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows]
 
 
 def list_approvals(limit: int = 100) -> list[dict[str, Any]]:
@@ -370,7 +376,7 @@ def list_approvals(limit: int = 100) -> list[dict[str, Any]]:
     with db.connect() as connection:
         rows = connection.execute(
             """SELECT p.id, p.run_id, r.agent_id, a.name AS agent_name,
-                      p.action_type, p.status, p.requested_by, p.reviewed_by,
+                      p.action_type, p.payload_json, p.payload_sha256, p.status, p.requested_by, p.reviewed_by,
                       p.created_at, p.expires_at, p.reviewed_at
                FROM agent_approvals p
                JOIN agent_runs r ON r.id = p.run_id

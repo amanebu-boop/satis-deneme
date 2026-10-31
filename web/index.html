@@ -241,6 +241,31 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 .follow-up-company-picker{margin:0;min-width:0}.follow-up-company-picker input{width:100%;min-height:42px;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
 @media(max-width:640px){.meeting-product-row{grid-template-columns:1fr 1fr}.meeting-product-row>div:first-child{grid-column:1/-1}.meeting-product-row .remove-meeting-product{grid-column:2}.meeting-list-price{min-height:36px}}
 @media(max-width:640px){.mobile-nav{grid-template-columns:repeat(7,minmax(0,1fr))}.mobile-nav button{font-size:8px}}
+
+/* Uygulama içi tarih seçiciler */
+.custom-date-field{position:relative;min-width:0}
+.date-picker-display{width:100%;min-height:38px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}
+.date-picker-display:focus-visible{outline:3px solid #dbe5f0;outline-offset:2px}
+.date-picker-panel{position:absolute;z-index:80;top:calc(100% + 6px);left:0;width:min(320px,calc(100vw - 36px));padding:12px;background:#fff;border:1px solid #dce3eb;border-radius:12px;box-shadow:0 12px 32px rgba(23,43,69,.16)}
+.date-picker-panel[hidden]{display:none}
+.date-picker-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.date-picker-head strong{font-size:13px}
+.date-picker-nav{display:flex;gap:5px}
+.date-picker-nav button,.date-picker-day{border:0;background:transparent;color:var(--ink);border-radius:7px;min-width:32px;min-height:32px}
+.date-picker-nav button{background:#f1f4f8;font-size:17px}
+.date-picker-week,.date-picker-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center}
+.date-picker-week span{font-size:10px;color:var(--muted);padding:5px 0}
+.date-picker-day{font-size:12px}
+.date-picker-day:hover{background:#edf2f7}
+.date-picker-day.selected{background:var(--accent);color:#fff;font-weight:700}
+.date-picker-day.today{box-shadow:inset 0 0 0 1px #9aabc0}
+.date-picker-empty{min-height:32px}
+.date-picker-time{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+.date-picker-time label{font-size:11px;color:var(--muted)}
+.date-picker-time input{width:100px;min-height:34px;border:1px solid var(--line);border-radius:7px;padding:5px 7px}
+.date-picker-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:10px}
+.date-picker-actions button{min-height:34px;padding:6px 10px}
+@media(max-width:640px){.date-picker-panel{position:fixed;top:auto;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(340px,calc(100vw - 24px));box-shadow:0 14px 40px rgba(23,43,69,.22)}}
 </style>
 </head>
 <body>
@@ -323,9 +348,9 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 </div>
 <div id="company-rows" class="company-list"><div class="empty">Firmalar yükleniyor…</div></div>
 </div></section>
-<section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div class="location-picker"><label for="meeting-company-search">Firma seçimi</label><input id="meeting-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="meeting-company-results" class="autocomplete-results"></div><select id="meeting-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><input id="meeting-date" type="datetime-local" lang="tr" step="60" required></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder=""></div></div><div><label for="meeting-notes">Görüşme notları (raporda gösterilmez)</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea></div>
+<section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div class="location-picker"><label for="meeting-company-search">Firma seçimi</label><input id="meeting-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="meeting-company-results" class="autocomplete-results"></div><select id="meeting-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><div class="custom-date-field" data-date-picker="datetime"><input id="meeting-date" type="datetime-local" lang="tr" step="60" hidden><input id="meeting-date-display" class="date-picker-display" type="text" readonly required placeholder="Tarih ve saat seçin" aria-haspopup="dialog" aria-expanded="false" aria-controls="meeting-date-calendar"></div></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder=""></div></div><div><label for="meeting-notes">Görüşme notları (raporda gösterilmez)</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea></div>
 <div><div class="panel-head"><h3>Görüşmede konuşulan ürünler</h3><button class="btn" id="add-meeting-product" type="button">＋ Ürün ekle</button></div><div id="meeting-product-lines" class="meeting-product-lines"></div><p class="footer-note">Katalogdan seçin; miktar ve fiyatı kontrol edin. Kalıp kullanılan makinelerde 1 takım kalıp seti makina fiyatına dahildir; ekstra set bedelini görüşmede siz belirlersiniz.</p></div>
-<p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><div class="location-picker follow-up-company-picker"><input id="follow-up-company-search" type="search" placeholder="" autocomplete="off" aria-label="Firma seç" aria-expanded="false" required><div id="follow-up-company-results" class="autocomplete-results"></div><select id="follow-up-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="follow-up-date">Takip tarihi</label><input id="follow-up-date" type="date" required></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder=""></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
+<p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><div class="location-picker follow-up-company-picker"><input id="follow-up-company-search" type="search" placeholder="" autocomplete="off" aria-label="Firma seç" aria-expanded="false" required><div id="follow-up-company-results" class="autocomplete-results"></div><select id="follow-up-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="follow-up-date">Takip tarihi</label><div class="custom-date-field" data-date-picker="date"><input id="follow-up-date" type="date" hidden><input id="follow-up-date-display" class="date-picker-display" type="text" readonly required placeholder="Tarih seçin" aria-haspopup="dialog" aria-expanded="false" aria-controls="follow-up-date-calendar"></div></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder=""></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
 <section class="page" id="page-products">
 <div class="panel">
   <div class="panel-head"><h2>Ürün kataloğu</h2><span class="pill blue">Kalıcı kayıt</span></div>
@@ -1349,6 +1374,57 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
  document.addEventListener("keydown",event=>{if(event.key==="Escape")document.querySelectorAll(".html-select.open").forEach(w=>{w.classList.remove("open");w.querySelector(".html-select-trigger")?.setAttribute("aria-expanded","false");});});
 })();
 
+/* Tarih alanları için uygulama içi takvim: gerçek form değerleri mevcut inputlarda tutulur. */
+(function(){
+ const configs=[
+  {id:"meeting-date",display:"meeting-date-display",mode:"datetime"},
+  {id:"follow-up-date",display:"follow-up-date-display",mode:"date"}
+ ];
+ const pad=n=>String(n).padStart(2,"0");
+ const parse=value=>{if(!value)return null;const [d,t="00:00"]=value.split("T");const [y,m,day]=d.split("-").map(Number);const [h,min]=t.split(":").map(Number);return new Date(y,m-1,day,h||0,min||0);};
+ const isoDate=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+ const monthNames=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+ configs.forEach(config=>{
+  const field=document.getElementById(config.id),display=document.getElementById(config.display);
+  if(!field||!display)return;
+  field.required=false;
+  const wrap=display.closest(".custom-date-field");
+  const panel=document.createElement("div");panel.className="date-picker-panel";panel.id=config.id+"-calendar";panel.hidden=true;panel.setAttribute("role","dialog");panel.setAttribute("aria-label",config.mode==="date"?"Takip tarihi seç":"Görüşme tarihi ve saati seç");
+  panel.innerHTML='<div class="date-picker-head"><strong class="date-picker-title"></strong><div class="date-picker-nav"><button type="button" data-month="-1" aria-label="Önceki ay">‹</button><button type="button" data-month="1" aria-label="Sonraki ay">›</button></div></div><div class="date-picker-week"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div><div class="date-picker-grid"></div><div class="date-picker-time" '+(config.mode==="date"?'hidden':'')+'><label for="'+config.id+'-time">Saat</label><input id="'+config.id+'-time" type="time" step="60"></div><div class="date-picker-actions"><button type="button" class="btn" data-cancel>Vazgeç</button><button type="button" class="btn primary" data-apply>Uygula</button></div>';
+  wrap.append(panel);
+  let shown=new Date(),selected=parse(field.value)||new Date();
+  const time=panel.querySelector("input[type=time]");
+  const render=()=>{
+   panel.querySelector(".date-picker-title").textContent=monthNames[shown.getMonth()]+" "+shown.getFullYear();
+   const grid=panel.querySelector(".date-picker-grid");grid.replaceChildren();
+   const first=new Date(shown.getFullYear(),shown.getMonth(),1);const offset=(first.getDay()+6)%7;const days=new Date(shown.getFullYear(),shown.getMonth()+1,0).getDate();
+   for(let i=0;i<offset;i++){const blank=document.createElement("span");blank.className="date-picker-empty";grid.append(blank);}
+   for(let day=1;day<=days;day++){const date=new Date(shown.getFullYear(),shown.getMonth(),day);const button=document.createElement("button");button.type="button";button.className="date-picker-day";button.textContent=day;
+    if(isoDate(date)===isoDate(selected))button.classList.add("selected");if(isoDate(date)===isoDate(new Date()))button.classList.add("today");
+    button.addEventListener("click",()=>{selected=date;render();});grid.append(button);}
+  };
+  const updateDisplay=()=>{
+   const value=parse(field.value);
+   display.value=value?new Intl.DateTimeFormat("tr-TR",config.mode==="date"?{day:"2-digit",month:"long",year:"numeric"}:{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(value):"";
+  };
+  const close=()=>{panel.hidden=true;display.setAttribute("aria-expanded","false");};
+  display.addEventListener("click",()=>{
+   selected=parse(field.value)||new Date();shown=new Date(selected.getFullYear(),selected.getMonth(),1);
+   if(time)time.value=pad(selected.getHours())+":"+pad(selected.getMinutes());
+   render();panel.hidden=false;display.setAttribute("aria-expanded","true");
+  });
+  panel.querySelectorAll("[data-month]").forEach(button=>button.addEventListener("click",()=>{shown.setMonth(shown.getMonth()+Number(button.dataset.month));render();}));
+  panel.querySelector("[data-cancel]").addEventListener("click",close);
+  panel.querySelector("[data-apply]").addEventListener("click",()=>{
+   if(config.mode==="datetime"){const [h,m]=(time.value||"09:00").split(":").map(Number);selected.setHours(h,m,0,0);field.value=isoDate(selected)+"T"+pad(h)+":"+pad(m);}
+   else field.value=isoDate(selected);
+   field.dispatchEvent(new Event("input",{bubbles:true}));field.dispatchEvent(new Event("change",{bubbles:true}));updateDisplay();close();
+  });
+  updateDisplay();
+ });
+ document.addEventListener("click",event=>{configs.forEach(c=>{const display=document.getElementById(c.display),panel=document.getElementById(c.id+"-calendar");if(panel&&!panel.hidden&&!event.target.closest(".custom-date-field")){panel.hidden=true;display.setAttribute("aria-expanded","false");}});});
+ document.addEventListener("keydown",event=>{if(event.key==="Escape")configs.forEach(c=>{const panel=document.getElementById(c.id+"-calendar");if(panel&&!panel.hidden){panel.hidden=true;document.getElementById(c.display).setAttribute("aria-expanded","false");}});});
+})();
 </script>
 </body>
 </html>

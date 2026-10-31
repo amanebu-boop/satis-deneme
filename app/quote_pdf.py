@@ -162,7 +162,7 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
                 str(sheet.cell(row_index, column_index).value or "").strip()
                 for column_index in range(1, sheet.max_column + 1)
             ]
-            if any(__import__("re").match(r"^7\\s*[.)]", value) for value in row_values):
+            if any(__import__("re").match(r"^7\s*[.)]", value) for value in row_values):
                 section_seven_row = row_index
                 break
 
@@ -179,7 +179,7 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
                 if not values:
                     continue
                 row_text = " · ".join(values)
-                if __import__("re").match(r"^[1-9]\\s*[.)]", row_text):
+                if __import__("re").match(r"^[1-9]\s*[.)]", row_text):
                     story.append(Paragraph(escape(row_text), styles["SectionTR"]))
                 else:
                     story.append(Paragraph(escape(row_text), styles["BodyTR"]))

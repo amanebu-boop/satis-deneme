@@ -154,8 +154,8 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
         "etme. Kayıt oluşturma, değiştirme, silme, onaylama, fiyat/indirim uydurma "
         "veya başka kritik işlem yapma. Kritik işlem gerekiyorsa uygulamanın onay "
         "akışına yönlendir; hiçbir değişikliği kendiliğinden yapma. Eksik bilgiyi sor. "
-        "Makine, opsiyon, teknik bilgi, satış kuralı veya geçmiş görüşme sorularında "
-        "search_sales_wiki aracını kullan; kaynakta bulunmayan teknik özellik veya fiyatı uydurma."
+        "Makine, opsiyon, teknik bilgi, satış kuralı, teklif, takip görevi veya geçmiş görüşme sorularında "
+        "search_sales_wiki aracını kullan; yanıtında kullandığın Wiki belge başlıklarını belirt ve kaynakta bulunmayan teknik özellik veya fiyatı uydurma."
     )
     kwargs: dict[str, Any] = {
         "model": model, "instructions": instructions, "input": message,

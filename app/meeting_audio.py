@@ -26,6 +26,10 @@ ALLOWED_AUDIO_TYPES = {
     "audio/mp4", "audio/m4a", "audio/mpga",
 }
 ALLOWED_AUDIO_SUFFIXES = {".webm", ".wav", ".mp3", ".mp4", ".m4a", ".mpga"}
+AUDIO_MIME_BY_SUFFIX = {
+    ".webm": "audio/webm", ".wav": "audio/wav", ".mp3": "audio/mpeg",
+    ".mp4": "audio/mp4", ".m4a": "audio/mp4", ".mpga": "audio/mpeg",
+}
 
 
 class TranscriptionResponse(BaseModel):
@@ -75,7 +79,9 @@ async def transcribe_meeting_audio(request: Request, file: UploadFile = File(...
     filename = Path(file.filename or "meeting-audio").name
     suffix = Path(filename).suffix.lower()
     content_type = (file.content_type or "").split(";", 1)[0].strip().lower()
-    if suffix not in ALLOWED_AUDIO_SUFFIXES and content_type not in ALLOWED_AUDIO_TYPES:
+    if suffix in AUDIO_MIME_BY_SUFFIX:
+        content_type = AUDIO_MIME_BY_SUFFIX[suffix]
+    elif content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(status_code=415, detail="Desteklenmeyen ses biçimi. WebM, WAV, MP3, MP4 veya M4A yükleyin.")
     try:
         audio_bytes = await file.read(MAX_AUDIO_BYTES + 1)

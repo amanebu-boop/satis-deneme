@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-from app import agent_foundation, agent_runtime
+from app import agent_foundation, agent_runtime, ai_usage
 from app.agent_instructions import read_agent_profile
 from app.agent_coordinator import run_sales_coordination
 
@@ -101,8 +101,39 @@ def _tool_calls(response: Any) -> list[Any]:
     return [item for item in getattr(response, "output", []) if getattr(item, "type", None) == "function_call"]
 
 
+def _usage_agent_id(response: Any, active_agent: str | None) -> str:
+    calls = _tool_calls(response)
+    agent_ids: set[str] = set()
+    for call in calls:
+        if getattr(call, "name", None) not in {"read_agent_profile", "run_agent_task"}:
+            continue
+        try:
+            args = json.loads(call.arguments)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        agent_id = args.get("agent_id") if isinstance(args, dict) else None
+        if isinstance(agent_id, str) and agent_id in SAFE_TASKS:
+            agent_ids.add(agent_id)
+    if len(agent_ids) == 1:
+        return next(iter(agent_ids))
+    if len(agent_ids) > 1:
+        return "assistant_shared"
+    return active_agent or "assistant"
+
+
+def _record_response_usage(response: Any, model: str, agent_id: str,
+                           session_hash: str | None) -> None:
+    try:
+        ai_usage.record_response_usage(response, model, agent_id, session_hash)
+    except Exception:
+        # Metering must never break a customer-facing assistant response.
+        # The failure is intentionally not logged with request or customer content.
+        return
+
+
 def run_assistant_turn(client: Any, model: str, message: str, actor: str,
-                       previous_response_id: str | None = None) -> dict[str, Any]:
+                       previous_response_id: str | None = None,
+                       usage_session_hash: str | None = None) -> dict[str, Any]:
     instructions = (
         "Sen Erşen Makina Satış uygulamasının Türkçe yardımcı asistanısın. "
         "Tek alanlı bir istek için ilgili ajanı kullan. Birden fazla satış alanını kapsayan veya ajanlar arası koordinasyon isteyen isteklerde önce Sales ajanının profilini oku ve sales_coordinate görevini kullan; görev listesini yalnızca kullanıcının isteğine göre seç. Görüşmeden teklif önizlemesi için meeting_quotation_preview ve meeting_id gerekir. "
@@ -122,6 +153,9 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
     response = client.responses.create(**kwargs)
+    active_agent: str | None = None
+    active_agent = _usage_agent_id(response, active_agent)
+    _record_response_usage(response, model, active_agent, usage_session_hash)
     loaded_profiles: set[str] = set()
     executed_calls: list[dict[str, str]] = []
     total_calls = 0
@@ -165,6 +199,8 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
             model=model, instructions=instructions, previous_response_id=response.id,
             input=outputs, tools=TOOLS, tool_choice="auto", max_output_tokens=900,
         )
+        active_agent = _usage_agent_id(response, active_agent)
+        _record_response_usage(response, model, active_agent, usage_session_hash)
 
 
 @router.post("/api/assistant/chat")
@@ -189,6 +225,7 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
         result = run_assistant_turn(
             client, os.environ.get("OPENAI_MODEL", "gpt-5.5"),
             payload.message.strip(), str(session["subject"]), payload.previous_response_id,
+            usage_session_hash=session_key,
         )
         with _response_lock:
             _last_response_by_session[session_key] = result["response_id"]

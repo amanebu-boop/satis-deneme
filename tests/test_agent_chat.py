@@ -224,3 +224,18 @@ def test_profile_and_task_in_same_model_round_do_not_execute_task(monkeypatch):
     result = agent_chat.run_assistant_turn(client, "gpt-test", "Raporla", "tester")
     assert invoked == []
     assert result["message"] == "Talimatın önceki turda okunması gerekiyor."
+
+
+def test_wiki_search_tool_is_available_to_dashboard_assistant(monkeypatch):
+    search = tool("search_sales_wiki", "wiki_1", '{"query":"makine opsiyonları"}')
+    client = FakeClient([
+        FakeResponse("wiki_resp_1", [search]),
+        FakeResponse("wiki_resp_2", output_text="Katalogda ilgili bilgi bulundu."),
+    ])
+    calls = []
+    monkeypatch.setattr(agent_chat.llm_wiki, "search_wiki",
+                        lambda query, limit=5: calls.append((query, limit)) or {"results": []})
+    result = agent_chat.run_assistant_turn(client, "gpt-test", "Makine opsiyonları nedir?", "tester")
+    assert calls == [("makine opsiyonları", 5)]
+    assert result["message"] == "Katalogda ilgili bilgi bulundu."
+    assert client.responses.calls[1]["input"][0]["output"].find('"retrieval"') == -1

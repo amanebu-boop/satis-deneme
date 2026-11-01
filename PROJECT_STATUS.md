@@ -141,3 +141,18 @@ Her görevde:
 - Açılış doğrulaması: Render loglarında `Application startup complete`, `Uvicorn running` ve `GET /` yanıtı `200 OK` görüldü. Uygulama loglarında bu dağıtım aralığında `error`/`warn` seviyesinde kayıt bulunmadı.
 - Sınır: Bu yalnızca servis açılış/HTTP kök yolu doğrulamasıdır. Denetim Ajanı görevini gerçek kullanıcı arayüzünde çalıştırma doğrulaması henüz yapılmadı. GitHub Actions workflow run görünmediği için otomatik test sonucu da yoktur.
 - Sıradaki adım: test ortamında Denetim Ajanı kartını etkinleştirip “Denetim kayıtları özeti” görevini çalıştırmak ve sonuç ekranını kontrol etmek. `main` ve canlı Render servisine dokunulmadı.
+
+
+## 12. 2026-11-01 — Onaylı ajan mimarisinin görev sınırları ve bağımlılıkları
+
+- Kullanıcının daha önce onayladığı mimari esas alındı; yeniden tasarım onayı istenmedi.
+- `AGENT_ARCHITECTURE.md` eklendi: işlem ajanları kendi alanlarında, Satış Ajanı koordinatör, Raporlama Ajanı analiz, Denetim Ajanı denetim sorumluluğunda.
+- `AGENT_DEPENDENCIES` tanımlandı: Satış Ajanı etkinleştirildiğinde Firma, Ürün, Görüşme ve Teklif ajanları atomik biçimde otomatik etkinleştirilir.
+- Denetim Ajanı bağımsız denetim yaptığı için etkinleştirilmesi Teklif Ajanı'nı veya diğer işlem ajanlarını açmaz. Böylece kullanıcının gördüğü teklif taslağı akışı ile Denetim Ajanı'nın görevi ayrıştırıldı.
+- Bağımlılık ajanları koordinatör kapatıldığında otomatik kapatılmaz; başka akışlarca kullanılıyor olabilir.
+- Otomatik etkinleştirmeler `agent_auto_enabled` denetim kaydı üretir.
+- Ajan ekranındaki görüşmeden teklif taslağı panelinin başlığı ve açıklaması, işlemin Teklif Ajanı'na ait olduğunu ve Denetim Ajanı'ndan bağımsız olduğunu belirtecek şekilde düzeltildi.
+- Bağımlılık davranışı için üç regresyon testi eklendi: Satış Ajanı bağımlılıkları açar, Denetim Ajanı ilgisiz ajanları açmaz, koordinatör kapatılınca bağımlılıklar kapanmaz.
+- Testler henüz çalıştırılmadı; GitHub Actions workflow sonucu ve Render dağıtımı bekleniyor. Bu nedenle otomatik test başarısı iddia edilmez.
+- Çalışma dalı `feature/agent-foundation`; `main` ve canlı Render değiştirilmedi.
+- Sıradaki iş: test dağıtımını doğrulamak, sonra görev ekranındaki gerçek akışları ajan kartları altında tutarlı hale getirmek ve Satış Ajanı koordinasyon görevini geliştirmek.

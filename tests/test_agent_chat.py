@@ -156,13 +156,28 @@ def test_sales_coordinator_requires_sales_profile_before_running(monkeypatch):
     assert "agents/sales.md" in client.responses.calls[1]["input"][0]["output"]
 
 
-def test_responses_usage_is_attributed_to_the_invoked_agent(monkeypatch):
-    read = tool("read_agent_profile", "profile_company", '{"agent_id":"company"}')
-    run = tool("run_agent_task", "task_company",
-               '{"agent_id":"company","task_type":"directory_overview","input_data":{}}')
+@pytest.mark.parametrize("agent_id,task_type,input_data", [
+    ("company", "directory_overview", {}),
+    ("product", "catalog_overview", {}),
+    ("meeting", "activity_overview", {}),
+    ("quotation", "pipeline_overview", {}),
+    ("reporting", "sales_overview", {}),
+    ("audit", "audit_overview", {}),
+    ("sales", "sales_coordinate", {"tasks": ["sales_overview"]}),
+])
+def test_responses_usage_is_attributed_to_the_invoked_agent(
+    monkeypatch, agent_id, task_type, input_data
+):
+    read = tool("read_agent_profile", "profile_agent", '{"agent_id":"' + agent_id + '"}')
+    run = tool(
+        "run_agent_task", "task_agent",
+        __import__("json").dumps({
+            "agent_id": agent_id, "task_type": task_type, "input_data": input_data
+        }),
+    )
     first = FakeResponse("resp_usage_1", [read])
     second = FakeResponse("resp_usage_2", [run])
-    third = FakeResponse("resp_usage_3", output_text="Firma özeti hazır.")
+    third = FakeResponse("resp_usage_3", output_text="Ajan özeti hazır.")
     for response, incoming, outgoing in [
         (first, 100, 20), (second, 150, 30), (third, 180, 40)
     ]:
@@ -174,23 +189,23 @@ def test_responses_usage_is_attributed_to_the_invoked_agent(monkeypatch):
     client = FakeClient([first, second, third])
     recorded = []
 
-    def record(response, model, agent_id, session_hash=None):
-        recorded.append((response.id, model, agent_id, session_hash))
+    def record(response, model, selected_agent, session_hash=None):
+        recorded.append((response.id, model, selected_agent, session_hash))
 
     monkeypatch.setattr(agent_chat.ai_usage, "record_response_usage", record)
     monkeypatch.setattr(
         agent_chat, "_run_safe_task",
-        lambda *args: {"output": {"companies": 2}},
+        lambda *args: {"output": {"agent": agent_id}},
     )
 
     result = agent_chat.run_assistant_turn(
-        client, "gpt-5.5", "Firma özetini ver", "tester",
+        client, "gpt-5.5", "Ajan özetini ver", "tester",
         usage_session_hash="session-hash",
     )
 
-    assert result["message"] == "Firma özeti hazır."
+    assert result["message"] == "Ajan özeti hazır."
     assert recorded == [
-        ("resp_usage_1", "gpt-5.5", "company", "session-hash"),
-        ("resp_usage_2", "gpt-5.5", "company", "session-hash"),
-        ("resp_usage_3", "gpt-5.5", "company", "session-hash"),
+        ("resp_usage_1", "gpt-5.5", agent_id, "session-hash"),
+        ("resp_usage_2", "gpt-5.5", agent_id, "session-hash"),
+        ("resp_usage_3", "gpt-5.5", agent_id, "session-hash"),
     ]

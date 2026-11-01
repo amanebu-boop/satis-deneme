@@ -220,3 +220,20 @@ Her görevde:
 - API Project için ayrı, yalnızca uygulamaya ait bir anahtar; kullanım/harcama limiti; Render hesabında MFA ve sınırlı erişim önerilir. Anahtar düzenli yenilenmeli ve eski anahtar iptal edilmelidir.
 - Değişiklikler yalnızca `feature/agent-foundation` dalındadır. `main` ve canlı Render servisine dokunulmadı.
 - Test sonucu bu güncelleme sırasında henüz alınmadı; GitHub Actions ve Render test dağıtımı kontrol edilecek.
+
+
+
+## 2026-11-01 — Satış Ajanı koordinasyonu ve otomatik salt-okunur iş akışı
+
+- `app/agent_coordinator.py` eklendi. Satış Ajanı, kullanıcının isteğine göre yalnızca tanımlı salt-okunur alt görevleri seçip sabit sırayla çalıştırır; sonuçları birleştirir.
+- İzinli koordinasyon görevleri: firma özeti, ürün kataloğu özeti, görüşme özeti, teklif süreci özeti, genel satış özeti, denetim özeti ve görüşmeden teklif önizlemesi.
+- Görüşmeden teklif önizlemesi için yalnızca `meeting_id` kabul edilir. Bu işlem gerçek teklif kaydı oluşturmaz.
+- Satış Ajanı devre dışıysa koordinasyon başlatılmaz. Satış Ajanı etkinleştirildiğinde Firma, Ürün, Görüşme, Teklif ve Raporlama ajanları mevcut bağımlılık kuralıyla otomatik etkinleştirilir. Denetim ve Depo ajanları otomatik etkinleştirilmez.
+- `app/agent_chat.py` çok alanlı/ajanlar arası istekleri Satış Ajanı koordinasyonuna yönlendirir. Her ajan görevi öncesinde kök `AGENTS.md` ve ilgili ajan talimat dosyası okunur.
+- Alt görevler ayrı ajan çalıştırması olarak kaydedilir. Bir alt görev başarısız olursa diğer bağımsız salt-okunur görevler sürer; hata ayrıntıları kullanıcıya veya modele açılmaz.
+- Koordinasyon; firma/ürün/görüşme/teklif kaydı oluşturamaz, değiştiremez veya silemez. Teklif kaydı ve diğer kritik ticari işlemler için ayrı uygulama onayı zorunlu kalır. Otomatik koordinasyon yalnızca Satış Ajanı kullanıcının onayıyla etkinleştirildikten sonra kullanılabilir.
+- Testler: GitHub Actions Python paketi **71 passed, 1 skipped, 1 warning**; LibreOffice ve Docker doğrulamasını içeren iş akışı **72 passed, 1 warning** ve Docker image build başarılı.
+- Gerçek SQLite veritabanı üzerinde koordinatörün Firma ve Raporlama ajanlarını birlikte çalıştırdığı entegrasyon testi eklendi. Satış Ajanı etkinleştirilince Raporlama bağımlılığının da açılması test edildi.
+- Render test servisi `satis-deneme-test`, commit `c813ad26d850969390b04dd09474682b4bef61fc` için **live**. Test servisi `feature/agent-foundation` dalını izler.
+- OpenAI API anahtarı eklenmedi; gerçek OpenAI API çağrısı yapılmadı. `main` ve üretim Render servisine değişiklik gönderilmedi.
+- Sonraki adım: kullanıcı Satış Ajanı çalışma yapısını onayladıktan sonra test ortamında ajanı etkinleştirmek ve API anahtarı aşamasına geçmeden önce kullanıcı arayüzünden uçtan uca kontrol yapmak.

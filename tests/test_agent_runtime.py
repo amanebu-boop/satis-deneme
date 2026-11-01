@@ -284,8 +284,10 @@ def test_company_data_quality_reports_only_aggregate_counts(isolated_database):
             [
                 ("c1", "ABC Makina", '["Mobilya"]', "Konya", "Adres 1", '["05550000000"]'),
                 ("c2", "ABC Makina", None, None, None, "[]"),
+                ("c3", "XYZ Makina", '["Mobilya"]', "Konya", "Adres 3", "[]"),
             ],
         )
+        connection.execute("INSERT INTO contacts (id, company_id, name, phone) VALUES ('ct3','c3','Yetkili','05551112233')")
     run = foundation.create_run("company", "data_quality", "tester")
     result = agent_runtime.execute_run(run["id"], "tester")["output"]
     assert result["missing_sector"] == 1

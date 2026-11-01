@@ -1,6 +1,14 @@
 from app import db, llm_wiki
 
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def reset_refresh_cache():
+    llm_wiki._last_refresh_at = 0
+
+
 def test_wiki_retrieves_relevant_catalog_item_without_external_embeddings(tmp_path, monkeypatch):
     monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki.db"))
     db.init_db()

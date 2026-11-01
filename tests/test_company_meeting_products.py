@@ -122,7 +122,7 @@ def test_catalog_allows_unknown_price_and_requires_machine_for_option(tmp_path, 
         company = client.post(
             "/api/companies",
             headers=headers,
-            json={"name": "Opsiyon Test Firması"},
+            json={"name": "Opsiyon Test Firması", "sector": "Çelik Eşya"},
         )
         invalid_meeting = client.post(
             "/api/meetings",

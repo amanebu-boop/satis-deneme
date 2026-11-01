@@ -116,3 +116,40 @@ def test_pdf_and_docx_text_extraction():
     pdf.save()
     pdf_text = _extract_document_text("technical.pdf", pdf_stream.getvalue())
     assert "CNC bending machine" in pdf_text
+
+
+def test_wiki_indexes_quotation_history_and_followups(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki-sales-history.db"))
+    db.init_db()
+    db.create_company({
+        "id": "company-history", "name": "ABC Makina", "sector": "Mobilya",
+        "authorized_people": [], "phone_numbers": [],
+    })
+    with db.connect() as connection:
+        connection.execute(
+            """INSERT INTO quotations
+               (id, quote_number, revision, company_id, currency, subtotal, tax_rate,
+                tax_amount, total, status, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("quote-history", "ERS-2026-0001", 0, "company-history", "EUR",
+             "22000", "0.20", "4400", "26400", "draft", datetime.now(timezone.utc).isoformat()),
+        )
+        connection.execute(
+            """INSERT INTO quotation_lines
+               (id, quotation_id, description, quantity, unit_price, line_total)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            ("line-history", "quote-history", "Çift Kafa Büküm Makinası", "1", "22000", "22000"),
+        )
+        connection.execute(
+            """INSERT INTO follow_up_tasks
+               (id, company_id, title, due_date, status, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            ("follow-history", "company-history", "Teklif geri dönüşü", "2026-11-10", "open",
+             datetime.now(timezone.utc).isoformat()),
+        )
+    monkeypatch.setattr(db, "list_products", lambda: [])
+    result = llm_wiki.search_wiki("ERS-2026-0001 büküm")
+    assert any(item["source_type"] == "quotation" for item in result["results"])
+    result = llm_wiki.search_wiki("teklif geri dönüşü")
+    assert any(item["source_type"] == "follow_up" for item in result["results"])

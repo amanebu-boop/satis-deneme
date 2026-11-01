@@ -269,7 +269,7 @@ def browser_set_agent_status(
     session = _require_browser_session(request)
     _require_csrf(request, session)
     # Only agents with implemented, read-only workflows can be enabled in this rollout.
-    if agent_id not in {"company", "product", "meeting", "quotation", "reporting", "audit"}:
+    if agent_id not in {"company", "product", "meeting", "quotation", "sales", "reporting", "audit"}:
         raise HTTPException(status_code=403, detail="This agent is not available for activation")
     try:
         return agent_foundation.set_agent_enabled(

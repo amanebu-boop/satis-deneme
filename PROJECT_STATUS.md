@@ -105,3 +105,16 @@ Her görevde:
 - **GitHub dalı ve commit:**
 - **Render dağıtım durumu (doğrulandıysa):**
 - **Sıradaki tek öncelikli görev:**
+
+## 9. 2026-11-01 — Ajan kartları (test dalı)
+
+- Çalışma dalı: `feature/agent-foundation`. `main` ve canlı Render servisine gönderim yapılmadı.
+- `web/agents.html`: ajan kartları masaüstünde 3 sütun, mobilde 2 sütun olacak şekilde düzenlendi; kartlar kare oranında.
+- Ajanın durumu artık kartın kendisine dokunarak açılıp kapatılacak şekilde bağlandı. Klavyeden Enter/Space ile de değiştirilebilir.
+- Ayrı “Etkinleştir / Devre dışı bırak” düğmesi ve durum değişikliği öncesi onay penceresi kaldırıldı.
+- Etkin kart, mevcut arayüz paletine uygun altın tonlu kenarlık ve açık zeminle ayırt ediliyor; pasif kart nötr görünüyor.
+- Durum değişikliği mevcut `/api/agents/{id}/status` uç noktasına kaydediliyor; ekran her değişiklikten sonra `/api/agents` verisini yeniden yükleyerek sunucuda kayıtlı durumu gösteriyor. Bu, uygulamanın mevcut kalıcı ajan durum alanını kullanır.
+- Etkin ajanların görev düğmeleri korunmuştur. Bu düğmelere tıklamak kartın aç/kapa davranışını tetiklemez.
+- Değişiklik commit'leri: `5e3127b` (kart yerleşimi/stil), `1355156` (kart tıklama ve onay kaldırma), `e3726ef` (kart içi görev düğmelerini koruyarak erişilebilir klavye etkileşimi).
+- Doğrulama: GitHub commit durum kontrolünde kontrol sonucu bulunmadı; commit için workflow run da görünmedi. Bu nedenle otomatik test başarılı olarak raporlanamaz. Tarayıcı uçtan uca testi ve Render test adresinde görsel/işlev doğrulaması henüz yapılmadı.
+- Sonraki adım: test dalında sayfayı açıp masaüstü/mobil 3/2 sütun davranışını, kart aç/kapa durumunun sayfa yenilemesinden sonra korunmasını ve görev düğmelerinin ayrı çalışmasını doğrula; ardından ilgili testleri çalıştır.

@@ -210,3 +210,22 @@ def test_uploading_same_filename_replaces_previous_wiki_version(tmp_path, monkey
         new_results = llm_wiki.search_wiki("updated current")
         assert not any(item["source_type"] == "uploaded_document" for item in old_results["results"])
         assert any(item["source_type"] == "uploaded_document" for item in new_results["results"])
+
+
+def test_wiki_fts_rows_are_removed_and_unchanged_upserts_do_not_rewrite(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki-fts-cleanup.db"))
+    db.init_db()
+    llm_wiki.init_wiki()
+    if not llm_wiki._fts_available:
+        pytest.skip("SQLite FTS5 is unavailable")
+    llm_wiki._upsert("markdown", "sample.md", "Örnek", "bakım talimatı")
+    with db.connect() as connection:
+        rowid = connection.execute(
+            "SELECT rowid FROM llm_wiki_documents WHERE source_type='markdown' AND source_id='sample.md'"
+        ).fetchone()["rowid"]
+    llm_wiki._upsert("markdown", "sample.md", "Örnek", "bakım talimatı")
+    with db.connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM llm_wiki_fts WHERE rowid=?", (rowid,)).fetchone()[0] == 1
+        llm_wiki._delete_wiki_documents(connection, "source_type=? AND source_id=?", ("markdown", "sample.md"))
+        assert connection.execute("SELECT COUNT(*) FROM llm_wiki_documents WHERE rowid=?", (rowid,)).fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM llm_wiki_fts WHERE rowid=?", (rowid,)).fetchone()[0] == 0

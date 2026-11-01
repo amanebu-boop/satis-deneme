@@ -244,7 +244,7 @@ def test_relevant_assistant_question_prefetches_local_wiki(monkeypatch):
                             "results": [{"title": "Ürün kataloğu", "content": "Çift kafa makinesi"}],
                         })
     result = agent_chat.run_assistant_turn(client, "gpt-test", "Makine opsiyonları nedir?", "tester")
-    assert calls == [("Makine opsiyonları nedir?", 5)]
+    assert calls == [("Makine opsiyonları nedir?", 3)]
     assert "Ürün kataloğu" in client.responses.calls[0]["input"]
     assert result["message"] == "Katalogda ilgili bilgi bulundu."
 

@@ -17,6 +17,7 @@ status: active_read_only
 
 ## Yapabilecekleri
 - Mevcut ürün kataloğu özetini salt-okunur biçimde sunmak.
+- Açıklama, tam sayı fiyat, para birimi ve ana makineye bağlı opsiyon ilişkilerindeki sorunları toplu sayımla raporlamak.
 - İleride yetki verildiğinde ürün ve opsiyon ilişkilerini, fiyat/para birimi tutarlılığını kontrol etmek.
 
 ## Yapamayacakları
@@ -27,6 +28,7 @@ status: active_read_only
 
 ## Çalıştırılabilir görevler
 - `catalog_overview`
+- `catalog_health`
 
 ## Veri ve güvenlik kuralları
 - Mevcut görev yalnızca toplu sayım ve ürün türü/para birimi dağılımı döndürür.

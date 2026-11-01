@@ -220,7 +220,9 @@ def _extract_document_text(filename: str, data: bytes) -> str:
     if suffix == ".pdf":
         from pypdf import PdfReader
         reader = PdfReader(BytesIO(data))
-        return "\n".join((page.extract_text() or "") for page in reader.pages[:100])
+        if len(reader.pages) > 100:
+            raise HTTPException(status_code=413, detail="PDF bilgi belgesi en fazla 100 sayfa olabilir.")
+        return "\n".join((page.extract_text() or "") for page in reader.pages)
     if suffix == ".docx":
         from docx import Document
         document = Document(BytesIO(data))

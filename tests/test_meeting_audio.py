@@ -186,7 +186,7 @@ def test_capture_endpoint_creates_new_company_and_meeting(tmp_path, monkeypatch)
             "/api/meetings/capture", headers=headers,
             json={"transcript": "ABC Makina Konya'da mobilya üretir. Ziyaret yapıldı; iki adet çift kafa büküm makinesi."},
         )
-        assert response.status_code == 201
+        assert response.status_code == 201, response.json()
         result = response.json()
         assert result["created"] is True
         assert result["company"]["created"] is True
@@ -214,7 +214,7 @@ def test_capture_endpoint_reuses_existing_company_and_does_not_duplicate(tmp_pat
         payload["company"]["company_id"] = company.json()["id"]
         fake.responses.payload = payload
         response = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina ile ziyaret yapıldı."})
-        assert response.status_code == 201
+        assert response.status_code == 201, response.json()
         assert response.json()["company"]["created"] is False
         assert len(client.get("/api/companies", headers=headers).json()) == 1
         assert len(client.get("/api/meetings", headers=headers).json()) == 1
@@ -275,7 +275,7 @@ def test_capture_existing_legacy_company_fills_sector_without_duplicate(tmp_path
         })
         fake.responses.payload["company"]["company_id"] = "legacy-1"
         response = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina ile ziyaret yapıldı."})
-        assert response.status_code == 201
+        assert response.status_code == 201, response.json()
         companies = client.get("/api/companies", headers=headers).json()
         assert len(companies) == 1
         assert companies[0]["sector"] == "Mobilya"

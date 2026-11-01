@@ -31,7 +31,7 @@ Satış sürecinin koordinatörüdür; kullanıcının isteğini sınıflandır�
 - `meeting_overview`: Görüşme Ajanı hareket özeti.
 - `meeting_follow_up_review`: Görüşme Ajanı gecikmiş ve yaklaşan takip listesi.
 - `meeting_product_link_review`: Görüşme ürünlerinin katalog bağlantısı ve miktar/fiyat/para birimi veri kalitesi.
-- `quotation_integrity_review`: Teklif firma bağlantısı ve hesaplama tutarlılığı; yalnızca toplu denetim sayımları.
+- `quotation_integrity_review`: Teklif firma bağlantısı, satır/ara toplam, KDV ve genel toplam tutarlılığı; yalnızca toplu denetim sayımları.
 - `quotation_overview`: Teklif Ajanı teklif süreç özeti.
 - `quotation_integrity_review`: Teklif Ajanı firma bağlantısı ve hesaplama tutarlılığı; yalnızca toplu denetim sayımları.
 - `sales_overview`: Raporlama Ajanı genel satış özeti.

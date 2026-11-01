@@ -63,11 +63,22 @@ def init_wiki() -> None:
         try:
             connection.execute("CREATE VIRTUAL TABLE IF NOT EXISTS llm_wiki_fts USING fts5(title, content, tokenize='unicode61')")
             fts_count = connection.execute("SELECT COUNT(*) AS total FROM llm_wiki_fts").fetchone()["total"]
-            if fts_count == 0:
-                connection.execute(
-                    "INSERT INTO llm_wiki_fts(rowid, title, content) SELECT rowid, title, content FROM llm_wiki_documents WHERE source_type != 'uploaded_document_meta'"
-                )
             _fts_available = True
+            # Repair legacy orphan rows and backfill documents missing from the index.
+            connection.execute(
+                """DELETE FROM llm_wiki_fts
+                   WHERE rowid NOT IN (
+                       SELECT rowid FROM llm_wiki_documents
+                       WHERE source_type != 'uploaded_document_meta'
+                   )"""
+            )
+            connection.execute(
+                """INSERT INTO llm_wiki_fts(rowid, title, content)
+                   SELECT d.rowid, d.title, d.content
+                   FROM llm_wiki_documents d
+                   WHERE d.source_type != 'uploaded_document_meta'
+                     AND NOT EXISTS (SELECT 1 FROM llm_wiki_fts f WHERE f.rowid=d.rowid)"""
+            )
         except Exception:
             _fts_available = False
 

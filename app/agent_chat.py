@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from collections import deque
@@ -123,10 +124,9 @@ def _record_response_usage(response: Any, model: str, agent_id: str,
                            session_hash: str | None) -> None:
     try:
         ai_usage.record_response_usage(response, model, agent_id, session_hash)
-    except Exception:
-        # Metering must never break a customer-facing assistant response.
-        # The failure is intentionally not logged with request or customer content.
-        return
+    except Exception as exc:
+        # Do not log prompts, responses, customer data or credentials.
+        logging.getLogger(__name__).warning("AI usage metering failed (%s)", type(exc).__name__)
 
 
 def run_assistant_turn(client: Any, model: str, message: str, actor: str,

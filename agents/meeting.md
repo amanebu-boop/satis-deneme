@@ -21,6 +21,9 @@ Görüşme kayıtları, notları ve görüşmede seçilmiş ürünlerden sorumlu
 - `activity_overview`
 - `follow_up_review`
 
+Ürün bağlantısı denetimi, görüşme ürün satırlarının katalogda hâlâ bulunup bulunmadığını ve miktar/fiyat/para birimi biçimlerini toplu sayımla kontrol eder.
+- `product_link_review`
+
 ## Güvenlik
 Görüşmeden teklif taslağı talebi Teklif Ajanı'na yönlendirilir.
 

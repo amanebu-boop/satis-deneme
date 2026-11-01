@@ -6,7 +6,7 @@ summaries. No handler mutates company, product, meeting, quotation or stock data
 from __future__ import annotations
 
 import json
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Any
@@ -388,7 +388,7 @@ def _quotation_integrity_review(input_data: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("integrity_review does not accept input fields")
     with db.connect() as connection:
         quotations = [dict(row) for row in connection.execute(
-            "SELECT id, company_id, subtotal, tax_amount, total FROM quotations"
+            "SELECT id, company_id, subtotal, tax_rate, tax_amount, total FROM quotations"
         ).fetchall()]
         lines = {
             quote["id"]: [dict(row) for row in connection.execute(
@@ -397,7 +397,7 @@ def _quotation_integrity_review(input_data: dict[str, Any]) -> dict[str, Any]:
             ).fetchall()]
             for quote in quotations
         }
-    missing_company = missing_lines = invalid_lines = subtotal_mismatches = total_mismatches = 0
+    missing_company = missing_lines = invalid_lines = subtotal_mismatches = tax_mismatches = total_mismatches = 0
     for quote in quotations:
         quote_lines = lines[quote["id"]]
         missing_company += int(not quote["company_id"])
@@ -418,21 +418,26 @@ def _quotation_integrity_review(input_data: dict[str, Any]) -> dict[str, Any]:
                 valid = False
         try:
             subtotal = Decimal(str(quote["subtotal"]))
+            tax_rate = Decimal(str(quote["tax_rate"]))
             tax = Decimal(str(quote["tax_amount"]))
             total = Decimal(str(quote["total"]))
             if subtotal != Decimal(computed) or not valid:
                 subtotal_mismatches += 1
+            expected_tax = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if tax != expected_tax:
+                tax_mismatches += 1
             if total != subtotal + tax:
                 total_mismatches += 1
         except (TypeError, ValueError, ArithmeticError):
             subtotal_mismatches += 1
+            tax_mismatches += 1
             total_mismatches += 1
     return {
         "report": "quotation_integrity_review", "scope": "aggregate_quality_counts",
         "quotations": len(quotations), "missing_company": missing_company,
         "missing_lines": missing_lines, "invalid_line_values": invalid_lines,
         "subtotal_or_line_total_mismatches": subtotal_mismatches,
-        "total_mismatches": total_mismatches,
+        "tax_amount_mismatches": tax_mismatches, "total_mismatches": total_mismatches,
     }
 
 

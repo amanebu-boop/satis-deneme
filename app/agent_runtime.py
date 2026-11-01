@@ -252,19 +252,26 @@ def _meeting_follow_up_review(input_data: dict[str, Any]) -> dict[str, Any]:
     horizon = (today + timedelta(days=7)).isoformat()
     today_text = today.isoformat()
     with db.connect() as connection:
+        counts = connection.execute(
+            """SELECT
+                 SUM(CASE WHEN status='open' AND due_date < ? THEN 1 ELSE 0 END) AS overdue,
+                 SUM(CASE WHEN status='open' AND due_date >= ? AND due_date <= ? THEN 1 ELSE 0 END) AS due_soon
+               FROM follow_up_tasks""",
+            (today_text, today_text, horizon),
+        ).fetchone()
         rows = connection.execute(
             """SELECT t.id, c.name AS company_name, t.title, t.due_date
                FROM follow_up_tasks t JOIN companies c ON c.id=t.company_id
                WHERE t.status='open' AND t.due_date <= ?
-               ORDER BY t.due_date, c.name LIMIT 100""",
+               ORDER BY t.due_date, c.name LIMIT 50""",
             (horizon,),
         ).fetchall()
     overdue = [dict(row) for row in rows if str(row["due_date"]) < today_text]
     due_soon = [dict(row) for row in rows if str(row["due_date"]) >= today_text]
     return {
         "report": "meeting_follow_up_review", "as_of": today_text,
-        "overdue_count": len(overdue), "due_within_7_days_count": len(due_soon),
-        "overdue": overdue, "due_soon": due_soon,
+        "overdue_count": counts["overdue"] or 0, "due_within_7_days_count": counts["due_soon"] or 0,
+        "details_are_limited_to_50": True, "overdue": overdue, "due_soon": due_soon,
     }
 
 
@@ -307,6 +314,8 @@ def _sales_period_summary(input_data: dict[str, Any]) -> dict[str, Any]:
         end = date.fromisoformat(str(input_data["date_to"]))
     except (TypeError, ValueError) as exc:
         raise ValueError("Tarih aralığı YYYY-MM-DD biçiminde olmalıdır") from exc
+    if start.isoformat() != input_data["date_from"] or end.isoformat() != input_data["date_to"]:
+        raise ValueError("Tarih biçimi tam olarak YYYY-MM-DD olmalıdır")
     if start > end or (end - start).days > 3660:
         raise ValueError("Tarih aralığı geçersiz veya 10 yıldan uzun")
     with db.connect() as connection:

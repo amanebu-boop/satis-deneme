@@ -256,7 +256,7 @@ def _company_record_from_capture(data: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/api/meetings/capture")
-def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, response: Response) -> dict[str, Any]:
+def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, http_response: Response) -> dict[str, Any]:
     from app.main import _require_browser_session, _require_csrf
 
     session = _require_browser_session(request)
@@ -271,7 +271,7 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
         model = os.environ.get("OPENAI_MODEL", "gpt-5.5")
         companies = db.list_companies()
         products = db.list_products()
-        extracted, response = extract_meeting_capture(client, model, payload.transcript.strip(), companies, products)
+        extracted, ai_response = extract_meeting_capture(client, model, payload.transcript.strip(), companies, products)
         if extracted["questions"]:
             return {"created": False, "questions": extracted["questions"], "warnings": extracted["warnings"]}
         existing = next((item for item in companies if item["id"] == extracted["company_id"]), None)
@@ -285,11 +285,11 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
             "notes": extracted["notes"], "product_lines": extracted["product_lines"],
         }
         saved = db.create_company_and_meeting(company_record, meeting_record, company_sector=extracted["sector"])
-        response.status_code = 201
+        http_response.status_code = 201
         try:
             from app import ai_usage
             session_hash = hashlib.sha256(request.cookies.get("sales_session", "").encode("utf-8")).hexdigest()
-            ai_usage.record_response_usage(response, model, "meeting", session_hash)
+            ai_usage.record_response_usage(ai_response, model, "meeting", session_hash)
         except Exception:
             pass
         return {

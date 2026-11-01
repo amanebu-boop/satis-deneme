@@ -192,13 +192,32 @@ def _company_record(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
             record[key] = json.loads(value) if isinstance(value, str) else (value or [])
         except (TypeError, json.JSONDecodeError):
             record[key] = []
+    raw_sectors = record.get("sector")
+    try:
+        sectors = json.loads(raw_sectors) if isinstance(raw_sectors, str) and raw_sectors.lstrip().startswith("[") else None
+    except (TypeError, json.JSONDecodeError):
+        sectors = None
+    if not isinstance(sectors, list):
+        sectors = [raw_sectors] if isinstance(raw_sectors, str) and raw_sectors.strip() else []
+    record["sectors"] = [item for item in sectors if isinstance(item, str) and item.strip()]
+    record["sector"] = ", ".join(record["sectors"])
     return record
+
+
+def _stored_company_sector(record: dict[str, Any]) -> str | None:
+    sectors = record.get("sectors")
+    if not isinstance(sectors, list):
+        legacy = record.get("sector")
+        sectors = [legacy] if isinstance(legacy, str) and legacy.strip() else []
+    clean = list(dict.fromkeys(item.strip() for item in sectors if isinstance(item, str) and item.strip()))
+    return json.dumps(clean, ensure_ascii=False) if clean else None
 
 
 def create_company(record: dict[str, Any]) -> dict[str, Any]:
     stored = {**record}
     stored["authorized_people"] = json.dumps(record.get("authorized_people") or [], ensure_ascii=False)
     stored["phone_numbers"] = json.dumps(record.get("phone_numbers") or [], ensure_ascii=False)
+    stored["sector"] = _stored_company_sector(record)
     with connect() as connection:
         connection.execute(
             """INSERT INTO companies
@@ -268,6 +287,7 @@ def update_company(company_id: str, record: dict[str, Any]) -> dict[str, Any] | 
     stored = {**record}
     stored["authorized_people"] = json.dumps(record.get("authorized_people") or [], ensure_ascii=False)
     stored["phone_numbers"] = json.dumps(record.get("phone_numbers") or [], ensure_ascii=False)
+    stored["sector"] = _stored_company_sector(record)
     with connect() as connection:
         cursor = connection.execute(
             """UPDATE companies SET name=?, sector=?, authorized_people=?, phone_numbers=?, address=?,
@@ -350,7 +370,7 @@ def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
     return {**record, "product_lines": saved_lines}
 
 
-def create_company_and_meeting(company_record: dict[str, Any] | None, meeting_record: dict[str, Any], company_sector: str | None = None) -> dict[str, Any]:
+def create_company_and_meeting(company_record: dict[str, Any] | None, meeting_record: dict[str, Any], company_sectors: list[str] | None = None) -> dict[str, Any]:
     """Atomically create a company when needed and its first meeting."""
     with connect() as connection:
         connection.execute("BEGIN IMMEDIATE")
@@ -358,6 +378,7 @@ def create_company_and_meeting(company_record: dict[str, Any] | None, meeting_re
             stored = {**company_record}
             stored["authorized_people"] = json.dumps(company_record.get("authorized_people") or [], ensure_ascii=False)
             stored["phone_numbers"] = json.dumps(company_record.get("phone_numbers") or [], ensure_ascii=False)
+            stored["sector"] = _stored_company_sector(company_record)
             connection.execute(
                 """INSERT INTO companies
                    (id, name, sector, authorized_people, phone_numbers, address, city, district,
@@ -371,10 +392,10 @@ def create_company_and_meeting(company_record: dict[str, Any] | None, meeting_re
                  stored.get("website"), stored.get("email"), stored.get("tax_office"),
                  stored.get("tax_number"), stored.get("mersis_number"), stored.get("notes")),
             )
-        if company_record is None and company_sector:
+        if company_record is None and company_sectors:
             connection.execute(
                 "UPDATE companies SET sector = ? WHERE id = ? AND (sector IS NULL OR trim(sector) = '')",
-                (company_sector, meeting_record["company_id"]),
+                (json.dumps(company_sectors, ensure_ascii=False), meeting_record["company_id"]),
             )
         connection.execute(
             """INSERT INTO meetings

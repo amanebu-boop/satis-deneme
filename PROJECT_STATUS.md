@@ -314,3 +314,13 @@ Her görevde:
 - Render test servisi `satis-deneme-test` (`srv-dbhssmd9el5s738cnr9g`), commit `9c09b16bcd5655217e5dc1fc52ef63853cec55ef` için **live**. Uygulama başlangıcı ve `GET /` 200 OK logları doğrulandı.
 - PR #11 hâlâ açık/draft; `main` ve production Render servisi değiştirilmedi.
 - Gerçek OpenAI model çağrısı yapılamadı: Render test ortamında OPENAI_API_KEY henüz yapılandırılmadı. Otomatik testler OpenAI yanıtını taklit ederek kayıt mantığını doğrular.
+
+## 2026-11-01 — Ajan sayfası bağlantısı ve çoklu firma sektörü
+
+- Ajan Yönetimi sayfasının üst bölümündeki “Satış asistanı” bağlantısı kaldırıldı. Ajan sayfasında bu ayrı asistan ekranına yönlendiren bağlantı bulunmuyor.
+- Firma formundaki sektör alanı çoklu seçime dönüştürüldü. Bir firmaya Erşen Makina'nın izinli sektör listesinden birden fazla sektör atanabilir; Çelik Kapı hâlâ listede değildir.
+- API yeni `sectors` dizi alanını doğrular; boş liste, bilinmeyen sektör ve izinli liste dışındaki değerler reddedilir. Eski tekil `sector` istemcileri geriye dönük uyum için kabul edilir.
+- Mevcut SQLite kayıtlarındaki tekil sektörler migration gerektirmeden okunurken tek elemanlı sektör listesine dönüştürülür. Yeni seçimler aynı mevcut `sector` sütununda JSON dizi olarak saklanır; API yanıtında hem `sectors` dizisi hem geriye dönük uyumlu birleştirilmiş `sector` metni bulunur.
+- Ana ekrandaki AI firma/görüşme kayıt akışı birden fazla sektörü çıkarabilir; yalnızca izinli sektörleri kaydeder. Mevcut firmanın sektörleri otomatik olarak değiştirilmez.
+- Testler çoklu sektör API doğrulamasını, veritabanına yazma/okumayı, AI çoklu sektör çıkarımını, eski tekil sektör uyumluluğunu ve Ajan Yönetimi sayfasındaki bağlantının kaldırıldığını kapsayacak şekilde güncellendi.
+- Değişiklikler yalnızca `feature/agent-foundation` dalındadır. PR #11 açık/draft; `main` ve production Render servisi değiştirilmedi. CI ve test Render dağıtımı bu güncelleme için ayrıca doğrulanacak.

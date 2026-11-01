@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import json
 import os
+import time
+from collections import deque
+from threading import Lock
 from typing import Any
 from uuid import uuid4
 
@@ -17,6 +20,31 @@ from app.agent_instructions import read_agent_profile
 router = APIRouter()
 MAX_MESSAGE_CHARS = 6000
 MAX_TOOL_CALLS = 6
+MAX_REQUESTS_PER_MINUTE = 10
+_RATE_WINDOW_SECONDS = 60
+_rate_events: dict[str, deque[float]] = {}
+_rate_lock = Lock()
+_last_response_by_session: dict[str, str] = {}
+_response_lock = Lock()
+
+
+def _check_rate_limit(session_key: str) -> None:
+    now = time.monotonic()
+    with _rate_lock:
+        events = _rate_events.setdefault(session_key, deque())
+        while events and now - events[0] >= _RATE_WINDOW_SECONDS:
+            events.popleft()
+        if len(events) >= MAX_REQUESTS_PER_MINUTE:
+            raise HTTPException(status_code=429, detail="Çok fazla asistan isteği gönderildi; bir dakika sonra tekrar deneyin")
+        events.append(now)
+        if len(_rate_events) > 2048:
+            for key in list(_rate_events):
+                queue = _rate_events[key]
+                while queue and now - queue[0] >= _RATE_WINDOW_SECONDS:
+                    queue.popleft()
+                if not queue:
+                    _rate_events.pop(key, None)
+
 SAFE_TASKS = {
     "company": {"directory_overview"},
     "product": {"catalog_overview"},
@@ -122,8 +150,9 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
                     payload = {"ok": True, "result": result["output"]}
                 else:
                     raise ValueError("Bilinmeyen araç")
-            except Exception as exc:
-                payload = {"ok": False, "error": str(exc)[:500]}
+            except Exception:
+                # Do not forward internal exception text, database details, or secrets to the model.
+                payload = {"ok": False, "error": "İzinli görev tamamlanamadı; ayrıntı sunucu tarafında tutulur."}
             outputs.append({"type": "function_call_output", "call_id": call.call_id,
                             "output": json.dumps(payload, ensure_ascii=False)})
             executed_calls.append({"call_id": call.call_id, "name": call.name})
@@ -139,16 +168,26 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
 
     session = _require_browser_session(request)
     _require_csrf(request, session)
+    session_token = request.cookies.get("sales_session", "")
+    session_key = __import__("hashlib").sha256(session_token.encode("utf-8")).hexdigest()
+    _check_rate_limit(session_key)
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:
         raise HTTPException(status_code=503, detail="OpenAI API anahtarı sunucuda tanımlı değil")
     try:
         from openai import OpenAI
         client = OpenAI(api_key=api_key, timeout=30.0, max_retries=1)
-        return run_assistant_turn(
+        with _response_lock:
+            expected_previous = _last_response_by_session.get(session_key)
+        if payload.previous_response_id and payload.previous_response_id != expected_previous:
+            raise HTTPException(status_code=409, detail="Sohbet oturumu yenilendi; lütfen yeni bir mesajla devam edin")
+        result = run_assistant_turn(
             client, os.environ.get("OPENAI_MODEL", "gpt-5.5"),
             payload.message.strip(), str(session["subject"]), payload.previous_response_id,
         )
+        with _response_lock:
+            _last_response_by_session[session_key] = result["response_id"]
+        return result
     except ImportError as exc:
         raise HTTPException(status_code=503, detail="OpenAI Python paketi kurulu değil") from exc
     except HTTPException:

@@ -85,3 +85,34 @@ def test_wiki_upload_rejects_unsupported_file_type(tmp_path, monkeypatch):
             files={"file": ("payload.exe", b"not executable", "application/octet-stream")},
         )
         assert response.status_code == 415
+
+
+def test_meeting_contact_fields_are_redacted_from_wiki_text():
+    from app.llm_wiki import _redact_meeting_contacts
+    cleaned = _redact_meeting_contacts(
+        "Arayın: +90 532 123 45 67 veya satis@example.com. Makine fiyatını görüşün."
+    )
+    assert "+90 532 123 45 67" not in cleaned
+    assert "satis@example.com" not in cleaned
+    assert "Makine fiyatını görüşün" in cleaned
+
+
+def test_pdf_and_docx_text_extraction():
+    from io import BytesIO
+    from docx import Document
+    from reportlab.pdfgen import canvas
+    from app.llm_wiki import _extract_document_text
+
+    docx_stream = BytesIO()
+    document = Document()
+    document.add_paragraph("CNC büküm makinası teknik föyü")
+    document.save(docx_stream)
+    docx_text = _extract_document_text("teknik.docx", docx_stream.getvalue())
+    assert "CNC büküm makinası" in docx_text
+
+    pdf_stream = BytesIO()
+    pdf = canvas.Canvas(pdf_stream)
+    pdf.drawString(60, 760, "CNC bending machine technical sheet")
+    pdf.save()
+    pdf_text = _extract_document_text("technical.pdf", pdf_stream.getvalue())
+    assert "CNC bending machine" in pdf_text

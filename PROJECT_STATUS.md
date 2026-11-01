@@ -294,3 +294,16 @@ Her görevde:
 - tests/test_meeting_audio.py artık yalnızca metin tabanlı AI taslak güvenlik/eşleştirme davranışını ve eski transkripsiyon uç noktasının kayıtlı olmadığını test eder.
 - Değişiklikler yalnızca feature/agent-foundation dalındadır. main ve canlı Render servisine gönderim yapılmadı.
 - Test ve test Render dağıtımı bu not eklenirken henüz çalıştırılmadı/doğrulanmadı.
+## 2026-11-01 — Firma sektör zorunluluğu ve AI ile otomatik firma/görüşme kaydı
+
+- Erşen Makina web sitesindeki sektör başlıkları kaynak alınarak 10 seçenekli sabit sektör listesi oluşturuldu: Çelik Eşya, Mobilya, Baza, Kanepe ve Koltuk, Bazalı Kanepe, Hastane Yatağı Üreticileri, Ütü Masası ve Kurutmalık Üreticileri, Otomotiv, Enjeksiyon Plastik Kalıpları, Sac Kalıpları. Çelik Kapı hariç tutuldu.
+- Firma formuna aynı mevcut select/dropdown görsel stiliyle zorunlu Sektör alanı eklendi. Firma oluşturma ve güncelleme API'si yalnızca bu listedeki sektörleri kabul eder.
+- SQLite şirket tablosuna `sector` alanı için geriye uyumlu migration eklendi. Önceden kayıtlı sektör bilgisi olmayan firmalar tahminle sınıflandırılmaz; firma kartında sektör eksiği gösterilir. Düzenleme formu sektör seçimini zorunlu tutar. AI metninde sektör açıkça anlaşılırsa eksik legacy sektörünü doldurabilir.
+- Ana ekrandaki kompakt AI alanı artık taslak hazırlamaz. `POST /api/meetings/capture` metni analiz eder; mevcut firmayı kesin eşleşmeyle kullanır veya sektör bilgisi doğrulanan yeni firma oluşturur, ardından görüşmeyi ve katalogla eşleşen ürün satırlarını aynı veritabanı transaction'ında kaydeder.
+- Firma adı, sektör veya görüşme türü gibi zorunlu bilgi eksik/belirsizse hiçbir firma/görüşme kaydı oluşturulmaz; kullanıcıya netleştirme soruları döndürülür. Ürün katalogda eşleşmez veya miktar söylenmezse ürün satırı eklenmez ve uyarı gösterilir; görüşme metni kaydedilir.
+- AI yalnızca mevcut katalog ID'lerini kullanabilir. Fiyat ve para birimi modelden alınmaz; katalogdan gelir. İndirim/fiyat/teslimat taahhüdü üretilmez. Firma + görüşme oluşturma atomiktir; hata olursa kısmi firma kaydı kalmaz.
+- Mevcut firma kaydı yeniden kullanılınca ikinci firma oluşturulmaz. Aynı unvan birden fazla kayıtla eşleşirse otomatik seçim yapılmaz; kullanıcıdan netleştirme istenir.
+- `tests/test_meeting_audio.py` AI alan çıkarımı, sektör whitelist, Çelik Kapı reddi, mevcut/yeni firma eşleştirme, eksik zorunlu bilgi, katalog ürün eşleştirme, API oturum/CSRF/API anahtarı ve transaction rollback testlerini kapsar. `tests/test_company_sector_markup.py` form ve ana ekran aksiyonunu kontrol eder.
+- Gerçek OpenAI API çağrısı için `OPENAI_API_KEY` Render test servisine henüz eklenmedi. Bu nedenle entegrasyon testleri sahte OpenAI yanıtıyla API ve veritabanı akışını doğrular; gerçek model çıktısı/faturalandırma doğrulanmış değildir.
+- Değişiklikler yalnızca `feature/agent-foundation` dalındadır. PR #11 açık/draft bırakılmıştır. `main` ve canlı Render servisi değiştirilmedi.
+- CI ve Render test dağıtım sonucu ayrıca doğrulanacak; tamamlanmadan başarılı olarak raporlanmayacak.

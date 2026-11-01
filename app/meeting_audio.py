@@ -313,6 +313,15 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
         companies = db.list_companies()
         products = db.list_products()
         extracted, ai_response = extract_meeting_capture(client, model, payload.transcript.strip(), companies, products)
+        # Meter the paid model response before any company/meeting write.
+        try:
+            session_hash = hashlib.sha256(request.cookies.get("sales_session", "").encode("utf-8")).hexdigest()
+            recorded = ai_usage.record_response_usage(ai_response, model, "meeting", session_hash)
+            if not recorded:
+                raise RuntimeError("usage metadata was missing or not recorded")
+        except Exception as exc:
+            logging.getLogger(__name__).error("AI usage metering unavailable (%s)", type(exc).__name__)
+            raise HTTPException(status_code=503, detail="Yapay zekâ kullanım kaydı doğrulanamadı; güvenlik için firma/görüşme kaydı durduruldu.") from exc
         if extracted["questions"]:
             return {"created": False, "questions": extracted["questions"], "warnings": extracted["warnings"]}
         existing = next((item for item in companies if item["id"] == extracted["company_id"]), None)
@@ -336,12 +345,6 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
         except Exception as exc:
             logging.getLogger(__name__).warning("Meeting AI audit record failed (%s)", type(exc).__name__)
         http_response.status_code = 201
-        try:
-            from app import ai_usage
-            session_hash = hashlib.sha256(request.cookies.get("sales_session", "").encode("utf-8")).hexdigest()
-            ai_usage.record_response_usage(ai_response, model, "meeting", session_hash)
-        except Exception as exc:
-            logging.getLogger(__name__).warning("AI usage metering failed (%s)", type(exc).__name__)
         return {
             "created": True,
             "company": {"id": saved["company"]["id"], "name": saved["company"]["name"],

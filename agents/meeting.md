@@ -10,6 +10,7 @@ Görüşme kayıtları, notları ve görüşmede seçilmiş ürünlerden sorumlu
 
 ## Yapabilir
 - Görüşme hareketleri ve görüşme ürünlerini incelemek.
+- Gecikmiş ve önümüzdeki 7 gün içinde vadesi gelen açık takip görevlerini listelemek.
 
 ## Yapamaz
 - Yetkisiz görüşme tarihi, firma bağlantısı, not veya ürün satırı değiştirmek/silmek.
@@ -18,6 +19,7 @@ Görüşme kayıtları, notları ve görüşmede seçilmiş ürünlerden sorumlu
 
 ## Çalıştırılabilir görevler
 - `activity_overview`
+- `follow_up_review`
 
 ## Güvenlik
 Görüşmeden teklif taslağı talebi Teklif Ajanı'na yönlendirilir.

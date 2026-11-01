@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import time
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,8 @@ from app import db
 router = APIRouter()
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 MAX_EXTRACTED_CHARS = 200_000
+_INDEX_REFRESH_SECONDS = 30
+_last_refresh_at = 0.0
 
 _ROOT = Path(__file__).resolve().parent.parent
 _MAX_CONTENT = 12000
@@ -76,7 +79,11 @@ def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
 
 
 def refresh_wiki_index() -> None:
-    """Refresh local markdown knowledge and current catalog/customer activity."""
+    """Refresh the complete source set at most once every 30 seconds."""
+    global _last_refresh_at
+    now = time.monotonic()
+    if _last_refresh_at and now - _last_refresh_at < _INDEX_REFRESH_SECONDS:
+        return
     init_wiki()
     markdown_paths = [_ROOT / "AGENTS.md", _ROOT / "AGENT_ARCHITECTURE.md"]
     markdown_paths.extend(sorted((_ROOT / "agents").glob("*.md")))
@@ -211,6 +218,9 @@ def refresh_wiki_index() -> None:
                         "DELETE FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
                         (source_type, row["source_id"]),
                     )
+
+
+    _last_refresh_at = time.monotonic()
 
 
 def _extract_document_text(filename: str, data: bytes) -> str:

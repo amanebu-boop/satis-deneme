@@ -309,6 +309,13 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <button type="button" class="stat stat-link" data-go="quotes" aria-label="Teklifler bölümünü aç"><div class="stat-top">Kayıtlı teklif <span class="stat-icon">▧</span></div><div class="stat-value" id="dashboard-quote-count">—</div><div class="stat-foot">Toplam teklif kaydı</div></button>
 <div class="stat"><div class="stat-top">Teklif toplamı <span class="stat-icon">€</span></div><div class="stat-value" id="dashboard-quote-total">—</div><div class="stat-foot" id="dashboard-quote-foot">Kayıtlı tekliflerin toplamı</div></div>
 </div>
+<div class="panel" id="dashboard-sales-assistant" style="margin-bottom:12px;padding:14px">
+<div class="panel-head" style="margin-bottom:7px"><h2>Satış Asistanı</h2><span class="pill blue">Ana ekran</span></div>
+<p class="footer-note" style="margin:0 0 8px">Firma, ürün, görüşme, teklif ve satış süreçleri hakkında soru sorun. Asistan yalnızca izinli ajan görevlerini çalıştırır; kritik işlemler onay gerektirir.</p>
+<div id="dashboard-assistant-messages" aria-live="polite" style="display:grid;gap:8px;max-height:280px;overflow:auto;margin-bottom:8px"><div class="empty">Satış Asistanı hazır. Nasıl yardımcı olabilirim?</div></div>
+<textarea id="dashboard-assistant-input" rows="2" maxlength="6000" placeholder="Satış süreciyle ilgili sorunuzu yazın…" style="width:100%;min-height:58px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>
+<div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap"><button class="btn primary" id="dashboard-assistant-send" type="button">Gönder</button><button class="btn" id="dashboard-assistant-new" type="button">Yeni sohbet</button><span id="dashboard-assistant-status" class="footer-note" role="status"></span></div>
+</div>
 <div class="panel dashboard-ai-capture" style="margin-bottom:12px;padding:12px">
 <div class="panel-head" style="margin-bottom:7px"><h2>Yapay zekâ ile firma ve görüşme kaydı</h2><span class="pill blue">Hızlı kayıt</span></div>
 <p class="footer-note" style="margin:0 0 8px">Firma ve görüşme bilgilerini yazın. Yapay zekâ firma kaydını ve görüşme kaydını otomatik oluştursun; eksik zorunlu bilgi varsa kaydetmeden önce sorar.</p>
@@ -998,6 +1005,32 @@ document.getElementById("meeting-report-form").addEventListener("submit",e=>{
  window.open("/api/meeting-report?"+params.toString(),"_blank","noopener");
 });
 
+let dashboardAssistantPreviousResponseId=null;
+const dashboardAssistantMessages=document.getElementById("dashboard-assistant-messages");
+function addDashboardAssistantMessage(role,message){
+ const item=document.createElement("div");item.style.cssText="padding:9px 11px;border:1px solid var(--line);border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere";
+ item.style.background=role==="assistant"?"var(--panel)":"var(--surface,transparent)";
+ const label=document.createElement("strong");label.textContent=role==="assistant"?"Satış Asistanı":"Siz";label.style.display="block";label.style.marginBottom="4px";
+ const body=document.createElement("div");body.textContent=message;item.append(label,body);dashboardAssistantMessages.append(item);dashboardAssistantMessages.scrollTop=dashboardAssistantMessages.scrollHeight;
+}
+async function sendDashboardAssistantMessage(){
+ const input=document.getElementById("dashboard-assistant-input"),button=document.getElementById("dashboard-assistant-send"),status=document.getElementById("dashboard-assistant-status");
+ const message=input.value.trim();if(!message)return;
+ button.disabled=true;status.textContent="Yanıt hazırlanıyor…";addDashboardAssistantMessage("user",message);input.value="";
+ try{
+  if(!csrfToken)await readCsrf();
+  const response=await fetch("/api/assistant/chat",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({message,previous_response_id:dashboardAssistantPreviousResponseId})});
+  const result=await response.json().catch(()=>({}));
+  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
+  if(response.status===409){dashboardAssistantPreviousResponseId=null;throw new Error("Sohbet oturumu yenilendi. Mesajınızı tekrar gönderin.");}
+  if(!response.ok)throw new Error(result.detail||"Asistan yanıt veremedi.");
+  dashboardAssistantPreviousResponseId=result.response_id||null;addDashboardAssistantMessage("assistant",result.message||"Yanıt alınamadı.");status.textContent="";
+ }catch(error){status.textContent=error.message||"Asistan isteği tamamlanamadı.";}
+ finally{button.disabled=false;input.focus();}
+}
+document.getElementById("dashboard-assistant-send")?.addEventListener("click",sendDashboardAssistantMessage);
+document.getElementById("dashboard-assistant-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendDashboardAssistantMessage();}});
+document.getElementById("dashboard-assistant-new")?.addEventListener("click",()=>{dashboardAssistantPreviousResponseId=null;dashboardAssistantMessages.replaceChildren();const empty=document.createElement("div");empty.className="empty";empty.textContent="Yeni sohbet başladı.";dashboardAssistantMessages.append(empty);document.getElementById("dashboard-assistant-status").textContent="";});
 document.getElementById("dashboard-prepare-meeting")?.addEventListener("click",async()=>{
  const button=document.getElementById("dashboard-prepare-meeting"),status=document.getElementById("dashboard-meeting-ai-status");
  const transcript=document.getElementById("dashboard-meeting-transcript").value.trim();

@@ -267,3 +267,11 @@ Her görevde:
 - Testler ve Render dağıtımı bu not eklenirken henüz çalıştırılmadı/doğrulanmadı. OpenAI API anahtarı henüz eklenmedi; gerçek ses transkripsiyonu ve ücretli API çağrısı yapılmadı.
 - Yalnızca `feature/agent-foundation` dalı hedeflenmiştir. `main` ve canlı Render servisi değiştirilmemiştir.
 - Sıradaki adım: AI destekli görüşme taslağı — konuşma metnini mevcut firma ve ürün kataloğuyla güvenli biçimde eşleştirme, belirsiz eşleşmeleri kullanıcıya sorma ve yalnızca kullanıcı onayıyla mevcut görüşme formunu doldurma.
+
+
+### Doğrulama güncellemesi — 2026-11-01
+- AI görüşme taslağı, katalog ID doğrulaması, belirsiz eşleşme ve miktar/görüşme türü eksikliği testleri eklendi.
+- GitHub Python CI: kod ve test commit'i `60797cda41b16353a5e7c3ffe1e7ef50adaed916` için **90 passed, 1 skipped, 1 warning**. Daha sonraki `f5a4032` ve `c265b22` commit'leri talimat/durum dokümantasyonu güncellemesidir; Python CI bu güncel commit `c265b2296c498a57eee217d06eabb896066fa3f8` için de başarılı.
+- Uyarı: Starlette TestClient ile httpx kullanımının deprecated olacağına ilişkin uyarı; testler başarısız değil.
+- Quote template validation/Docker build CI ve son Render dağıtımı bu not yazılırken hâlâ devam ediyor; tamamlanmış olarak raporlanmamalı.
+- Gerçek OpenAI transkripsiyon/Responses API çağrısı yapılmadı; Render'da API anahtarı henüz ekli değil. Tarayıcıda mikrofon ve ses dosyası yükleme akışının kullanıcı tarafından uçtan uca doğrulanması da henüz yapılmadı.

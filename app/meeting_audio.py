@@ -181,7 +181,8 @@ def extract_meeting_capture(
         questions.append("Metindeki firma adı eşleşen kayıtla çelişiyor. Firma adını netleştirin.")
     if existing is None and not company_name:
         questions.append("Firma unvanı metinde bulunamadı. Firma adını belirtin.")
-    sectors = (existing.get("sectors") or ([existing["sector"]] if existing.get("sector") else [])) if existing else company_data.get("sectors") or []
+    existing_sectors = (existing.get("sectors") or ([existing["sector"]] if existing.get("sector") else [])) if existing else []
+    sectors = existing_sectors or company_data.get("sectors") or []
     if not isinstance(sectors, list):
         sectors = []
     sectors = list(dict.fromkeys(item.strip() for item in sectors if isinstance(item, str) and is_valid_company_sector(item.strip())))

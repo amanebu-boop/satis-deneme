@@ -264,7 +264,8 @@ async def upload_wiki_document(request: Request, file: UploadFile = File(...)) -
         raise HTTPException(status_code=422, detail="Belge metni okunamadı; dosya biçimini kontrol edin.") from exc
     if not content:
         raise HTTPException(status_code=422, detail="Belgede aranabilir metin bulunamadı. Taranmış PDF için OCR gerekir.")
-    if len(content) > MAX_EXTRACTED_CHARS:
+    truncated = len(content) > MAX_EXTRACTED_CHARS
+    if truncated:
         content = content[:MAX_EXTRACTED_CHARS]
     source_id = hashlib.sha256((filename + hashlib.sha256(data).hexdigest()).encode("utf-8")).hexdigest()[:32]
     # A newer upload with the same filename replaces the old indexed version.
@@ -309,7 +310,7 @@ async def upload_wiki_document(request: Request, file: UploadFile = File(...)) -
         _upsert("uploaded_document", f"{source_id}:{index:04d}",
                 f"{filename} · Bölüm {index}", chunk)
     return {"source_id": source_id, "title": filename, "characters_indexed": len(content),
-            "chunks_indexed": len(chunks)}
+            "chunks_indexed": len(chunks), "truncated": truncated}
 
 
 @router.delete("/api/wiki/documents/{source_id}")

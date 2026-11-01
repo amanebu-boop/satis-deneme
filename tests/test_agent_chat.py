@@ -10,6 +10,9 @@ class FakeResponse:
         self.id = response_id
         self.output = output or []
         self.output_text = output_text
+        self.usage = SimpleNamespace(input_tokens=10, output_tokens=5,
+                                     input_tokens_details=SimpleNamespace(cached_tokens=0),
+                                     output_tokens_details=SimpleNamespace(reasoning_tokens=0))
 
 
 class FakeResponses:
@@ -226,19 +229,18 @@ def test_profile_and_task_in_same_model_round_do_not_execute_task(monkeypatch):
     assert result["message"] == "Talimatın önceki turda okunması gerekiyor."
 
 
-def test_wiki_search_tool_is_available_to_dashboard_assistant(monkeypatch):
-    search = tool("search_sales_wiki", "wiki_1", '{"query":"makine opsiyonları"}')
-    client = FakeClient([
-        FakeResponse("wiki_resp_1", [search]),
-        FakeResponse("wiki_resp_2", output_text="Katalogda ilgili bilgi bulundu."),
-    ])
+def test_relevant_assistant_question_prefetches_local_wiki(monkeypatch):
+    client = FakeClient([FakeResponse("wiki_resp_1", output_text="Katalogda ilgili bilgi bulundu.")])
     calls = []
     monkeypatch.setattr(agent_chat.llm_wiki, "search_wiki",
-                        lambda query, limit=5: calls.append((query, limit)) or {"retrieval": "local_lexical", "results": []})
+                        lambda query, limit=5: calls.append((query, limit)) or {
+                            "retrieval": "local_lexical",
+                            "results": [{"title": "Ürün kataloğu", "content": "Çift kafa makinesi"}],
+                        })
     result = agent_chat.run_assistant_turn(client, "gpt-test", "Makine opsiyonları nedir?", "tester")
-    assert calls == [("makine opsiyonları", 5)]
+    assert calls == [("Makine opsiyonları nedir?", 5)]
+    assert "Ürün kataloğu" in client.responses.calls[0]["input"]
     assert result["message"] == "Katalogda ilgili bilgi bulundu."
-    assert "local_lexical" in client.responses.calls[1]["input"][0]["output"]
 
 
 def test_standalone_assistant_page_route_is_removed():

@@ -159,18 +159,26 @@ def extract_meeting_capture(
     product_by_id = {str(item["id"]): item for item in products}
     company_id = company_data.get("company_id")
     existing = company_by_id.get(str(company_id)) if company_id is not None else None
-    if company_id is not None and existing is None:
+    invalid_company_id = company_id is not None and existing is None
+    if invalid_company_id:
         company_data["company_id"] = None
     company_name = str(company_data.get("name") or "").strip()
+    ambiguous_company_match = False
+    company_match_conflict = False
     if existing is None and company_name:
         matches = [item for item in companies if _normalized_company_name(item.get("name")) == _normalized_company_name(company_name)]
         if len(matches) == 1:
             existing = matches[0]
-    if existing is not None:
-        # A model-selected record must still agree with the extracted name.
-        if company_name and _normalized_company_name(company_name) != _normalized_company_name(existing.get("name")):
-            existing = None
+        elif len(matches) > 1:
+            ambiguous_company_match = True
+    if existing is not None and company_name and _normalized_company_name(company_name) != _normalized_company_name(existing.get("name")):
+        company_match_conflict = True
+        existing = None
     questions: list[str] = []
+    if ambiguous_company_match:
+        questions.append("Aynı unvana sahip birden fazla firma bulundu. Doğru firmayı netleştirin.")
+    if company_match_conflict:
+        questions.append("Metindeki firma adı eşleşen kayıtla çelişiyor. Firma adını netleştirin.")
     if existing is None and not company_name:
         questions.append("Firma unvanı metinde bulunamadı. Firma adını belirtin.")
     sector = ((existing.get("sector") or company_data.get("sector")) if existing else company_data.get("sector"))

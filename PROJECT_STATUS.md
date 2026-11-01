@@ -156,3 +156,15 @@ Her görevde:
 - Testler henüz çalıştırılmadı; GitHub Actions workflow sonucu ve Render dağıtımı bekleniyor. Bu nedenle otomatik test başarısı iddia edilmez.
 - Çalışma dalı `feature/agent-foundation`; `main` ve canlı Render değiştirilmedi.
 - Sıradaki iş: test dağıtımını doğrulamak, sonra görev ekranındaki gerçek akışları ajan kartları altında tutarlı hale getirmek ve Satış Ajanı koordinasyon görevini geliştirmek.
+
+
+## 13. 2026-11-01 — Ajan talimat dosyaları ve çalışma öncesi yönlendirme
+
+- Kök `AGENTS.md` yönlendirme dosyası oluşturuldu. Sekiz ajanın her biri için `agents/{agent_id}.md` talimat dosyası eklendi: company, product, meeting, quotation, warehouse, sales, reporting, audit.
+- Her dosyada rol, başlangıç sırası, yapabilecekleri, yapamayacakları, görev izinleri ve güvenlik kuralları tanımlandı.
+- `app/agent_instructions.py` eklendi. Çalışma zamanı önce kök yönlendirme dosyasını, sonra yalnızca ilgili ajanın kendi dosyasını okur; yönlendirme hedefini, agent_id kimliğini ve istenen görevin izinli görev listesinde bulunmasını doğrular.
+- `app/agent_runtime.py` her görev çalıştırılmadan önce bu doğrulamayı zorunlu kılar. Belge eksik/bozuksa veya görev izinli değilse görev başlatılmaz.
+- Belge politikası uygulama kodunun güvenlik kontrollerinin yerine geçmez; iki katman birlikte gereklidir. Satış Ajanı ve Depo Ajanı için henüz çalıştırılabilir görev tanımlanmadı.
+- Talimat yükleme ve izinli/izinsiz görev senaryoları için testler eklendi; testler henüz çalıştırılmadı.
+- Çalışma dalı `feature/agent-foundation`. `main` ve canlı Render'a dokunulmadı.
+- Sıradaki adım: dosyaların GitHub'da tam olduğunu doğrulamak, test dalında dağıtımı ve çalışma zamanı davranışını kontrol etmek.

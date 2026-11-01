@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 from decimal import Decimal
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from app import db
@@ -192,12 +194,170 @@ def _audit_overview(input_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _company_data_quality(input_data: dict[str, Any]) -> dict[str, Any]:
+    if input_data:
+        raise ValueError("data_quality does not accept input fields")
+    with db.connect() as connection:
+        row = connection.execute(
+            """SELECT COUNT(*) AS total,
+                      SUM(CASE WHEN sector IS NULL OR trim(sector)='' THEN 1 ELSE 0 END) AS missing_sector,
+                      SUM(CASE WHEN city IS NULL OR trim(city)='' THEN 1 ELSE 0 END) AS missing_city,
+                      SUM(CASE WHEN address IS NULL OR trim(address)='' THEN 1 ELSE 0 END) AS missing_address,
+                      SUM(CASE WHEN phone_numbers IS NULL OR trim(phone_numbers) IN ('', '[]') THEN 1 ELSE 0 END) AS missing_phone
+               FROM companies"""
+        ).fetchone()
+        duplicates = connection.execute(
+            """SELECT COUNT(*) AS total FROM (
+                 SELECT lower(trim(name)) FROM companies
+                 GROUP BY lower(trim(name)) HAVING COUNT(*) > 1
+               )"""
+        ).fetchone()["total"]
+    return {
+        "report": "company_data_quality", "scope": "aggregate_quality_counts",
+        "companies": row["total"], "missing_sector": row["missing_sector"] or 0,
+        "missing_city": row["missing_city"] or 0, "missing_address": row["missing_address"] or 0,
+        "missing_phone": row["missing_phone"] or 0, "duplicate_name_groups": duplicates,
+    }
+
+
+def _product_catalog_health(input_data: dict[str, Any]) -> dict[str, Any]:
+    if input_data:
+        raise ValueError("catalog_health does not accept input fields")
+    with db.connect() as connection:
+        row = connection.execute(
+            """SELECT COUNT(*) AS total,
+                      SUM(CASE WHEN trim(COALESCE(description,''))='' THEN 1 ELSE 0 END) AS missing_description,
+                      SUM(CASE WHEN trim(COALESCE(unit_price,''))='' OR unit_price GLOB '*[^0-9]*' THEN 1 ELSE 0 END) AS invalid_integer_price,
+                      SUM(CASE WHEN length(trim(COALESCE(currency,''))) != 3 THEN 1 ELSE 0 END) AS invalid_currency,
+                      SUM(CASE WHEN product_type='option' AND parent_product_id IS NULL THEN 1 ELSE 0 END) AS options_without_parent,
+                      SUM(CASE WHEN product_type='option' AND parent_product_id IS NOT NULL AND
+                               COALESCE((SELECT product_type FROM products parent WHERE parent.id=products.parent_product_id),'') != 'machine'
+                               THEN 1 ELSE 0 END) AS options_with_non_machine_parent
+               FROM products"""
+        ).fetchone()
+    return {
+        "report": "product_catalog_health", "scope": "aggregate_quality_counts",
+        "products": row["total"], "missing_description": row["missing_description"] or 0,
+        "invalid_integer_price": row["invalid_integer_price"] or 0,
+        "invalid_currency": row["invalid_currency"] or 0,
+        "options_without_parent": row["options_without_parent"] or 0,
+        "options_with_non_machine_parent": row["options_with_non_machine_parent"] or 0,
+    }
+
+
+def _meeting_follow_up_review(input_data: dict[str, Any]) -> dict[str, Any]:
+    if input_data:
+        raise ValueError("follow_up_review does not accept input fields")
+    today = datetime.now(ZoneInfo("Europe/Istanbul")).date()
+    horizon = (today + timedelta(days=7)).isoformat()
+    today_text = today.isoformat()
+    with db.connect() as connection:
+        rows = connection.execute(
+            """SELECT t.id, c.name AS company_name, t.title, t.due_date
+               FROM follow_up_tasks t JOIN companies c ON c.id=t.company_id
+               WHERE t.status='open' AND t.due_date <= ?
+               ORDER BY t.due_date, c.name LIMIT 100""",
+            (horizon,),
+        ).fetchall()
+    overdue = [dict(row) for row in rows if str(row["due_date"]) < today_text]
+    due_soon = [dict(row) for row in rows if str(row["due_date"]) >= today_text]
+    return {
+        "report": "meeting_follow_up_review", "as_of": today_text,
+        "overdue_count": len(overdue), "due_within_7_days_count": len(due_soon),
+        "overdue": overdue, "due_soon": due_soon,
+    }
+
+
+def _audit_anomaly_review(input_data: dict[str, Any]) -> dict[str, Any]:
+    if input_data:
+        raise ValueError("anomaly_review does not accept input fields")
+    with db.connect() as connection:
+        run_counts = connection.execute(
+            """SELECT status, COUNT(*) AS total FROM agent_runs
+               WHERE status IN ('failed','blocked') GROUP BY status"""
+        ).fetchall()
+        approval_counts = connection.execute(
+            """SELECT status, COUNT(*) AS total FROM agent_approvals
+               WHERE status IN ('expired','rejected') GROUP BY status"""
+        ).fetchall()
+        unprocessed_expired = connection.execute(
+            """SELECT COUNT(*) AS total FROM agent_approvals
+               WHERE status='pending' AND expires_at <= ?""",
+            (datetime.now(ZoneInfo("UTC")).isoformat(timespec="seconds"),),
+        ).fetchone()["total"]
+        failure_events = connection.execute(
+            """SELECT event_type, COUNT(*) AS total FROM agent_audit_logs
+               WHERE event_type IN ('run_failed','run_blocked','external_run_failed')
+               GROUP BY event_type ORDER BY event_type"""
+        ).fetchall()
+    return {
+        "report": "audit_anomaly_review", "scope": "counts_only_no_actor_details",
+        "failed_or_blocked_runs": {str(row["status"]): row["total"] for row in run_counts},
+        "rejected_or_expired_approvals": {str(row["status"]): row["total"] for row in approval_counts},
+        "pending_approvals_past_expiry": unprocessed_expired,
+        "failure_events": {str(row["event_type"]): row["total"] for row in failure_events},
+    }
+
+
+def _sales_period_summary(input_data: dict[str, Any]) -> dict[str, Any]:
+    if set(input_data) != {"date_from", "date_to"}:
+        raise ValueError("period_summary requires date_from and date_to")
+    try:
+        start = date.fromisoformat(str(input_data["date_from"]))
+        end = date.fromisoformat(str(input_data["date_to"]))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Tarih aralığı YYYY-MM-DD biçiminde olmalıdır") from exc
+    if start > end or (end - start).days > 3660:
+        raise ValueError("Tarih aralığı geçersiz veya 10 yıldan uzun")
+    with db.connect() as connection:
+        meetings = connection.execute(
+            "SELECT COUNT(*) AS total FROM meetings WHERE meeting_date BETWEEN ? AND ?",
+            (start.isoformat(), end.isoformat()),
+        ).fetchone()["total"]
+        quotations = connection.execute(
+            "SELECT COUNT(*) AS total FROM quotations WHERE substr(created_at,1,10) BETWEEN ? AND ?",
+            (start.isoformat(), end.isoformat()),
+        ).fetchone()["total"]
+        total_rows = connection.execute(
+            """SELECT currency, total FROM quotations
+               WHERE substr(created_at,1,10) BETWEEN ? AND ? ORDER BY currency""",
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+        statuses = connection.execute(
+            """SELECT status, COUNT(*) AS total FROM quotations
+               WHERE substr(created_at,1,10) BETWEEN ? AND ?
+               GROUP BY status ORDER BY status""",
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+    totals: dict[str, Decimal] = {}
+    counts: dict[str, int] = {}
+    for row in total_rows:
+        currency = str(row["currency"])
+        totals[currency] = totals.get(currency, Decimal("0")) + Decimal(str(row["total"] or "0"))
+        counts[currency] = counts.get(currency, 0) + 1
+    return {
+        "report": "sales_period_summary", "date_from": start.isoformat(), "date_to": end.isoformat(),
+        "meetings": meetings, "quotations": quotations,
+        "quotation_totals_by_currency": {
+            currency: {"count": counts[currency], "total": format(total, "f")}
+            for currency, total in totals.items()
+        },
+        "quotations_by_status": {str(row["status"]): row["total"] for row in statuses},
+        "currency_totals_are_not_converted": True,
+    }
+
+
 HANDLERS = {
     ("reporting", "sales_overview"): _sales_overview,
+    ("reporting", "period_summary"): _sales_period_summary,
     ("audit", "audit_overview"): _audit_overview,
+    ("audit", "anomaly_review"): _audit_anomaly_review,
     ("company", "directory_overview"): _company_directory_overview,
+    ("company", "data_quality"): _company_data_quality,
     ("product", "catalog_overview"): _product_catalog_overview,
+    ("product", "catalog_health"): _product_catalog_health,
     ("meeting", "activity_overview"): _meeting_activity_overview,
+    ("meeting", "follow_up_review"): _meeting_follow_up_review,
     ("quotation", "pipeline_overview"): _quotation_pipeline_overview,
     ("quotation", "prepare_from_meeting"): _prepare_quotation_from_meeting,
 }

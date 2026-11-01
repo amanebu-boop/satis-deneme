@@ -10,8 +10,6 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
-from pathlib import Path
 from pydantic import BaseModel, Field
 
 from app import agent_foundation, agent_runtime, ai_usage
@@ -168,6 +166,9 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
         total_calls += len(calls)
         if total_calls > MAX_TOOL_CALLS:
             raise ValueError("Tek mesaj için izin verilen araç çağrısı sınırı aşıldı")
+        # A profile becomes usable only after it has been returned to the model
+        # and the model has had a new response round to read it.
+        profiles_available_for_round = set(loaded_profiles)
         outputs = []
         for call in calls:
             try:
@@ -183,8 +184,8 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
                 elif call.name == "run_agent_task":
                     if set(args) != {"agent_id", "task_type", "input_data"}:
                         raise ValueError("Araç argümanları beklenen şemaya uymuyor")
-                    if args["agent_id"] not in loaded_profiles:
-                        raise ValueError("Önce bu ajanın Markdown talimat dosyası okunmalıdır")
+                    if args["agent_id"] not in profiles_available_for_round:
+                        raise ValueError("Ajan talimatı önceki model turunda okunmuş olmalıdır")
                     result = _run_safe_task(args["agent_id"], args["task_type"], args["input_data"], actor)
                     payload = {"ok": True, "result": result["output"]}
                 else:
@@ -238,6 +239,3 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
         raise HTTPException(status_code=502, detail="Asistan isteği tamamlanamadı; sunucu kayıtlarını kontrol edin") from exc
 
 
-@router.get("/assistant")
-def assistant_page():
-    return FileResponse(Path(__file__).resolve().parent.parent / "web" / "assistant.html")

@@ -152,7 +152,7 @@ def daily_budget_status() -> dict[str, Any]:
     except InvalidOperation:
         limit = None
         config_invalid = bool(raw)
-    if raw and (limit is None or limit <= 0):
+    if raw and (limit is None or not limit.is_finite() or limit <= 0):
         config_invalid = True
     start = datetime.now(timezone.utc).date().isoformat()
     with db.connect() as connection:

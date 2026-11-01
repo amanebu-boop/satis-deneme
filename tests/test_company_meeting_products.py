@@ -25,6 +25,7 @@ def test_company_structured_address_and_meeting_product_snapshot(tmp_path, monke
             headers=headers,
             json={
                 "name": "Deneme Makina",
+                "sector": "Çelik Eşya",
                 "city": "Kayseri",
                 "district": "Melikgazi",
                 "neighborhood": "Organize Sanayi",
@@ -167,7 +168,7 @@ def test_catalog_update_does_not_change_existing_meeting_snapshot(tmp_path, monk
     with TestClient(app, base_url="https://testserver") as client:
         login = client.post("/api/login", json={"password": "a-secure-test-password-123"}, headers={"Origin": "https://testserver"})
         headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
-        company = client.post("/api/companies", headers=headers, json={"name": "Snapshot Test"})
+        company = client.post("/api/companies", headers=headers, json={"name": "Snapshot Test", "sector": "Mobilya"})
         product = client.post("/api/products", headers=headers, json={
             "sku": "SNAP-001", "name": "Eski Makine Adı", "currency": "EUR", "unit_price": 22000,
         })
@@ -202,7 +203,7 @@ def test_quote_exports_use_template_images_serial_and_matching_pdf(tmp_path, mon
     with TestClient(app, base_url="https://testserver") as client:
         login = client.post("/api/login", json={"password": "a-secure-test-password-123"}, headers={"Origin": "https://testserver"})
         headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
-        company = client.post("/api/companies", headers=headers, json={"name": "PDF Deneme Ltd"})
+        company = client.post("/api/companies", headers=headers, json={"name": "PDF Deneme Ltd", "sector": "Baza"})
         quote = client.post("/api/quotes", headers=headers, json={
             "currency": "EUR", "company_id": company.json()["id"],
             "lines": [{"description": "Şablonlu makine", "quantity": 1, "unit_price": 1000}],

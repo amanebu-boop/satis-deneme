@@ -253,3 +253,17 @@ Her görevde:
 - OpenAI API anahtarı eklenmedi. Gerçek API isteği yapılmadı; gerçek API kullanımı ve gerçek harcama bu aşamada **0 USD**. Sahte API yanıtlarıyla kullanım/maliyet hesaplama akışı test edilmiştir; bu simülasyon OpenAI servisine bağlanmış sayılmaz.
 - Geçici CI PR'ları #28 ve #29 kapatıldı (merge edilmedi). PR #30 token atama testleri için geçici doğrulama PR'ıdır; merge edilmeyecek. Ana geliştirme PR'ı #11 taslak olarak kalır.
 - Depo, test ve canlı ortam ayrımı korunur. Kullanıcının son onayı olmadan Satış Ajanı etkinleştirilmez.
+
+
+## 13. 2026-11-01 — Görüşme ses girişi (ilk aşama, test dalı)
+
+- Kullanıcı, görüşme kaydında hem uygulama içi mikrofon kaydı hem de önceden kaydedilmiş ses dosyası yükleme istedi; iki giriş türü de onaylandı.
+- `app/meeting_audio.py` eklendi: oturum ve CSRF doğrulamalı `POST /api/meetings/transcribe` uç noktası, 25 MB dosya sınırı, uzantı/içerik türü kontrolü, dakikada en fazla 5 istek, sunucu tarafı OpenAI Transcriptions API çağrısı.
+- Ses dosyası uygulama diskine veya veritabanına yazılmaz; işlem bellekte yapılır ve metin döndürülür. Ham ses OpenAI API'ye gönderilir. API anahtarı yalnızca sunucu ortam değişkeninden okunur.
+- `OPENAI_TRANSCRIPTION_MODEL` ayarı desteklenir; varsayılan model `gpt-4o-mini-transcribe`. Model ve maliyet bilgisi güncel OpenAI fiyatlandırmasına göre ayrıca kontrol edilmelidir.
+- `web/index.html` görüşme formuna mikrofon kaydı başlat/durdur ve ses dosyası seçme alanları eklendi. Transkripsiyon metni görüşme notlarına eklenir; kullanıcı düzenleyebilir ve normal görüşme kaydetme akışını kendisi başlatır.
+- Otomatik olarak görüşme kaydı oluşturulmaz. Firma ve katalog ürünlerinin AI ile eşleştirilmesi, alanların taslak forma doldurulması ve belirsiz eşleşmelerin kullanıcıya sorulması sonraki aşamadır; henüz uygulanmış değildir.
+- `tests/test_meeting_audio.py` eklendi: transkripsiyon istemcisi, boş metin, oturum zorunluluğu, desteklenmeyen dosya ve API anahtarı yokluğu kontrolleri.
+- Testler ve Render dağıtımı bu not eklenirken henüz çalıştırılmadı/doğrulanmadı. OpenAI API anahtarı henüz eklenmedi; gerçek ses transkripsiyonu ve ücretli API çağrısı yapılmadı.
+- Yalnızca `feature/agent-foundation` dalı hedeflenmiştir. `main` ve canlı Render servisi değiştirilmemiştir.
+- Sıradaki adım: AI destekli görüşme taslağı — konuşma metnini mevcut firma ve ürün kataloğuyla güvenli biçimde eşleştirme, belirsiz eşleşmeleri kullanıcıya sorma ve yalnızca kullanıcı onayıyla mevcut görüşme formunu doldurma.

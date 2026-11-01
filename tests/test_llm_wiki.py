@@ -99,11 +99,13 @@ def test_wiki_upload_rejects_unsupported_file_type(tmp_path, monkeypatch):
 def test_meeting_contact_fields_are_redacted_from_wiki_text():
     from app.llm_wiki import _redact_meeting_contacts
     cleaned = _redact_meeting_contacts(
-        "Arayın: +90 532 123 45 67 veya satis@example.com. Vergi numarası 1234567890. Makine fiyatını görüşün."
+        "Arayın: +90 532 123 45 67 veya satis@example.com. Vergi numarası 1234567890. IBAN TR330006100519786457841326. Makine fiyatını görüşün."
     )
     assert "+90 532 123 45 67" not in cleaned
     assert "satis@example.com" not in cleaned
     assert "1234567890" not in cleaned
+    assert "TR330006100519786457841326" not in cleaned
+    assert "[IBAN gizlendi]" in cleaned
     assert "Makine fiyatını görüşün" in cleaned
 
 

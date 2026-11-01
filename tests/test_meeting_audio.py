@@ -321,3 +321,27 @@ def test_capture_endpoint_rejects_missing_csrf(tmp_path, monkeypatch):
 
 def test_audio_transcription_endpoint_is_not_registered():
     assert not any(getattr(route, "path", None) == "/api/meetings/transcribe" for route in app.routes)
+
+
+def test_meeting_capture_sends_only_transcript_relevant_company_and_product_candidates():
+    companies = [
+        {"id": "c1", "name": "ABC Makina", "sector": "Mobilya", "city": "Konya"},
+        {"id": "c2", "name": "XYZ Plastik", "sector": "Enjeksiyon Plastik Kalıpları", "city": "İstanbul"},
+    ]
+    products = [
+        {"id": "p1", "sku": "M-001", "name": "Çift Kafa Büküm Makinası",
+         "description": "Çift kafa makine", "product_type": "machine", "parent_product_id": None},
+        {"id": "p2", "sku": "P-002", "name": "Enjeksiyon Plastik Kalıbı",
+         "description": "Plastik kalıp", "product_type": "machine", "parent_product_id": None},
+    ]
+    fake = FakeOpenAI(capture_payload(company_id="c1", product_id="p1"))
+    extract_meeting_capture(
+        fake, "gpt-test",
+        "ABC Makina ile çift kafa büküm makinası için ziyaret yapıldı.",
+        companies, products,
+    )
+    sent = fake.responses.kwargs["input"]
+    assert "ABC Makina" in sent
+    assert "XYZ Plastik" not in sent
+    assert "Çift Kafa Büküm Makinası" in sent
+    assert "Enjeksiyon Plastik Kalıbı" not in sent

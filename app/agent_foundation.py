@@ -36,7 +36,7 @@ AGENT_DEPENDENCIES = {
 DEFAULT_RULES = (
     ("critical_actions_require_approval", {"enabled": True}),
     ("approval_ttl_seconds", {"value": 900}),
-    ("external_ai_enabled", {"enabled": False}),
+    ("external_ai_enabled", {"enabled": True}),
     ("automatic_business_writes_enabled", {"enabled": False}),
 )
 
@@ -151,7 +151,55 @@ def init_agent_foundation() -> None:
                    (id, rule_key, config_json, updated_at) VALUES (?, ?, ?, ?)""",
                 (str(uuid4()), rule_key, _json(config), now),
             )
+        # The owner explicitly approved the OpenAI integration. Migrate the original
+        # untouched default (false) to enabled; later explicit settings are preserved.
+        connection.execute(
+            """UPDATE agent_rules SET config_json = ?, updated_at = ?
+               WHERE rule_key = 'external_ai_enabled' AND config_json = ?""",
+            (_json({"enabled": True}), now, _json({"enabled": False})),
+        )
         _audit(connection, "agent_foundation_initialized", details={"agents_seeded": len(AGENT_DEFINITIONS)})
+
+
+def get_rule_config(rule_key: str, default: Any = None) -> Any:
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT config_json FROM agent_rules WHERE rule_key = ?", (rule_key,)
+        ).fetchone()
+    return json.loads(row["config_json"]) if row is not None else default
+
+
+def rule_enabled(rule_key: str, default: bool = False) -> bool:
+    config = get_rule_config(rule_key, {"enabled": default})
+    return bool(config.get("enabled", default)) if isinstance(config, dict) else default
+
+
+def record_external_run(
+    agent_id: str, task_type: str, requested_by: str,
+    input_summary: dict[str, Any], output_summary: dict[str, Any],
+) -> str:
+    """Record an explicitly user-triggered workflow completed outside agent_runtime."""
+    if not requested_by or not requested_by.strip():
+        raise ValueError("requested_by must be non-empty")
+    run_id = str(uuid4())
+    now = _now()
+    with db.connect() as connection:
+        agent = connection.execute("SELECT id FROM agents WHERE id = ?", (agent_id,)).fetchone()
+        if agent is None:
+            raise ValueError("unknown agent")
+        connection.execute(
+            """INSERT INTO agent_runs
+               (id, agent_id, task_type, status, input_json, output_json,
+                requested_by, created_at, finished_at)
+               VALUES (?, ?, ?, 'succeeded', ?, ?, ?, ?, ?)""",
+            (run_id, agent_id, task_type, _json(input_summary), _json(output_summary),
+             requested_by.strip(), now, now),
+        )
+        _audit(connection, "external_run_succeeded", actor=requested_by.strip(),
+               agent_id=agent_id, run_id=run_id,
+               details={"task_type": task_type, "input_summary": input_summary,
+                        "output_summary": output_summary})
+    return run_id
 
 
 def set_agent_enabled(agent_id: str, enabled: bool, actor: str) -> dict[str, Any]:

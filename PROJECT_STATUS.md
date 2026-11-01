@@ -135,3 +135,9 @@ Her görevde:
 - Denetim ajanı etkinleştirme izin listesine ve Ajan Yönetimi görev düğmelerine eklendi.
 - Regresyon testi eklendi; test sonucu ve Render dağıtımı henüz doğrulanmadı.
 - Çalışma dalı: feature/agent-foundation. main ve canlı Render servisine dokunulmadı.
+
+
+- Render dağıtımı: son commit `5ef9aa5e050e4d0a343c525978d9a42053e5ec60` test servisine başarıyla dağıtıldı; deploy `dep-dbjfge12tl4s73efvekg` `live` (2026-11-01 08:29:56 UTC). Servis dalı `feature/agent-foundation` olarak doğrulandı.
+- Açılış doğrulaması: Render loglarında `Application startup complete`, `Uvicorn running` ve `GET /` yanıtı `200 OK` görüldü. Uygulama loglarında bu dağıtım aralığında `error`/`warn` seviyesinde kayıt bulunmadı.
+- Sınır: Bu yalnızca servis açılış/HTTP kök yolu doğrulamasıdır. Denetim Ajanı görevini gerçek kullanıcı arayüzünde çalıştırma doğrulaması henüz yapılmadı. GitHub Actions workflow run görünmediği için otomatik test sonucu da yoktur.
+- Sıradaki adım: test ortamında Denetim Ajanı kartını etkinleştirip “Denetim kayıtları özeti” görevini çalıştırmak ve sonuç ekranını kontrol etmek. `main` ve canlı Render servisine dokunulmadı.

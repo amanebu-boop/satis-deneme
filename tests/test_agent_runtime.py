@@ -163,7 +163,7 @@ def test_prepare_quotation_from_meeting_returns_preview_without_creating_quote(i
     assert output["company_id"] == "c1"
     assert output["line_count"] == 2
     assert output["subtotal"] == "300"
-    assert output["discount"] == "none"
+    assert "discount" not in output
     assert output["lines"][0]["quantity"] == 1
     assert "private note" not in str(output)
     assert db.list_quotations() == []

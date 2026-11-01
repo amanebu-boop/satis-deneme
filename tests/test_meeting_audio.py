@@ -43,6 +43,9 @@ def capture_payload(*, company_id=None, company_name="ABC Makina", sector="Mobil
             "address_extra": None,
             "website": None,
             "email": None,
+            "tax_office": None,
+            "tax_number": None,
+            "mersis_number": None,
             "notes": None,
         },
         "meeting": {
@@ -218,6 +221,64 @@ def test_capture_endpoint_requires_auth_and_api_key(tmp_path, monkeypatch):
         headers = _login(client)
         unavailable = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina ile görüşme notu."})
         assert unavailable.status_code == 503
+
+
+def test_company_api_requires_a_sector_from_the_allowed_list(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        headers = _login(client)
+        missing = client.post("/api/companies", headers=headers, json={"name": "Sektörsüz Firma"})
+        assert missing.status_code == 422
+        excluded = client.post("/api/companies", headers=headers, json={"name": "Kapı Firma", "sector": "Çelik Kapı"})
+        assert excluded.status_code == 422
+        valid = client.post("/api/companies", headers=headers, json={"name": "Mobilya Firma", "sector": "Mobilya"})
+        assert valid.status_code == 201
+        assert valid.json()["sector"] == "Mobilya"
+
+
+def test_capture_missing_required_data_creates_no_partial_records(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    fake = FakeOpenAI(capture_payload(sector=None, meeting_type="unknown"))
+    monkeypatch.setattr(openai, "OpenAI", lambda **kwargs: fake)
+    with TestClient(app, base_url="https://testserver") as client:
+        headers = _login(client)
+        response = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina hakkında görüşme notu."})
+        assert response.status_code == 200
+        assert response.json()["created"] is False
+        assert client.get("/api/companies", headers=headers).json() == []
+        assert client.get("/api/meetings", headers=headers).json() == []
+
+
+def test_capture_existing_legacy_company_fills_sector_without_duplicate(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    fake = FakeOpenAI(capture_payload(company_id="legacy-1", sector="Mobilya"))
+    monkeypatch.setattr(openai, "OpenAI", lambda **kwargs: fake)
+    with TestClient(app, base_url="https://testserver") as client:
+        headers = _login(client)
+        db.create_company({
+            "id": "legacy-1", "name": "ABC Makina", "sector": None,
+            "authorized_people": [], "phone_numbers": [],
+        })
+        fake.responses.payload["company"]["company_id"] = "legacy-1"
+        response = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina ile ziyaret yapıldı."})
+        assert response.status_code == 201
+        companies = client.get("/api/companies", headers=headers).json()
+        assert len(companies) == 1
+        assert companies[0]["sector"] == "Mobilya"
+
+
+def test_capture_endpoint_rejects_missing_csrf(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        _login(client)
+        response = client.post("/api/meetings/capture", json={"transcript": "ABC Makina ile görüşme notu."})
+        assert response.status_code == 403
 
 
 def test_audio_transcription_endpoint_is_not_registered():

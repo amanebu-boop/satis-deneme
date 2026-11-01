@@ -52,3 +52,9 @@ def test_response_usage_is_saved_without_prompt_or_completion_content(usage_db):
 def test_missing_usage_is_ignored(usage_db):
     assert not usage_db.record_response_usage(SimpleNamespace(id="resp-no-usage"), "gpt-5.5", "assistant")
     assert usage_db.usage_summary()["totals"]["requests"] == 0
+
+
+def test_gpt55_long_context_multiplier_is_applied():
+    cost = ai_usage.calculate_cost("gpt-5.5", 272001, 0, 1000)
+    expected = (272001 * 5 * 2 + 1000 * 30 * 1.5) / 1_000_000
+    assert cost == Decimal(str(expected))

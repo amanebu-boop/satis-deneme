@@ -1,0 +1,54 @@
+from decimal import Decimal
+from types import SimpleNamespace
+
+import pytest
+
+from app import ai_usage, db
+
+
+@pytest.fixture
+def usage_db(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "usage.db"))
+    db.init_db()
+    ai_usage.init_ai_usage()
+    return ai_usage
+
+
+def test_gpt55_cost_uses_uncached_cached_and_output_rates():
+    cost = ai_usage.calculate_cost("gpt-5.5", 1000, 200, 500)
+    assert cost == Decimal("0.0199")
+
+
+def test_unknown_model_cost_is_not_guessed():
+    assert ai_usage.calculate_cost("unlisted-model", 100, 0, 50) is None
+
+
+def test_response_usage_is_saved_without_prompt_or_completion_content(usage_db):
+    response = SimpleNamespace(
+        id="resp-usage-1",
+        usage=SimpleNamespace(
+            input_tokens=1000,
+            output_tokens=500,
+            input_tokens_details=SimpleNamespace(cached_tokens=200),
+            output_tokens_details=SimpleNamespace(reasoning_tokens=100),
+        ),
+    )
+
+    assert usage_db.record_response_usage(response, "gpt-5.5", "company", "hashed-session")
+    assert not usage_db.record_response_usage(response, "gpt-5.5", "company", "hashed-session")
+
+    summary = usage_db.usage_summary()
+    row = summary["agents"][0]
+    assert row["agent_id"] == "company"
+    assert row["input_tokens"] == 1000
+    assert row["cached_input_tokens"] == 200
+    assert row["output_tokens"] == 500
+    assert row["reasoning_tokens"] == 100
+    assert row["requests"] == 1
+    assert row["cost_usd"] == pytest.approx(0.0199)
+    assert summary["totals"]["cost_usd"] == pytest.approx(0.0199)
+
+
+def test_missing_usage_is_ignored(usage_db):
+    assert not usage_db.record_response_usage(SimpleNamespace(id="resp-no-usage"), "gpt-5.5", "assistant")
+    assert usage_db.usage_summary()["totals"]["requests"] == 0

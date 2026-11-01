@@ -159,9 +159,10 @@ def test_enabling_sales_coordinator_automatically_enables_required_workflow_agen
     assert states["product"] is True
     assert states["meeting"] is True
     assert states["quotation"] is True
+    assert states["reporting"] is True
     assert states["audit"] is False
     auto_events = [item for item in agents.list_audit_logs() if item["event_type"] == "agent_auto_enabled"]
-    assert {item["agent_id"] for item in auto_events} == {"company", "product", "meeting", "quotation"}
+    assert {item["agent_id"] for item in auto_events} == {"company", "product", "meeting", "quotation", "reporting"}
 
 
 def test_enabling_audit_does_not_enable_unrelated_business_agents(isolated_database):

@@ -37,7 +37,7 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 - Teklif oluşturma gibi kritik iş etkisi olan adımlar mevcut onay akışından geçer.
 - Ajanların etkin olması tek başına onay gerektiren bir işlemi onaysız yapma yetkisi vermez.
 - Harici yapay zekâ çağrıları sunucu tarafında yapılandırılmış izin bayrağı ve API anahtarıyla sınırlandırılır; API anahtarı yoksa çağrı yapılmaz.
-- Kullanıcının ana ekrandan açıkça başlattığı firma/görüşme kaydı arka plan otomasyonu değildir; işlem atomik olmalı ve ajan denetim izi üretmelidir.
+- Kullanıcının ana ekrandan açıkça başlattığı firma/görüşme kaydı arka plan otomasyonu değildir; işlem atomik olmalı ve tamamlanmış dış ajan işi + denetim izi üretmelidir. `automatic_business_writes_enabled` kapalıyken arka plan/insansız iş verisi yazma görevi yoktur; ana ekranın açık kullanıcı eylemi ayrı tutulur.
 - Kritik iş etkisi olan değişiklikler uygulamanın onay akışından geçer; sohbet modelinin çıktısı tek başına onay sayılmaz.
 
 ## Kalan geliştirme sırası
@@ -62,11 +62,11 @@ Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsam�
 - Uygulama içi asistan, sunucu tarafında OpenAI Responses API ve resmi Python SDK üzerinden çalışır. Tarayıcı OpenAI API'sine doğrudan bağlanmaz.
 - İstek yolu: oturum açmış arayüz → `POST /api/assistant/chat` → sunucu oturum/CSRF kontrolü → OpenAI Responses API → yalnızca uygulamanın tanımladığı araçlar → ajan yönlendiricisi ve ilgili ajanın Markdown talimatları → yanıt.
 - `OPENAI_API_KEY` yalnızca Render ortam değişkeninde tutulur; kaynak kod, tarayıcı, GitHub ve loglara yazılmaz. `OPENAI_MODEL` model seçimini sunucu tarafında belirler; varsayılan `gpt-5.5`.
-- Modelin araç çağrısı doğrudan veritabanına erişmez. `run_agent_task` sunucu tarafında sabit izin listesine, ajanın etkin olmasına, görev kaydına ve `AGENTS.md` + ajana ait talimat dosyasına bağlıdır.
+- Modelin araç çağrısı doğrudan veritabanına erişmez. `run_agent_task` sunucu tarafında sabit izin listesine, ajanın etkin olmasına, görev kaydına ve `AGENTS.md` + ajana ait talimat dosyasına bağlıdır. Ajan talimatı bir önceki model turunda okunmadan aynı turda görev çalıştırılamaz.
 - Asistanın tek kullanıcı arayüzü ana ekrandadır. Ayrı `/assistant` sayfası kaldırılmıştır; sohbet API'si yalnızca ana ekrandaki arayüz tarafından çağrılır.
 - İzinli özet/rapor görevleri, görüşmeden teklif önizlemesi ve yerel LLM Wiki araması açılır. Teklifin kalıcı oluşturulması ayrı, onaylı işlem akışıdır. Firma/ürün/görüşme/teklif silme araçları modele sunulmaz.
-- LLM Wiki; ürün kataloğu, firma temel bilgileri, görüşme geçmişi ve Markdown satış/ajan dokümanlarını SQLite üzerinde yerel sözcük eşleştirmesiyle indeksler. Sadece arama sonuçları modele bağlam olarak verilir; arka plan LLM çağrısı veya harici embedding isteği yapılmaz.
-- İndeks, silinen ürün/firma/görüşme kayıtlarını arama dışı bırakır. Firma iletişim alanları ve vergi numaraları Wiki indeksine alınmaz; görüşme notlarında e-posta ve telefon biçimleri maskelenir.
+- LLM Wiki; ürün kataloğu ve bağlı opsiyonları, firma temel bilgileri, görüşme geçmişi, teklif satırları, takip görevleri ve Markdown satış/ajan dokümanlarını SQLite üzerinde yerel sözcük eşleştirmesiyle indeksler. Ana ekrandan PDF/DOCX/TXT/MD belge alır ve uzun belgeleri parçalara böler. Sadece en alakalı birkaç sonuç modele bağlam olarak verilir; arka plan LLM çağrısı veya harici embedding isteği yapılmaz.
+- İndeks, silinen ürün/firma/görüşme/teklif/takip kayıtlarını arama dışı bırakır. Firma iletişim alanları Wiki indeksine alınmaz; görüşme notlarında e-posta, telefon ve 10–11 haneli vergi/kimlik numarası biçimleri maskelenir.
 - Kritik işlemler için modelin onayı yeterli değildir. Uygulamanın mevcut onay kaydı, kullanıcı incelemesi, onay süresi ve onaylanan içerik özeti doğrulaması tamamlanmadan işlem yürütülmez. Mevcut görüşmeden teklif oluşturma onay akışı bu ayrımı örnekler.
 - Gerçek OpenAI bağlantısının çalıştığı, yalnızca Render test servisine anahtar eklendikten ve uçtan uca çağrı başarıyla tamamlandıktan sonra doğrulanmış sayılır. Kaynak kodda anahtar bulunmaz.
 - API kullanımı ChatGPT aboneliğinden ayrıdır ve OpenAI API hesabında ayrıca ücretlendirilir.

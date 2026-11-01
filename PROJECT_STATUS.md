@@ -386,3 +386,19 @@ Her görevde:
 - Eski `app/meeting_audio.py` ve `tests/test_meeting_audio.py` dosyaları kaldırıldı. Yazılı görüşme metniyle çalışan mevcut işlev korunarak `app/meeting_capture.py` ve `tests/test_meeting_capture.py` adlarına taşındı.
 - Yazılı görüşme girişinde `transcript` alanı yerine `notes_text` kullanılır. Bu metin tabanlı kayıt işlevi ses kaydı/transkripsiyon özelliği değildir.
 - `app/main.py` yeni metin tabanlı modülü yükler. Bu değişiklikler yalnızca `feature/agent-foundation` dalındadır; canlıya yayın yapılmadı.
+
+
+## 2026-11-01 — Wiki, ajan koordinasyonu ve iş denetimleri
+
+- LLM Wiki tam kaynak yenileme aralığı 30 saniyeden 180 saniyeye çıkarıldı; aynı uygulama sürecinde eşzamanlı yenileme kilidi eklendi.
+- Wiki şema/FTS başlangıç kontrolü veritabanı dosya yolu bazında önbelleğe alındı; arama isteği başına gereksiz FTS onarım kontrolü yapılmıyor.
+- FTS5 kullanılamadığında yedek arama yalnızca eşleşen kayıtları sorgular ve aday kümesini 500 kayıtla sınırlar.
+- Wiki arama sonuçlarının modele gönderilen metin boyutu 1.800 karakterden 900 karaktere düşürüldü; asistan en fazla üç ilgili belge sonucu ekler.
+- Wiki araması genel görüşme/takip/ürün kelimeleriyle tetiklenmez; teknik/fiyat/katalog/teslimat/satış kuralı ve açık geçmiş görüşme/teklif sorularıyla sınırlandırılır.
+- Görüşme notlarında e-posta, telefon, 10-11 haneli kimlik/vergi numarası ve IBAN biçimleri maskelenir.
+- Satış koordinasyon çalışmaları artık üst satış koordinasyon kaydı oluşturur. Alt ajan çalışmaları parent_run_id ile üst çalışmaya bağlanır; başlangıç/bitiş durumu ve denetim olayları kaydedilir.
+- Görüşme Ajanı'na product_link_review eklendi: görüşme ürünlerinin katalog bağlantısı, ürün adı, miktar, birim fiyat ve para birimi tutarlılığını toplu sayımla inceler.
+- Teklif Ajanı'na integrity_review eklendi: firma bağlantısı, satır varlığı, tam sayı miktar/fiyat, satır toplamı, ara toplam ve genel toplam tutarlılığını salt-okunur denetler.
+- Yeni görevler SAFE_TASKS, HANDLERS, Satış Ajanı koordinasyon eşlemesi ve ilgili Markdown talimat dosyalarına bağlandı.
+- Yeni Wiki maliyet, arama niyeti, gizlilik, görüşme ürün bağlantısı, teklif bütünlüğü ve üst-alt ajan çalışma zinciri testleri eklendi.
+- Bu değişiklikler yalnızca feature/agent-foundation test dalındadır. CI ve test Render doğrulaması bu kayıt güncellemesi sırasında henüz yapılmadı; main ve production Render servisine gönderim yapılmadı.

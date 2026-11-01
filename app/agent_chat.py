@@ -52,8 +52,8 @@ def _check_rate_limit(session_key: str) -> None:
 SAFE_TASKS = {
     "company": {"directory_overview", "data_quality"},
     "product": {"catalog_overview", "catalog_health"},
-    "meeting": {"activity_overview", "follow_up_review"},
-    "quotation": {"pipeline_overview", "prepare_from_meeting"},
+    "meeting": {"activity_overview", "follow_up_review", "product_link_review"},
+    "quotation": {"pipeline_overview", "prepare_from_meeting", "integrity_review"},
     "sales": {"sales_coordinate"},
     "reporting": {"sales_overview", "period_summary"},
     "audit": {"audit_overview", "anomaly_review"},

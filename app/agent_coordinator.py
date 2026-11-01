@@ -66,6 +66,8 @@ def run_sales_coordination(
             start, end = date.fromisoformat(input_data["date_from"]), date.fromisoformat(input_data["date_to"])
         except ValueError as exc:
             raise ValueError("Dönem tarihleri YYYY-MM-DD biçiminde olmalıdır") from exc
+        if start.isoformat() != input_data["date_from"] or end.isoformat() != input_data["date_to"]:
+            raise ValueError("Dönem tarihleri tam olarak YYYY-MM-DD biçiminde olmalıdır")
         if start > end or (end - start).days > 3660:
             raise ValueError("Dönem tarih aralığı geçersiz")
     elif "date_from" in input_data or "date_to" in input_data:

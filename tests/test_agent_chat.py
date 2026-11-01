@@ -128,3 +128,29 @@ def test_tool_errors_are_not_forwarded_with_internal_details(monkeypatch):
     output = client.responses.calls[2]["input"][0]["output"]
     assert "SECRET_DATABASE_PASSWORD" not in output
     assert "İzinli görev tamamlanamadı" in output
+
+
+def test_sales_coordinator_requires_sales_profile_before_running(monkeypatch):
+    read = tool("read_agent_profile", "profile_sales", '{"agent_id":"sales"}')
+    run = tool("run_agent_task", "sales_task",
+               '{"agent_id":"sales","task_type":"sales_coordinate","input_data":{"tasks":["sales_overview"]}}')
+    client = FakeClient([
+        FakeResponse("resp_1", [read]),
+        FakeResponse("resp_2", [run]),
+        FakeResponse("resp_3", output_text="Satış özeti hazır."),
+    ])
+    invoked = []
+
+    def fake_coordinator(input_data, actor, execute_task):
+        invoked.append((input_data, actor))
+        return {"workflow": "sales_coordinate", "completed": 1, "failed": 0}
+
+    monkeypatch.setattr(agent_chat, "run_sales_coordination", fake_coordinator)
+    result = agent_chat.run_assistant_turn(client, "gpt-test", "Satış özetini hazırla", "tester")
+
+    assert invoked == [({"tasks": ["sales_overview"]}, "tester")]
+    assert result["message"] == "Satış özeti hazır."
+    assert [item["name"] for item in result["tool_results"]] == [
+        "read_agent_profile", "run_agent_task"
+    ]
+    assert "agents/sales.md" in client.responses.calls[1]["input"][0]["output"]

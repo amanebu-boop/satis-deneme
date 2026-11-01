@@ -283,3 +283,14 @@ Her görevde:
 - Quote template validation ve Docker build iş akışı henüz tamamlanmadı.
 - Render test servisi son kod commit'ini dağıtım sırasında `update_in_progress` durumunda gösteriyor. Önceki kod commit'i test serviste live olmuştu; son MIME güvenlik düzeltmesinin dağıtımı henüz tamamlanmış sayılmaz.
 - PR #11 açık ve draft; merge edilmedi. `main` ve canlı production servisi değiştirilmedi.
+
+## 2026-11-01 — Görüşme AI girişinin ana ekrana taşınması ve ses özelliğinin kaldırılması
+
+- Kullanıcının yeni talimatıyla uygulama içi mikrofon kaydı ve ses dosyası yükleme arayüzü kaldırıldı.
+- POST /api/meetings/transcribe transkripsiyon uç noktası ve buna ait ses işleme kodu kaldırıldı. Ses dosyası OpenAI'ye gönderilmez; bu özellik için API çağrısı/ücret oluşmaz.
+- Yapay zekâ ile görüşme taslağı hazırlama korundu. Kullanıcı görüşme metnini ana ekrandaki kompakt alana yazar; alan Son Görüşmeler panelinin hemen üstündedir.
+- Taslak hazırla işlemi firma ve ürün kataloğunu yükler, mevcut güvenli /api/meetings/prepare uç noktasını çağırır ve eşleşen firma/ürün/not alanlarını Görüşmeler formuna aktarır. Kullanıcı formu kontrol edip ayrıca Görüşmeyi kaydet düğmesine basmadan kalıcı kayıt oluşturulmaz.
+- Ajan Yönetimi/Satış Asistanı sayfasına yeni bir kayıt alanı eklenmedi. AI giriş alanı ana ekrandadır ve küçük/kompakt tutulmuştur.
+- tests/test_meeting_audio.py artık yalnızca metin tabanlı AI taslak güvenlik/eşleştirme davranışını ve eski transkripsiyon uç noktasının kayıtlı olmadığını test eder.
+- Değişiklikler yalnızca feature/agent-foundation dalındadır. main ve canlı Render servisine gönderim yapılmadı.
+- Test ve test Render dağıtımı bu not eklenirken henüz çalıştırılmadı/doğrulanmadı.

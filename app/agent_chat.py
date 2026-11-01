@@ -20,7 +20,9 @@ from app import llm_wiki
 
 router = APIRouter()
 MAX_MESSAGE_CHARS = 6000
-MAX_TOOL_CALLS = 4
+MAX_TOOL_CALLS = 8
+MAX_CONVERSATION_TURNS = 8
+_conversation_turns: dict[str, int] = {}
 MAX_REQUESTS_PER_MINUTE = 10
 _RATE_WINDOW_SECONDS = 60
 _rate_events: dict[str, deque[float]] = {}
@@ -46,14 +48,15 @@ def _check_rate_limit(session_key: str) -> None:
                 if not queue:
                     _rate_events.pop(key, None)
 
+# Keep this allowlist aligned with agent_runtime.HANDLERS. Only read-only tasks.
 SAFE_TASKS = {
-    "company": {"directory_overview"},
-    "product": {"catalog_overview"},
-    "meeting": {"activity_overview"},
+    "company": {"directory_overview", "data_quality"},
+    "product": {"catalog_overview", "catalog_health"},
+    "meeting": {"activity_overview", "follow_up_review"},
     "quotation": {"pipeline_overview", "prepare_from_meeting"},
     "sales": {"sales_coordinate"},
-    "reporting": {"sales_overview"},
-    "audit": {"audit_overview"},
+    "reporting": {"sales_overview", "period_summary"},
+    "audit": {"audit_overview", "anomaly_review"},
 }
 READ_PROFILE_TOOL = {
     "type": "function", "name": "read_agent_profile",
@@ -90,7 +93,7 @@ SEARCH_WIKI_TOOL = {
     },
     "strict": True,
 }
-TOOLS = [READ_PROFILE_TOOL, RUN_TASK_TOOL, SEARCH_WIKI_TOOL]
+TOOLS = [READ_PROFILE_TOOL, RUN_TASK_TOOL]
 
 
 class AssistantChatRequest(BaseModel):
@@ -134,10 +137,13 @@ def _usage_agent_id(response: Any, active_agent: str | None) -> str:
 def _record_response_usage(response: Any, model: str, agent_id: str,
                            session_hash: str | None) -> None:
     try:
-        ai_usage.record_response_usage(response, model, agent_id, session_hash)
+        recorded = ai_usage.record_response_usage(response, model, agent_id, session_hash)
+        if not recorded:
+            raise RuntimeError("usage metadata was missing or not recorded")
     except Exception as exc:
-        # Do not log prompts, responses, customer data or credentials.
-        logging.getLogger(__name__).warning("AI usage metering failed (%s)", type(exc).__name__)
+        # A paid response must be metered before more model/tool work can proceed.
+        logging.getLogger(__name__).error("AI usage metering unavailable (%s)", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Yapay zekâ kullanım kaydı doğrulanamadı; güvenlik için işlem durduruldu.") from exc
 
 
 def run_assistant_turn(client: Any, model: str, message: str, actor: str,
@@ -157,8 +163,19 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
         "Makine, opsiyon, teknik bilgi, satış kuralı, teklif, takip görevi veya geçmiş görüşme sorularında "
         "search_sales_wiki aracını kullan; yanıtında kullandığın Wiki belge başlıklarını belirt ve kaynakta bulunmayan teknik özellik veya fiyatı uydurma."
     )
+    wiki_terms = ("makine", "ürün", "opsiyon", "teknik", "fiyat", "teklif", "satış kural",
+                  "teslimat", "görüşme", "takip", "katalog", "geçmiş")
+    wiki_context = ""
+    if any(term in message.casefold() for term in wiki_terms):
+        knowledge = llm_wiki.search_wiki(message, limit=5)
+        wiki_context = (
+            "\n\nYerel LLM Wiki arama sonucu (kaynak başlıklarını yanıtta belirt; "
+            "bulunmayan bilgiyi uydurma):\n" +
+            json.dumps(knowledge, ensure_ascii=False)
+        )
     kwargs: dict[str, Any] = {
-        "model": model, "instructions": instructions, "input": message,
+        "model": model, "instructions": instructions,
+        "input": message + wiki_context,
         "tools": TOOLS, "tool_choice": "auto", "max_output_tokens": 700,
     }
     if previous_response_id:
@@ -194,10 +211,6 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
                     payload = {"ok": True, "agent_id": args["agent_id"],
                                "router_markdown": profile["router_text"],
                                "agent_markdown": profile["agent_text"]}
-                elif call.name == "search_sales_wiki":
-                    if set(args) != {"query"} or not isinstance(args["query"], str) or len(args["query"].strip()) < 2:
-                        raise ValueError("Wiki arama sorgusu geçersiz")
-                    payload = {"ok": True, "knowledge": llm_wiki.search_wiki(args["query"], limit=5)}
                 elif call.name == "run_agent_task":
                     if set(args) != {"agent_id", "task_type", "input_data"}:
                         raise ValueError("Araç argümanları beklenen şemaya uymuyor")
@@ -242,8 +255,11 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
         client = OpenAI(api_key=api_key, timeout=30.0, max_retries=0)
         with _response_lock:
             expected_previous = _last_response_by_session.get(session_key)
+            turns = _conversation_turns.get(session_key, 0)
         if payload.previous_response_id and payload.previous_response_id != expected_previous:
             raise HTTPException(status_code=409, detail="Sohbet oturumu yenilendi; lütfen yeni bir mesajla devam edin")
+        if payload.previous_response_id and turns >= MAX_CONVERSATION_TURNS:
+            raise HTTPException(status_code=409, detail="Sohbet bağlam sınırına ulaştı. Yeni sohbet başlatıp devam edin.")
         result = run_assistant_turn(
             client, os.environ.get("OPENAI_MODEL", "gpt-5.5"),
             payload.message.strip(), str(session["subject"]), payload.previous_response_id,
@@ -251,6 +267,7 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
         )
         with _response_lock:
             _last_response_by_session[session_key] = result["response_id"]
+            _conversation_turns[session_key] = turns + 1 if payload.previous_response_id else 1
         return result
     except ImportError as exc:
         raise HTTPException(status_code=503, detail="OpenAI Python paketi kurulu değil") from exc

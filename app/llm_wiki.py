@@ -9,6 +9,7 @@ import hashlib
 import json
 import re
 import time
+from threading import Lock
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -21,8 +22,10 @@ router = APIRouter()
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 MAX_EXTRACTED_CHARS = 200_000
 _fts_available = False
-_INDEX_REFRESH_SECONDS = 30
+_INDEX_REFRESH_SECONDS = 180
 _last_refresh_at = 0.0
+_refresh_lock = Lock()
+_wiki_initialized = False
 
 _ROOT = Path(__file__).resolve().parent.parent
 _MAX_CONTENT = 12000
@@ -43,6 +46,7 @@ def _redact_meeting_contacts(value: str | None) -> str:
 
 
 def init_wiki() -> None:
+    global _wiki_initialized
     with db.connect() as connection:
         connection.execute(
             """CREATE TABLE IF NOT EXISTS llm_wiki_documents (
@@ -81,6 +85,7 @@ def init_wiki() -> None:
             )
         except Exception:
             _fts_available = False
+        _wiki_initialized = True
 
 
 def _delete_wiki_documents(connection, where_sql: str, params: tuple[Any, ...]) -> None:
@@ -125,12 +130,27 @@ def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
 
 
 def refresh_wiki_index() -> None:
-    """Refresh the complete source set at most once every 30 seconds."""
+    """Refresh at most once per interval; serialize refreshes within this process."""
     global _last_refresh_at
     now = time.monotonic()
     if _last_refresh_at and now - _last_refresh_at < _INDEX_REFRESH_SECONDS:
         return
-    init_wiki()
+    if not _refresh_lock.acquire(blocking=False):
+        return
+    try:
+        now = time.monotonic()
+        if _last_refresh_at and now - _last_refresh_at < _INDEX_REFRESH_SECONDS:
+            return
+        _refresh_wiki_index_locked()
+    finally:
+        _refresh_lock.release()
+
+
+def _refresh_wiki_index_locked() -> None:
+    """Reconcile indexed sources. Schema/FTS initialization runs only at startup."""
+    global _last_refresh_at
+    if not _wiki_initialized:
+        init_wiki()
     markdown_paths = [_ROOT / "AGENTS.md", _ROOT / "AGENT_ARCHITECTURE.md"]
     markdown_paths.extend(sorted((_ROOT / "agents").glob("*.md")))
     docs_root = _ROOT / "docs"
@@ -398,8 +418,11 @@ def search_wiki(query: str, limit: int = 5) -> dict[str, Any]:
             except Exception:
                 ranked = []
         if not ranked:
+            clauses = " OR ".join("(title LIKE ? COLLATE NOCASE OR content LIKE ? COLLATE NOCASE)" for _ in terms)
+            params = tuple(value for term in terms for value in (f"%{term}%", f"%{term}%"))
             rows = connection.execute(
-                "SELECT source_type, source_id, title, content FROM llm_wiki_documents WHERE source_type != 'uploaded_document_meta'"
+                f"SELECT source_type, source_id, title, content FROM llm_wiki_documents WHERE source_type != 'uploaded_document_meta' AND ({clauses}) LIMIT 500",
+                params,
             ).fetchall()
             for row in rows:
                 title = str(row["title"] or "").casefold()
@@ -412,7 +435,7 @@ def search_wiki(query: str, limit: int = 5) -> dict[str, Any]:
     for rank, row in ranked[:max(1, min(int(limit), 8))]:
         results.append({
             "source_type": row["source_type"], "title": row["title"],
-            "content": str(row["content"])[:1800],
+            "content": str(row["content"])[:900],
             "relevance_score": round(-rank, 4) if retrieval == "local_fts5" else int(-rank),
         })
     return {"query": query, "retrieval": retrieval, "results": results}

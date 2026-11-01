@@ -150,3 +150,19 @@ def test_sales_coordinator_executes_real_read_only_subagents(isolated_enabled_sa
     assert outputs["sales_overview"]["companies"] == 1
     assert {run["agent_id"] for run in foundation.list_runs()} == {"company", "reporting"}
     assert all(run["status"] == "succeeded" for run in foundation.list_runs())
+
+
+def test_optional_audit_task_reports_disabled_agent_without_running_it(monkeypatch):
+    from app import agent_coordinator
+    monkeypatch.setattr(agent_coordinator.agent_foundation, "list_agents", lambda: [
+        {"id": "sales", "enabled": True}, {"id": "audit", "enabled": False}
+    ])
+    invoked = []
+    result = agent_coordinator.run_sales_coordination(
+        {"tasks": ["audit_overview"]}, "tester",
+        lambda *args: invoked.append(args),
+    )
+    assert invoked == []
+    assert result["failed"] == 1
+    assert result["failures"][0]["status"] == "blocked"
+    assert "devre dışı" in result["failures"][0]["message"]

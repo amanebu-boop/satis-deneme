@@ -327,7 +327,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div class="panel dashboard-ai-capture" style="margin-bottom:12px;padding:12px">
 <div class="panel-head" style="margin-bottom:7px"><h2>Yapay zekâ ile firma ve görüşme kaydı</h2><span class="pill blue">Hızlı kayıt</span></div>
 <p class="footer-note" style="margin:0 0 8px">Firma ve görüşme bilgilerini yazın. Yapay zekâ firma kaydını ve görüşme kaydını otomatik oluştursun; eksik zorunlu bilgi varsa kaydetmeden önce sorar.</p>
-<textarea id="dashboard-meeting-transcript" rows="2" maxlength="15000" placeholder="Görüşmede konuşulanları buraya yazın…" style="width:100%;min-height:58px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>
+<textarea id="dashboard-meeting-notes" rows="2" maxlength="15000" placeholder="Görüşmede konuşulanları buraya yazın…" style="width:100%;min-height:58px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>
 <div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap"><button class="btn primary" id="dashboard-prepare-meeting" type="button">Firma ve görüşme kaydı oluştur</button><span id="dashboard-meeting-ai-status" class="footer-note" role="status" aria-live="polite"></span></div>
 </div>
 <div class="columns">
@@ -1076,12 +1076,12 @@ document.getElementById("dashboard-wiki-upload")?.addEventListener("click",async
 });
 document.getElementById("dashboard-prepare-meeting")?.addEventListener("click",async()=>{
  const button=document.getElementById("dashboard-prepare-meeting"),status=document.getElementById("dashboard-meeting-ai-status");
- const transcript=document.getElementById("dashboard-meeting-transcript").value.trim();
- if(transcript.length<10){status.textContent="En az 10 karakterlik görüşme metni yazın.";return;}
+ const notesText=document.getElementById("dashboard-meeting-notes").value.trim();
+ if(notesText.length<10){status.textContent="En az 10 karakterlik görüşme metni yazın.";return;}
  button.disabled=true;status.textContent="Firma ve ürün kayıtları kontrol ediliyor; kayıt hazırlanıyor…";
  try{
   if(!csrfToken)await readCsrf();
-  const response=await fetch("/api/meetings/capture",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({transcript})});
+  const response=await fetch("/api/meetings/capture",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({notes_text:notesText})});
   const result=await response.json().catch(()=>({}));
   if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
   if(!response.ok)throw new Error(result.detail||"Firma ve görüşme kaydı oluşturulamadı.");
@@ -1091,7 +1091,7 @@ document.getElementById("dashboard-prepare-meeting")?.addEventListener("click",a
    return;
   }
   await Promise.all([loadCompanies(),loadMeetings()]);
-  document.getElementById("dashboard-meeting-transcript").value="";
+  document.getElementById("dashboard-meeting-notes").value="";
   status.textContent=(result.company.created?"Yeni firma kaydı oluşturuldu: ":"Mevcut firma ile görüşme kaydedildi: ")+result.company.name+" · "+result.company.sector+" · Görüşme kaydı oluşturuldu.";
   if(result.warnings?.length)status.textContent+=" Uyarı: "+result.warnings.join(" · ");
  }catch(error){status.textContent=error.message||"Firma ve görüşme kaydı oluşturulamadı.";}

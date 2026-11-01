@@ -237,3 +237,19 @@ Her görevde:
 - Render test servisi `satis-deneme-test`, commit `c813ad26d850969390b04dd09474682b4bef61fc` için **live**. Test servisi `feature/agent-foundation` dalını izler.
 - OpenAI API anahtarı eklenmedi; gerçek OpenAI API çağrısı yapılmadı. `main` ve üretim Render servisine değişiklik gönderilmedi.
 - Sonraki adım: kullanıcı Satış Ajanı çalışma yapısını onayladıktan sonra test ortamında ajanı etkinleştirmek ve API anahtarı aşamasına geçmeden önce kullanıcı arayüzünden uçtan uca kontrol yapmak.
+
+
+## 11. 2026-11-01 — Yapay zekâ token ve maliyet takibi (test dalı)
+
+- Çalışma dalı: `feature/agent-foundation`. `main` ve canlı Render servisine gönderim yapılmadı.
+- `app/ai_usage.py` eklendi. Responses API yanıtlarından gerçek `input_tokens`, `output_tokens`, önbellekli giriş tokenları ve akıl yürütme tokenları okunarak SQLite'a kaydedilir.
+- Kullanıcı mesajları, model yanıtları, müşteri verileri, API anahtarı veya gizli içerikler kullanım tablosuna yazılmaz. Yanıt kimliği tekil anahtar olduğundan aynı yanıt iki kez ücretlendirme kaydına dönüşmez.
+- `/api/agent-ai-usage` oturum doğrulamalı rapor uç noktası eklendi. Ajan yönetimi > Genel Bakış ekranında ajan başına giriş/çıkış tokenları, önbellekli tokenlar, akıl yürütme tokenları, AI isteği sayısı, deterministik ajan görevi sayısı ve USD maliyeti gösterilir.
+- Modelin çağrı maliyeti, o model çağrısını isteyen ajana atanır. Birden fazla ajanı aynı anda çağıran tek yanıtın token maliyeti `assistant_shared` altında tutulur. Kural tabanlı alt ajanların kendi veri işlemleri LLM çağrısı değildir; bu ajanlara yapay token/maliyet yazılmaz. Görev sayıları ayrı gösterilir.
+- Uygulamanın varsayılan modeli `gpt-5.5`. Resmî standart API fiyatları: 1 milyon giriş tokenı 5 USD, önbellekli giriş 0,50 USD, çıkış 30 USD. 272 bin giriş tokenı üzerindeki uzun bağlam için belgelenen 2x giriş ve 1,5x çıkış çarpanı da hesaplanır. Fiyatı tanımlanmayan modeller için maliyet uydurulmaz; kullanım “fiyat tanımsız” olarak gösterilir.
+- Testler: Python test iş akışı `41303686547` — **83 başarılı, 1 atlandı, 1 uyarı**. Testler yedi etkin AI ajanının token atamasını, tekilleştirmeyi, önbellek/akıl yürütme alanlarını, model fiyatını ve uzun bağlam çarpanını kapsar.
+- Teklif şablonu/LibreOffice/Docker doğrulama iş akışı `41303686565` bu not hazırlanırken Docker image build adımındaydı; son başarı sonucu ayrıca doğrulanmadan tamamlandı sayılmamalıdır.
+- Render test servisi `srv-dbhssmd9el5s738cnr9g` yalnızca `feature/agent-foundation` dalını izler. Bu dalın yeni dağıtımı doğrulama aşamasındadır; son `live` commit ve dağıtım durumu ayrıca kontrol edilmelidir.
+- OpenAI API anahtarı eklenmedi. Gerçek API isteği yapılmadı; gerçek API kullanımı ve gerçek harcama bu aşamada **0 USD**. Sahte API yanıtlarıyla kullanım/maliyet hesaplama akışı test edilmiştir; bu simülasyon OpenAI servisine bağlanmış sayılmaz.
+- Geçici CI PR'ları #28 ve #29 kapatıldı (merge edilmedi). PR #30 token atama testleri için geçici doğrulama PR'ıdır; merge edilmeyecek. Ana geliştirme PR'ı #11 taslak olarak kalır.
+- Depo, test ve canlı ortam ayrımı korunur. Kullanıcının son onayı olmadan Satış Ajanı etkinleştirilmez.

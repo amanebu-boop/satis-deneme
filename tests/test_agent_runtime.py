@@ -243,11 +243,15 @@ def test_agent_task_requires_router_and_own_markdown_permission(isolated_databas
         load_agent_instructions("audit", "prepare_from_meeting")
 
 
-def test_sales_agent_has_no_executable_task_until_coordinator_is_implemented(isolated_database):
+def test_sales_agent_allows_only_the_deterministic_coordinator_task(isolated_database):
     from app.agent_instructions import load_agent_instructions
 
+    loaded = load_agent_instructions("sales", "sales_coordinate")
+    assert loaded["agent_id"] == "sales"
+    assert loaded["task_type"] == "sales_coordinate"
+
     with pytest.raises(ValueError, match="not permitted"):
-        load_agent_instructions("sales", "sales_coordinate")
+        load_agent_instructions("sales", "delete_company")
 
 
 def test_every_registered_agent_has_routed_instruction_file(isolated_database):

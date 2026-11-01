@@ -24,6 +24,7 @@ from app import session_store
 from app import agent_foundation
 from app import agent_runtime
 from app import ai_usage
+from app import llm_wiki
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
@@ -36,6 +37,7 @@ async def lifespan(_: FastAPI):
     db.init_db()
     agent_foundation.init_agent_foundation()
     ai_usage.init_ai_usage()
+    llm_wiki.init_wiki()
     yield
 
 

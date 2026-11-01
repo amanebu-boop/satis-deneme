@@ -153,3 +153,22 @@ def test_wiki_indexes_quotation_history_and_followups(tmp_path, monkeypatch):
     assert any(item["source_type"] == "quotation" for item in result["results"])
     result = llm_wiki.search_wiki("teklif geri dönüşü")
     assert any(item["source_type"] == "follow_up" for item in result["results"])
+
+
+def test_parent_product_wiki_entry_contains_linked_options(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki-options.db"))
+    db.init_db()
+    monkeypatch.setattr(db, "list_products", lambda: [
+        {"id": "machine", "sku": "M-01", "name": "Çift Kafa Büküm Makinası",
+         "description": "Ana makine", "product_type": "machine", "currency": "EUR",
+         "unit_price": "22000", "parent_product_id": None},
+        {"id": "option", "sku": "O-01", "name": "Askı delik kulesi",
+         "description": "Opsiyon", "product_type": "option", "currency": "EUR",
+         "unit_price": "4500", "parent_product_id": "machine"},
+    ])
+    monkeypatch.setattr(db, "list_companies", lambda: [])
+    monkeypatch.setattr(db, "list_meetings", lambda: [])
+    result = llm_wiki.search_wiki("Çift Kafa Büküm Makinası")
+    machine = next(item for item in result["results"] if item["source_type"] == "product")
+    assert "Askı delik kulesi" in machine["content"]
+    assert "4500" in machine["content"]

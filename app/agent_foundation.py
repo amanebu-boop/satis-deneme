@@ -29,7 +29,7 @@ AGENT_DEFINITIONS = (
 
 AGENT_DEPENDENCIES = {
     # Satış Ajanı koordinatördür; süreçleri yürütebilmek için işlem ajanları hazır olmalıdır.
-    "sales": ("company", "product", "meeting", "quotation"),
+    "sales": ("company", "product", "meeting", "quotation", "reporting"),
 }
 
 

@@ -251,9 +251,14 @@ def convert_excel_to_pdf(excel_content: bytes) -> bytes:
                     sheet.page_setup.orientation = "portrait"
                     sheet.sheet_properties.pageSetUpPr.fitToPage = True
                     sheet.page_setup.fitToWidth = 1
-                    # Keep the explicit section break and scale the two printed sections across two A4 pages.
-                    # This removes the unused lower half of page one without changing the source template.
-                    sheet.page_setup.fitToHeight = 2
+                    # Enlarge only the vertical spacing of page one's existing rows.
+                    # This uses the otherwise empty lower area without zooming/cropping
+                    # the template horizontally or changing its fonts and colors.
+                    for row_index in range(1, section_seven_row):
+                        dimension = sheet.row_dimensions[row_index]
+                        if dimension.height is not None and not dimension.hidden:
+                            dimension.height = dimension.height * 1.25
+                    sheet.page_setup.fitToHeight = 0
                     prepared = BytesIO()
                     workbook.save(prepared)
                     input_path.write_bytes(prepared.getvalue())

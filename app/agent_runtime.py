@@ -11,6 +11,7 @@ from typing import Any
 
 from app import db
 from app import agent_foundation as foundation
+from app.agent_instructions import load_agent_instructions
 
 
 def _sales_overview(input_data: dict[str, Any]) -> dict[str, Any]:
@@ -218,6 +219,7 @@ def execute_run(run_id: str, executed_by: str) -> dict[str, Any]:
             raise ValueError("agent is disabled")
         if row["status"] != "queued":
             raise ValueError("run is not queued")
+        load_agent_instructions(row["agent_id"], row["task_type"])
         handler = HANDLERS.get((row["agent_id"], row["task_type"]))
         if handler is None:
             raise ValueError("unsupported agent task")

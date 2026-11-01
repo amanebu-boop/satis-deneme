@@ -383,6 +383,59 @@ def _meeting_product_link_review(input_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _quotation_integrity_review(input_data: dict[str, Any]) -> dict[str, Any]:
+    if input_data:
+        raise ValueError("integrity_review does not accept input fields")
+    with db.connect() as connection:
+        quotations = [dict(row) for row in connection.execute(
+            "SELECT id, company_id, subtotal, tax_amount, total FROM quotations"
+        ).fetchall()]
+        lines = {
+            quote["id"]: [dict(row) for row in connection.execute(
+                "SELECT quantity, unit_price, line_total FROM quotation_lines WHERE quotation_id=?",
+                (quote["id"],)
+            ).fetchall()]
+            for quote in quotations
+        }
+    missing_company = missing_lines = invalid_lines = subtotal_mismatches = total_mismatches = 0
+    for quote in quotations:
+        quote_lines = lines[quote["id"]]
+        missing_company += int(not quote["company_id"])
+        missing_lines += int(not quote_lines)
+        computed = 0
+        valid = True
+        for line in quote_lines:
+            try:
+                quantity_text, price_text = str(line["quantity"]).strip(), str(line["unit_price"]).strip()
+                quantity, price = int(quantity_text), int(price_text)
+                if str(quantity) != quantity_text or str(price) != price_text or quantity < 1 or price < 0:
+                    raise ValueError("invalid integer")
+                computed += quantity * price
+                if Decimal(str(line["line_total"])) != Decimal(quantity * price):
+                    valid = False
+            except (TypeError, ValueError, ArithmeticError):
+                invalid_lines += 1
+                valid = False
+        try:
+            subtotal = Decimal(str(quote["subtotal"]))
+            tax = Decimal(str(quote["tax_amount"]))
+            total = Decimal(str(quote["total"]))
+            if subtotal != Decimal(computed) or not valid:
+                subtotal_mismatches += 1
+            if total != subtotal + tax:
+                total_mismatches += 1
+        except (TypeError, ValueError, ArithmeticError):
+            subtotal_mismatches += 1
+            total_mismatches += 1
+    return {
+        "report": "quotation_integrity_review", "scope": "aggregate_quality_counts",
+        "quotations": len(quotations), "missing_company": missing_company,
+        "missing_lines": missing_lines, "invalid_line_values": invalid_lines,
+        "subtotal_or_line_total_mismatches": subtotal_mismatches,
+        "total_mismatches": total_mismatches,
+    }
+
+
 HANDLERS = {
     ("reporting", "sales_overview"): _sales_overview,
     ("reporting", "period_summary"): _sales_period_summary,
@@ -396,6 +449,7 @@ HANDLERS = {
     ("meeting", "follow_up_review"): _meeting_follow_up_review,
     ("meeting", "product_link_review"): _meeting_product_link_review,
     ("quotation", "pipeline_overview"): _quotation_pipeline_overview,
+    ("quotation", "integrity_review"): _quotation_integrity_review,
     ("quotation", "prepare_from_meeting"): _prepare_quotation_from_meeting,
 }
 

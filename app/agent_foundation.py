@@ -27,6 +27,12 @@ AGENT_DEFINITIONS = (
     ("audit", "Denetim Ajanı", "İşlem ve güvenlik kayıtlarını incelemek için altyapı."),
 )
 
+AGENT_DEPENDENCIES = {
+    # Satış Ajanı koordinatördür; süreçleri yürütebilmek için işlem ajanları hazır olmalıdır.
+    "sales": ("company", "product", "meeting", "quotation"),
+}
+
+
 DEFAULT_RULES = (
     ("critical_actions_require_approval", {"enabled": True}),
     ("approval_ttl_seconds", {"value": 900}),
@@ -145,7 +151,7 @@ def init_agent_foundation() -> None:
 
 
 def set_agent_enabled(agent_id: str, enabled: bool, actor: str) -> dict[str, Any]:
-    """Explicitly enable or disable one registered agent and audit the change."""
+    """Change one agent state and atomically enable its declared prerequisites."""
     if not isinstance(enabled, bool):
         raise ValueError("enabled must be a boolean")
     if not actor or not actor.strip():
@@ -156,19 +162,36 @@ def set_agent_enabled(agent_id: str, enabled: bool, actor: str) -> dict[str, Any
         ).fetchone()
         if row is None:
             raise ValueError("unknown agent")
-        previous = bool(row["enabled"])
-        connection.execute(
-            "UPDATE agents SET enabled = ?, updated_at = ? WHERE id = ?",
-            (1 if enabled else 0, _now(), agent_id),
-        )
-        if previous != enabled:
-            _audit(
-                connection,
-                "agent_enabled" if enabled else "agent_disabled",
-                actor=actor.strip(),
-                agent_id=agent_id,
-                details={"previous_enabled": previous, "enabled": enabled},
+        targets = (agent_id, *AGENT_DEPENDENCIES.get(agent_id, ())) if enabled else (agent_id,)
+        for target_id in targets:
+            target = connection.execute(
+                "SELECT id, enabled FROM agents WHERE id = ?", (target_id,)
+            ).fetchone()
+            if target is None:
+                raise ValueError(f"unknown dependency agent: {target_id}")
+            previous = bool(target["enabled"])
+            if previous == enabled:
+                continue
+            connection.execute(
+                "UPDATE agents SET enabled = ?, updated_at = ? WHERE id = ?",
+                (1 if enabled else 0, _now(), target_id),
             )
+            if target_id == agent_id:
+                _audit(
+                    connection,
+                    "agent_enabled" if enabled else "agent_disabled",
+                    actor=actor.strip(),
+                    agent_id=target_id,
+                    details={"previous_enabled": previous, "enabled": enabled},
+                )
+            elif enabled:
+                _audit(
+                    connection,
+                    "agent_auto_enabled",
+                    actor=actor.strip(),
+                    agent_id=target_id,
+                    details={"enabled": True, "required_by": agent_id},
+                )
         updated = connection.execute(
             """SELECT id, name, description, enabled, created_at, updated_at
                FROM agents WHERE id = ?""",

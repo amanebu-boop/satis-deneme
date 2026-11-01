@@ -257,6 +257,21 @@ def test_company_api_requires_a_sector_from_the_allowed_list(tmp_path, monkeypat
         valid = client.post("/api/companies", headers=headers, json={"name": "Mobilya Firma", "sector": "Mobilya"})
         assert valid.status_code == 201
         assert valid.json()["sector"] == "Mobilya"
+        multiple = client.post(
+            "/api/companies", headers=headers,
+            json={"name": "Çok Sektörlü Firma", "sectors": ["Mobilya", "Baza", "Otomotiv"]},
+        )
+        assert multiple.status_code == 201, multiple.json()
+        assert multiple.json()["sectors"] == ["Mobilya", "Baza", "Otomotiv"]
+        listed = client.get("/api/companies", headers=headers).json()
+        saved = next(item for item in listed if item["id"] == multiple.json()["id"])
+        assert saved["sectors"] == ["Mobilya", "Baza", "Otomotiv"]
+        assert saved["sector"] == "Mobilya, Baza, Otomotiv"
+        invalid = client.post(
+            "/api/companies", headers=headers,
+            json={"name": "Geçersiz Sektör", "sectors": ["Mobilya", "Çelik Kapı"]},
+        )
+        assert invalid.status_code == 422
 
 
 def test_capture_missing_required_data_creates_no_partial_records(tmp_path, monkeypatch):

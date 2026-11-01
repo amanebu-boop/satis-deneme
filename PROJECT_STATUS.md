@@ -413,3 +413,15 @@ Her görevde:
 - Test Render servisi (satis-deneme-test) commit e16606cd961da535d74befff6482ab9998f51d8a ile **live**. Bu commit, doğrulanan kod değişikliklerini ve mimari dokümantasyon güncellemelerini içerir.
 - Üretim Render servisi ve main dalı değiştirilmedi. PR #11 açık/draft bırakıldı.
 - Gerçek OpenAI API ücretli uçtan uca çağrısı yapılmadı; token tasarrufu kod akışı ve bağlam sınırları üzerinden sağlandı, parasal tasarruf miktarı ölçülmedi.
+
+
+## 2026-11-02 — Android Web Push bildirim altyapısı (geliştirme dalı)
+
+- Takip paneline Android tarayıcı bildirimi için açık kullanıcı izni düğmesi eklendi. Kullanıcı etkileşimi olmadan bildirim izni istenmez.
+- Service Worker gelen Web Push mesajını gösterir; bildirime dokunulunca Satış uygulamasını açar.
+- Abonelik uç noktaları oturum ve CSRF korumalıdır. Sunucu yalnızca HTTPS push endpoint'lerini kabul eder; VAPID özel anahtarı istemciye gönderilmez.
+- Push abonelikleri ve teslimat kuyruğu SQLite üzerinde kalıcıdır. Aynı takip görevi/cihaz/takip tarihi için UNIQUE kısıtı yinelenen gönderimi engeller. Başarısız gönderimler en fazla beş denemeyle beş dakika aralıklı tekrar kuyruğuna alınır; 404/410 dönen eski abonelikler temizlenir.
+- Takip tarihi gelen/aşan açık görevler Europe/Istanbul saat diliminde 10.00'dan itibaren gönderilir. Tarih alanı yalnızca gün içerdiğinde hatırlatma saati 10.00'dır.
+- Gerekli Render gizli değişkenleri: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CLAIMS_SUB`. Örnek isimler .env.example dosyasına eklendi; gerçek anahtarlar kaynak koda konulmadı.
+- Otomatik testler `tests/test_push_notifications.py` dosyasına eklendi. Bu commit aşamasında testler henüz çalıştırılmadı.
+- Değişiklikler yalnızca `feature/unified-sales-assistant-followups` dalındadır. PR açılmadı; test veya production Render servisine dağıtım yapılmadı. Gerçek cihaz bildirimi, Render VAPID değişkenleri ve cihaz aboneliği kurulmadan doğrulanmış değildir.

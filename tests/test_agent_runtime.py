@@ -388,3 +388,47 @@ def test_audit_anomaly_review_counts_failed_runs_without_actor_details(isolated_
     result = agent_runtime.execute_run(run["id"], "tester")["output"]
     assert result["failed_or_blocked_runs"]["failed"] == 1
     assert "private-user" not in str(result)
+
+
+def test_meeting_product_link_review_reports_broken_catalog_links_and_invalid_values(isolated_database):
+    from app import db
+    _enable("meeting")
+    with db.connect() as connection:
+        connection.execute("INSERT INTO companies (id, name) VALUES ('c1', 'Firma A')")
+        connection.execute("INSERT INTO products (id, sku, name, currency, unit_price) VALUES ('p1', 'A', 'Makine', 'EUR', '100')")
+        connection.execute("INSERT INTO meetings (id, company_id, meeting_date, notes) VALUES ('m1', 'c1', '2026-10-31', '')")
+        connection.executemany(
+            """INSERT INTO meeting_products
+               (id, meeting_id, product_id, name, quantity, unit_price, currency)
+               VALUES (?, 'm1', ?, ?, ?, ?, ?)""",
+            [("mp1", "p1", "Makine", "1", "100", "EUR"),
+             ("mp2", None, "Eski ürün", "1.5", "", "EURO")],
+        )
+    run = foundation.create_run("meeting", "product_link_review", "test-user")
+    output = agent_runtime.execute_run(run["id"], "test-user")["output"]
+    assert output["meeting_product_lines"] == 2
+    assert output["missing_catalog_link"] == 1
+    assert output["invalid_quantity"] == 1
+    assert output["invalid_unit_price"] == 1
+    assert output["invalid_currency"] == 1
+
+
+def test_quotation_integrity_review_reports_arithmetic_and_company_anomalies(isolated_database):
+    from app import db
+    _enable("quotation")
+    with db.connect() as connection:
+        connection.execute(
+            """INSERT INTO quotations
+               (id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES ('q1', NULL, 'EUR', '100', '0.20', '20', '121', 'draft', '2026-10-31')"""
+        )
+        connection.execute(
+            """INSERT INTO quotation_lines
+               (id, quotation_id, description, quantity, unit_price, line_total)
+               VALUES ('l1', 'q1', 'Makine', '1', '100', '100')"""
+        )
+    run = foundation.create_run("quotation", "integrity_review", "test-user")
+    output = agent_runtime.execute_run(run["id"], "test-user")["output"]
+    assert output["missing_company"] == 1
+    assert output["subtotal_or_line_total_mismatches"] == 0
+    assert output["total_mismatches"] == 1

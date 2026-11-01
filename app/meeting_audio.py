@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from app import db
+from app import db, agent_foundation
 from app.company_sectors import COMPANY_SECTORS, is_valid_company_sector
 
 router = APIRouter()
@@ -296,6 +296,8 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
 
     session = _require_browser_session(request)
     _require_csrf(request, session)
+    if not agent_foundation.rule_enabled("external_ai_enabled", default=True):
+        raise HTTPException(status_code=503, detail="Harici yapay zekâ kullanımı ajan güvenlik kurallarında kapalı.")
     _check_meeting_ai_rate_limit(request.cookies.get("sales_session", ""))
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:
@@ -320,6 +322,15 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
             "notes": extracted["notes"], "product_lines": extracted["product_lines"],
         }
         saved = db.create_company_and_meeting(company_record, meeting_record, company_sectors=extracted["sectors"])
+        try:
+            agent_foundation.record_external_run(
+                "meeting", "capture_from_text", str(session["subject"]),
+                {"transcript_sha256": hashlib.sha256(payload.transcript.strip().encode("utf-8")).hexdigest()},
+                {"company_id": saved["company"]["id"], "meeting_id": saved["meeting"]["id"],
+                 "product_line_count": len(saved["meeting"].get("product_lines", []))},
+            )
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Meeting AI audit record failed (%s)", type(exc).__name__)
         http_response.status_code = 201
         try:
             from app import ai_usage

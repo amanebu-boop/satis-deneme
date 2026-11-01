@@ -338,6 +338,11 @@ def _meeting_products(connection: sqlite3.Connection, meeting_id: str) -> list[d
 
 def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
+        if company_record is None and company_sector:
+            connection.execute(
+                "UPDATE companies SET sector = ? WHERE id = ? AND (sector IS NULL OR trim(sector) = '')",
+                (company_sector, meeting_record["company_id"]),
+            )
         connection.execute(
             """INSERT INTO meetings
                (id, company_id, meeting_date, notes, meeting_type, topic)
@@ -350,7 +355,7 @@ def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
     return {**record, "product_lines": saved_lines}
 
 
-def create_company_and_meeting(company_record: dict[str, Any] | None, meeting_record: dict[str, Any]) -> dict[str, Any]:
+def create_company_and_meeting(company_record: dict[str, Any] | None, meeting_record: dict[str, Any], company_sector: str | None = None) -> dict[str, Any]:
     """Atomically create a company when needed and its first meeting."""
     with connect() as connection:
         connection.execute("BEGIN IMMEDIATE")

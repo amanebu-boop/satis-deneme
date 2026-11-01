@@ -307,3 +307,10 @@ Her görevde:
 - Gerçek OpenAI API çağrısı için `OPENAI_API_KEY` Render test servisine henüz eklenmedi. Bu nedenle entegrasyon testleri sahte OpenAI yanıtıyla API ve veritabanı akışını doğrular; gerçek model çıktısı/faturalandırma doğrulanmış değildir.
 - Değişiklikler yalnızca `feature/agent-foundation` dalındadır. PR #11 açık/draft bırakılmıştır. `main` ve canlı Render servisi değiştirilmedi.
 - CI ve Render test dağıtım sonucu ayrıca doğrulanacak; tamamlanmadan başarılı olarak raporlanmayacak.
+### Son test ve dağıtım doğrulaması — 2026-11-01
+- Python CI, commit `9c09b16bcd5655217e5dc1fc52ef63853cec55ef`: **102 passed, 1 skipped, 1 warning**.
+- LibreOffice + Docker doğrulama CI, aynı commit: **103 passed, 1 warning**; Docker image build başarılı.
+- Test kapsamı: zorunlu sektör whitelist/API doğrulaması, sektör formu ve dashboard markup, AI firma/görüşme alan çıkarımı, katalog ürün eşleştirme, mevcut firma reuse, legacy sektör tamamlama, zorunlu alan eksikliğinde sıfır kısmi kayıt, CSRF/auth/API anahtarı, transaction rollback ve ses transkripsiyon endpoint'inin kaldırılması.
+- Render test servisi `satis-deneme-test` (`srv-dbhssmd9el5s738cnr9g`), commit `9c09b16bcd5655217e5dc1fc52ef63853cec55ef` için **live**. Uygulama başlangıcı ve `GET /` 200 OK logları doğrulandı.
+- PR #11 hâlâ açık/draft; `main` ve production Render servisi değiştirilmedi.
+- Gerçek OpenAI model çağrısı yapılamadı: Render test ortamında OPENAI_API_KEY henüz yapılandırılmadı. Otomatik testler OpenAI yanıtını taklit ederek kayıt mantığını doğrular.

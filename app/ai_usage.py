@@ -70,10 +70,12 @@ def calculate_cost(model: str, input_tokens: int, cached_input_tokens: int,
         return None
     cached = min(max(0, cached_input_tokens), max(0, input_tokens))
     uncached = max(0, input_tokens - cached)
+    input_multiplier = Decimal("2") if input_tokens > 272_000 else Decimal("1")
+    output_multiplier = Decimal("1.5") if input_tokens > 272_000 else Decimal("1")
     return (
-        Decimal(uncached) * rates["input"]
-        + Decimal(cached) * rates["cached_input"]
-        + Decimal(max(0, output_tokens)) * rates["output"]
+        Decimal(uncached) * rates["input"] * input_multiplier
+        + Decimal(cached) * rates["cached_input"] * input_multiplier
+        + Decimal(max(0, output_tokens)) * rates["output"] * output_multiplier
     ) / Decimal(1_000_000)
 
 

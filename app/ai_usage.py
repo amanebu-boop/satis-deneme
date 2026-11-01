@@ -19,6 +19,11 @@ MODEL_PRICES = {
         "cached_input": Decimal("0.50"),
         "output": Decimal("30.00"),
     },
+    "gpt-5.5-2026-04-23": {
+        "input": Decimal("5.00"),
+        "cached_input": Decimal("0.50"),
+        "output": Decimal("30.00"),
+    },
 }
 
 

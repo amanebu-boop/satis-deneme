@@ -79,7 +79,9 @@ async def transcribe_meeting_audio(request: Request, file: UploadFile = File(...
     filename = Path(file.filename or "meeting-audio").name
     suffix = Path(filename).suffix.lower()
     content_type = (file.content_type or "").split(";", 1)[0].strip().lower()
-    if suffix in AUDIO_MIME_BY_SUFFIX:
+    if suffix:
+        if suffix not in AUDIO_MIME_BY_SUFFIX:
+            raise HTTPException(status_code=415, detail="Desteklenmeyen ses biçimi. WebM, WAV, MP3, MP4 veya M4A yükleyin.")
         content_type = AUDIO_MIME_BY_SUFFIX[suffix]
     elif content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(status_code=415, detail="Desteklenmeyen ses biçimi. WebM, WAV, MP3, MP4 veya M4A yükleyin.")

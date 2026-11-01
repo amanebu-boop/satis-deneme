@@ -1271,3 +1271,4 @@ app.include_router(agent_chat_router)
 
 from app.meeting_audio import router as meeting_audio_router
 app.include_router(meeting_audio_router)
+app.include_router(llm_wiki.router)

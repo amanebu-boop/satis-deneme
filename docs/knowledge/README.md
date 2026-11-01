@@ -2,7 +2,7 @@
 
 Bu klasör, Satış Asistanı'nın arayabileceği Ersen Makina teknik bilgi ve satış dokümanları içindir.
 
-- Teknik makine katalogları, kullanım kılavuzları ve teknik föyleri Markdown biçiminde bu klasöre ekleyin.
+- Teknik makine katalogları, kullanım kılavuzları ve teknik föyleri Satış Asistanı ana ekranındaki belge alanından PDF, DOCX, TXT veya MD olarak yükleyin. Kaynak Markdown dosyaları ayrıca bu klasörde tutulabilir.
 - Ürün ve opsiyonların güncel adı, SKU ve fiyat bilgisi ürün kataloğundan okunur; kopya fiyat listesi tutmayın.
 - Satış kuralları ve ajan yetkileri kök `AGENTS.md`, `AGENT_ARCHITECTURE.md` ve `agents/*.md` dosyalarından alınır.
 - Geçmiş görüşmeler, firma adı, tarih, konu, not ve görüşme ürünlerinden yerel SQLite indeksine alınır. İletişim bilgileri ve vergi numaraları Wiki indeksine eklenmez.

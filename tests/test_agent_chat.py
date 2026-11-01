@@ -194,6 +194,7 @@ def test_responses_usage_is_attributed_to_the_invoked_agent(
 
     def record(response, model, selected_agent, session_hash=None):
         recorded.append((response.id, model, selected_agent, session_hash))
+        return True
 
     monkeypatch.setattr(agent_chat.ai_usage, "record_response_usage", record)
     monkeypatch.setattr(

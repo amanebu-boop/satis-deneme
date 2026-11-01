@@ -16,7 +16,7 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 | Firma | Firma ve yetkili kayıtları | Rehber özeti + eksik sektör/şehir/adres/telefon ve yinelenen ad kalite kontrolü |
 | Ürün | Ürün kataloğu ve opsiyonlar | Katalog özeti + açıklama/tam sayı fiyat/para birimi/opsiyon bağlantısı kalite kontrolü |
 | Görüşme | Görüşme ve görüşme ürünleri | Görüşme özeti + gecikmiş ve 7 gün içindeki açık takip görevleri + katalog bağlantısı/miktar/fiyat/para birimi kontrolü |
-| Teklif | Görüşmeden teklif taslağı, teklif süreci ve onaylı teklif oluşturma | Taslak önizleme + onaylı oluşturma akışı + firma/satır/ara toplam/genel toplam bütünlük kontrolü + teklif süreci özeti |
+| Teklif | Görüşmeden teklif taslağı, teklif süreci ve onaylı teklif oluşturma | Taslak önizleme + onaylı oluşturma akışı + firma/satır/ara toplam/KDV/genel toplam bütünlük kontrolü + teklif süreci özeti |
 | Depo | Stok ve depo süreçleri | Kullanılabilir görev yok; etkinleştirilmez |
 | Satış | Süreç koordinasyonu ve ajanlar arası iş akışı | İzinli görev kataloğuyla salt-okunur koordinasyon mevcut; üst çalışma kaydı alt görevleri parent_run_id ile ilişkilendirir |
 | Raporlama | Satış raporları ve performans analizi | Genel özet + tarih aralığında görüşme/teklif sayıları ve para birimine göre teklif toplamları |

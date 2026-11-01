@@ -128,6 +128,14 @@ def test_template_excel_can_be_converted_to_pdf_when_libreoffice_is_installed():
     assert "ERS-12345678" in rendered_text
     assert "Örnek Sanayi A.Ş." in rendered_text
     assert "Deneme Makinesi" in rendered_text
+    assert len(reader.pages) >= 2
+    second_page_text = reader.pages[1].extract_text() or ""
+    first_content = next((line.strip() for line in second_page_text.splitlines() if line.strip()), "")
+    assert first_content.startswith("7.")
+    assert "GARANTİ" in second_page_text.upper()
+    for page in reader.pages:
+        assert abs(float(page.mediabox.width) - 595.2756) < 1.0
+        assert abs(float(page.mediabox.height) - 841.8898) < 1.0
 
 
 def test_pdf_fallback_uses_a4_and_starts_second_page_at_section_seven(monkeypatch):

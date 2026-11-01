@@ -251,7 +251,9 @@ def convert_excel_to_pdf(excel_content: bytes) -> bytes:
                     sheet.page_setup.orientation = "portrait"
                     sheet.sheet_properties.pageSetUpPr.fitToPage = True
                     sheet.page_setup.fitToWidth = 1
-                    sheet.page_setup.fitToHeight = 0
+                    # Keep the explicit section break and scale the two printed sections across two A4 pages.
+                    # This removes the unused lower half of page one without changing the source template.
+                    sheet.page_setup.fitToHeight = 2
                     prepared = BytesIO()
                     workbook.save(prepared)
                     input_path.write_bytes(prepared.getvalue())

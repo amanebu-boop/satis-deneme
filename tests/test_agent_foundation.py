@@ -196,3 +196,8 @@ def test_external_workflow_is_recorded_with_audit_event(isolated_database):
     assert run["task_type"] == "capture_from_text"
     event = next(item for item in agents.list_audit_logs() if item.get("run_id") == run_id)
     assert event["event_type"] == "external_run_succeeded"
+
+
+def test_external_ai_rule_defaults_to_owner_approved_state(isolated_database):
+    assert agents.rule_enabled("external_ai_enabled") is True
+    assert agents.rule_enabled("critical_actions_require_approval") is True

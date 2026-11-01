@@ -325,3 +325,23 @@ Her görevde:
 - Testler çoklu sektör API doğrulamasını, veritabanına yazma/okumayı, AI çoklu sektör çıkarımını, eski tekil sektör uyumluluğunu ve Ajan Yönetimi sayfasındaki bağlantının kaldırıldığını kapsayacak şekilde güncellendi.
 - Doğrulama commit'i: `d2a7e90f62e7611cae82c99e5b3791190ea124f0`. Python CI: **104 passed, 1 skipped, 1 warning**. LibreOffice + Docker doğrulama CI: **105 passed, 1 warning**; Docker image build başarılı.
 - Render test servisi `satis-deneme-test` (`srv-dbhssmd9el5s738cnr9g`) aynı commit için **live**. Değişiklikler yalnızca `feature/agent-foundation` dalındadır. PR #11 açık/draft; `main` ve production Render servisi değiştirilmedi.
+
+
+## 2026-11-01 — Satış Asistanı ana ekranı, LLM Wiki ve denetim düzeltmeleri
+
+- Satış Asistanı için ayrı `/assistant` sayfası rotası kaldırıldı ve `web/assistant.html` silindi. Sohbet API'si yalnızca ana ekrandaki asistan arayüzü tarafından çağrılır; Ajan Yönetimi'nde asistan bağlantısı bulunmaz.
+- Ana ekrana sohbet alanı ve LLM Wiki teknik doküman yükleme alanı eklendi. Mevcut ana ekran görüşme/firma kayıt alanı korunmuştur.
+- `app/llm_wiki.py` eklendi. Yerel SQLite indeksi; ajan/satış Markdown dosyalarını, ürün/opsiyon kataloğunu, firma temel bilgilerini ve görüşme geçmişini indeksler. Firma iletişim bilgileri ve vergi numaraları indekse alınmaz.
+- LLM Wiki, PDF/DOCX/TXT/MD dosyalarını oturum + CSRF korumasıyla alır; 8 MB dosya ve 200.000 karakter sınırı uygular. PDF/DOCX metni çıkarılır, uzun belgeler 1.600 karakterlik örtüşmeli parçalara ayrılır. Kaynak dosyanın kendisi saklanmaz. Taranmış PDF OCR olmadan kabul edilmez.
+- Wiki araması yalnızca kullanıcı Satış Asistanı'na ilgili bir soru sorduğunda çalışır. Arama yerel sözcük eşleştirmesidir; harici embedding API çağrısı veya arka plan LLM işi yoktur.
+- Görüşme AI isteği öncesi firma/ürün adayları metinle yerel olarak eşleştirilir; modele en fazla 12 firma ve 20 ürün adayı gönderilir, ilişkili ana/alt ürünler korunur. Tam veri listesi sunucu tarafında ID doğrulaması için kalır.
+- Asistan model çıktısı 700 tokenla, görüşme çıkarımı 1.200 tokenla sınırlandırıldı. Otomatik OpenAI istemci yeniden denemeleri kapatıldı. İsteğe bağlı `OPENAI_DAILY_BUDGET_USD` limiti eklendi; limit aşılırsa veya günlük kullanımda fiyatı bilinmeyen çağrı varsa yeni OpenAI çağrısı engellenir. Değişken Render'da ayarlanmadığı sürece günlük harcama freni etkin değildir.
+- `external_ai_enabled` kuralı artık OpenAI uç noktalarında denetlenir; kullanıcı tarafından önceden onaylanan OpenAI entegrasyonu için eski varsayılan kapalı değer açık duruma geçirilir. API anahtarı yoksa çağrı yine 503 ile durur.
+- Kritik teklif onayı zorunluluğu teklif hazırlama işleminden önce kontrol edilir. Onay süresi `approval_ttl_seconds` kuralından okunur ve 60–86.400 saniye aralığında sınırlandırılır.
+- Ana ekrandan kullanıcı tarafından açıkça başlatılan AI firma/görüşme kaydı `meeting` ajanı altında tamamlanmış dış iş akışı ve denetim olayı olarak kaydedilir. Transkriptin kendisi denetim kaydına yazılmaz; yalnızca SHA-256 özeti, firma/görüşme kimlikleri ve ürün satırı sayısı tutulur.
+- Ajan talimatını okuma ve görevi çalıştırma aynı model yanıtında geldiyse görev artık çalıştırılmaz; talimatın önceki model turunda okunması gerekir.
+- Satış koordinatörü, isteğe bağlı Denetim Ajanı kapalıysa bunu genel hata yerine açık `blocked` durumu ve açıklamayla bildirir; Denetim Ajanı diğer ajanlara bağımlı olarak otomatik açılmaz.
+- Uygulama her yeniden başlatıldığında aynı ajan temel kurulum denetim olayı tekrar yazılmaz.
+- `agents/meeting.md`, `agents/sales.md`, `AGENT_ARCHITECTURE.md` ve `docs/knowledge/README.md` uygulamadaki güncel akışa göre güncellendi.
+- Yeni testler: Wiki araması, silinmiş kayıt temizliği, belge yükleme/listeleme/silme, asistan Wiki aracı, ayrı asistan rotasının kaldırılması, aynı turda profil+görev engeli, harici iş akışı denetimi, günlük harcama sınırı ve kapalı Denetim Ajanı ön kontrolü.
+- Bu kayıt eklenirken CI sonuçları ve son Render test dağıtımı henüz doğrulanmamıştır. Gerçek OpenAI uçtan uca çağrısı yapılmış sayılmaz. `main` ve canlı production Render servisine değişiklik gönderilmemiştir.

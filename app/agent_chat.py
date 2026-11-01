@@ -15,7 +15,8 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from app import agent_foundation, agent_runtime
-from app.agent_instructions import read_agent_profile\nfrom app.agent_coordinator import run_sales_coordination
+from app.agent_instructions import read_agent_profile
+from app.agent_coordinator import run_sales_coordination
 
 router = APIRouter()
 MAX_MESSAGE_CHARS = 6000
@@ -49,7 +50,8 @@ SAFE_TASKS = {
     "company": {"directory_overview"},
     "product": {"catalog_overview"},
     "meeting": {"activity_overview"},
-    "quotation": {"pipeline_overview", "prepare_from_meeting"},\n    "sales": {"sales_coordinate"},
+    "quotation": {"pipeline_overview", "prepare_from_meeting"},
+    "sales": {"sales_coordinate"},
     "reporting": {"sales_overview"},
     "audit": {"audit_overview"},
 }
@@ -103,7 +105,8 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
                        previous_response_id: str | None = None) -> dict[str, Any]:
     instructions = (
         "Sen Erşen Makina Satış uygulamasının Türkçe yardımcı asistanısın. "
-        "Tek alanlı bir istek için ilgili ajanı kullan. Birden fazla satış alanını kapsayan veya ajanlar arası koordinasyon isteyen isteklerde önce Sales ajanının profilini oku ve sales_coordinate görevini kullan; görev listesini yalnızca kullanıcının isteğine göre seç. Görüşmeden teklif önizlemesi için meeting_quotation_preview ve meeting_id gerekir. "\n        "Bir ajan görevi gerektiğinde önce read_agent_profile aracını çağır. "
+        "Tek alanlı bir istek için ilgili ajanı kullan. Birden fazla satış alanını kapsayan veya ajanlar arası koordinasyon isteyen isteklerde önce Sales ajanının profilini oku ve sales_coordinate görevini kullan; görev listesini yalnızca kullanıcının isteğine göre seç. Görüşmeden teklif önizlemesi için meeting_quotation_preview ve meeting_id gerekir. "
+        "Bir ajan görevi gerektiğinde önce read_agent_profile aracını çağır. "
         "Bu araç AGENTS.md yönlendirme dosyasını ve yalnızca seçilen ajanın kendi "
         "Markdown talimat dosyasını döndürür. Bu belgeleri okuyup rol, izin, yasak "
         "ve görev koşullarına uyduktan sonra run_agent_task çağır. Sunucu da aynı "

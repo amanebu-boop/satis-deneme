@@ -88,6 +88,7 @@ def init_agent_foundation() -> None:
                 output_json TEXT,
                 requested_by TEXT NOT NULL,
                 idempotency_key TEXT UNIQUE,
+                parent_run_id TEXT REFERENCES agent_runs(id) ON DELETE SET NULL,
                 created_at TEXT NOT NULL,
                 finished_at TEXT
             );
@@ -137,6 +138,10 @@ def init_agent_foundation() -> None:
             );
             """
         )
+        run_columns = {row["name"] for row in connection.execute("PRAGMA table_info(agent_runs)").fetchall()}
+        if "parent_run_id" not in run_columns:
+            connection.execute("ALTER TABLE agent_runs ADD COLUMN parent_run_id TEXT REFERENCES agent_runs(id) ON DELETE SET NULL")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_agent_runs_parent ON agent_runs(parent_run_id)")
         now = _now()
         seeded_agents = 0
         for agent_id, name, description in AGENT_DEFINITIONS:
@@ -294,6 +299,7 @@ def create_run(
     requested_by: str,
     input_data: dict[str, Any] | None = None,
     idempotency_key: str | None = None,
+    parent_run_id: str | None = None,
 ) -> dict[str, Any]:
     """Record a run request; disabled agents are blocked and nothing is executed."""
     if not task_type or not task_type.strip():
@@ -322,13 +328,17 @@ def create_run(
             raise ValueError("unknown agent")
         run_id = str(uuid4())
         status = "queued" if agent["enabled"] else "blocked"
+        if parent_run_id:
+            parent = connection.execute("SELECT id FROM agent_runs WHERE id = ?", (parent_run_id,)).fetchone()
+            if parent is None:
+                raise ValueError("unknown parent run")
         connection.execute(
             """INSERT INTO agent_runs
                (id, agent_id, task_type, status, input_json, requested_by,
-                idempotency_key, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                idempotency_key, parent_run_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (run_id, agent_id, task_type.strip(), status, serialized, requested_by.strip(),
-             idempotency_key, _now()),
+             idempotency_key, parent_run_id, _now()),
         )
         _audit(
             connection, "run_requested" if status == "queued" else "run_blocked",
@@ -337,6 +347,44 @@ def create_run(
         )
         row = connection.execute("SELECT * FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
     return dict(row)
+
+
+
+def start_coordinated_run(run_id: str, actor: str) -> None:
+    """Atomically mark a coordinator run as running and audit its start."""
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT agent_id, task_type, status FROM agent_runs WHERE id = ?", (run_id,)
+        ).fetchone()
+        if row is None or row["status"] != "queued":
+            raise ValueError("coordinator run is not queued")
+        changed = connection.execute(
+            "UPDATE agent_runs SET status='running' WHERE id=? AND status='queued'", (run_id,)
+        ).rowcount
+        if changed != 1:
+            raise ValueError("coordinator run state changed")
+        _audit(connection, "run_started", actor=actor, agent_id=row["agent_id"],
+               run_id=run_id, details={"task_type": row["task_type"], "coordinator": True})
+
+
+def finish_coordinated_run(run_id: str, status: str, output: dict[str, Any], actor: str) -> None:
+    """Persist a coordinator result and terminal audit event."""
+    if status not in {"succeeded", "failed"}:
+        raise ValueError("invalid coordinator terminal status")
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT agent_id, task_type, status FROM agent_runs WHERE id = ?", (run_id,)
+        ).fetchone()
+        if row is None or row["status"] != "running":
+            raise ValueError("coordinator run is not running")
+        connection.execute(
+            "UPDATE agent_runs SET status=?, output_json=?, finished_at=? WHERE id=? AND status='running'",
+            (status, _json(output), _now(), run_id),
+        )
+        _audit(connection, "run_" + status, actor=actor, agent_id=row["agent_id"],
+               run_id=run_id, details={"task_type": row["task_type"], "coordinator": True,
+                                       "child_run_ids": output.get("child_run_ids", [])})
+
 
 
 def request_approval(
@@ -464,7 +512,7 @@ def list_runs(limit: int = 100) -> list[dict[str, Any]]:
         raise ValueError("limit must be between 1 and 500")
     with db.connect() as connection:
         rows = connection.execute(
-            """SELECT r.id, r.agent_id, a.name AS agent_name, r.task_type, r.status,
+            """SELECT r.id, r.parent_run_id, r.agent_id, a.name AS agent_name, r.task_type, r.status,
                       r.requested_by, r.created_at, r.finished_at
                FROM agent_runs r JOIN agents a ON a.id = r.agent_id
                ORDER BY r.created_at DESC, r.rowid DESC LIMIT ?""",

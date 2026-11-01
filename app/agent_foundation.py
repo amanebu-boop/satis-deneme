@@ -97,6 +97,10 @@ def init_agent_foundation() -> None:
                 config_json TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS agent_rule_migrations (
+                migration_key TEXT PRIMARY KEY,
+                applied_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS agent_approvals (
                 id TEXT PRIMARY KEY,
                 run_id TEXT NOT NULL REFERENCES agent_runs(id) ON DELETE CASCADE,
@@ -154,12 +158,21 @@ def init_agent_foundation() -> None:
                 (str(uuid4()), rule_key, _json(config), now),
             )
         # The owner explicitly approved the OpenAI integration. Migrate the original
-        # untouched default (false) to enabled; later explicit settings are preserved.
-        connection.execute(
-            """UPDATE agent_rules SET config_json = ?, updated_at = ?
-               WHERE rule_key = 'external_ai_enabled' AND config_json = ?""",
-            (_json({"enabled": True}), now, _json({"enabled": False})),
-        )
+        # untouched default (false) once; later explicit disablement must persist.
+        migration_key = "external_ai_enabled_default_v1"
+        migrated = connection.execute(
+            "SELECT 1 FROM agent_rule_migrations WHERE migration_key=?", (migration_key,)
+        ).fetchone()
+        if migrated is None:
+            connection.execute(
+                """UPDATE agent_rules SET config_json = ?, updated_at = ?
+                   WHERE rule_key = 'external_ai_enabled' AND config_json = ?""",
+                (_json({"enabled": True}), now, _json({"enabled": False})),
+            )
+            connection.execute(
+                "INSERT INTO agent_rule_migrations (migration_key, applied_at) VALUES (?, ?)",
+                (migration_key, now),
+            )
         if seeded_agents:
             _audit(connection, "agent_foundation_initialized", details={"agents_seeded": seeded_agents})
 

@@ -116,7 +116,7 @@ def _normalized_company_name(value: str | None) -> str:
 
 def _candidate_score(item: dict[str, Any], transcript_tokens: set[str], fields: tuple[str, ...]) -> int:
     values = " ".join(str(item.get(field) or "") for field in fields).casefold()
-    tokens = {token for token in __import__("re").findall(r"[\\w-]+", values, flags=__import__("re").UNICODE) if len(token) > 1}
+    tokens = {token for token in __import__("re").findall(r"[\w-]+", values, flags=__import__("re").UNICODE) if len(token) > 1}
     return len(tokens & transcript_tokens)
 
 
@@ -124,7 +124,7 @@ def _relevant_candidates(
     items: list[dict[str, Any]], transcript: str, fields: tuple[str, ...], limit: int
 ) -> list[dict[str, Any]]:
     import re
-    query_tokens = {token for token in re.findall(r"[\\w-]+", transcript.casefold(), flags=re.UNICODE) if len(token) > 1}
+    query_tokens = {token for token in re.findall(r"[\w-]+", transcript.casefold(), flags=re.UNICODE) if len(token) > 1}
     ranked = [(score, index, item) for index, item in enumerate(items)
               if (score := _candidate_score(item, query_tokens, fields)) > 0]
     ranked.sort(key=lambda entry: (-entry[0], entry[1]))

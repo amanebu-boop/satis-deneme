@@ -275,3 +275,11 @@ Her görevde:
 - Uyarı: Starlette TestClient ile httpx kullanımının deprecated olacağına ilişkin uyarı; testler başarısız değil.
 - Quote template validation/Docker build CI ve son Render dağıtımı bu not yazılırken hâlâ devam ediyor; tamamlanmış olarak raporlanmamalı.
 - Gerçek OpenAI transkripsiyon/Responses API çağrısı yapılmadı; Render'da API anahtarı henüz ekli değil. Tarayıcıda mikrofon ve ses dosyası yükleme akışının kullanıcı tarafından uçtan uca doğrulanması da henüz yapılmadı.
+
+
+### Son doğrulama — 2026-11-01
+- Son kod commit'i `19056b791291e0c8db1c855584d266d55eeaf2a7` için Python CI: **90 passed, 1 skipped, 1 warning**.
+- Uyarı yalnızca Starlette TestClient/httpx deprecation uyarısıdır.
+- Quote template validation ve Docker build iş akışı henüz tamamlanmadı.
+- Render test servisi son kod commit'ini dağıtım sırasında `update_in_progress` durumunda gösteriyor. Önceki kod commit'i test serviste live olmuştu; son MIME güvenlik düzeltmesinin dağıtımı henüz tamamlanmış sayılmaz.
+- PR #11 açık ve draft; merge edilmedi. `main` ve canlı production servisi değiştirilmedi.

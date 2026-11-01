@@ -27,6 +27,11 @@ class FakeClient:
         self.responses = FakeResponses(responses)
 
 
+def tool(name, call_id, arguments):
+    return SimpleNamespace(type="function_call", name=name, call_id=call_id,
+                           arguments=arguments)
+
+
 def test_plain_assistant_turn_does_not_run_agent_tasks():
     client = FakeClient([FakeResponse("resp_1", output_text="Merhaba")])
 
@@ -36,16 +41,15 @@ def test_plain_assistant_turn_does_not_run_agent_tasks():
     assert len(client.responses.calls) == 1
 
 
-def test_read_only_tool_call_is_executed_by_server_allowlist(monkeypatch):
-    call = SimpleNamespace(
-        type="function_call",
-        name="run_agent_task",
-        call_id="call_1",
-        arguments='{"agent_id":"reporting","task_type":"sales_overview","input_data":{}}',
-    )
-    first = FakeResponse("resp_1", [call])
-    second = FakeResponse("resp_2", output_text="Toplam 4 firma var.")
-    client = FakeClient([first, second])
+def test_agent_profile_must_be_read_before_safe_task(monkeypatch):
+    read = tool("read_agent_profile", "profile_1", '{"agent_id":"reporting"}')
+    run = tool("run_agent_task", "task_1",
+               '{"agent_id":"reporting","task_type":"sales_overview","input_data":{}}')
+    client = FakeClient([
+        FakeResponse("resp_1", [read]),
+        FakeResponse("resp_2", [run]),
+        FakeResponse("resp_3", output_text="Toplam 4 firma var."),
+    ])
     invoked = []
 
     def fake_task(agent_id, task_type, input_data, actor):
@@ -57,21 +61,30 @@ def test_read_only_tool_call_is_executed_by_server_allowlist(monkeypatch):
 
     assert invoked == [("reporting", "sales_overview", {}, "tester")]
     assert result["message"] == "Toplam 4 firma var."
-    assert result["tool_results"] == [{"call_id": "call_1", "name": "run_agent_task"}]
-    assert client.responses.calls[1]["tool_choice"] == "none"
-    assert client.responses.calls[1]["previous_response_id"] == "resp_1"
+    assert [x["name"] for x in result["tool_results"]] == ["read_agent_profile", "run_agent_task"]
+    assert "AGENTS.md" in client.responses.calls[1]["input"][0]["output"]
+    assert "agents/reporting.md" in client.responses.calls[1]["input"][0]["output"]
 
 
-def test_tool_task_pair_must_be_explicitly_allowlisted():
+def test_task_pair_must_be_explicitly_allowlisted():
     with pytest.raises(ValueError, match="güvenli görev listesinde"):
         agent_chat._run_safe_task("company", "delete_company", {}, "tester")
 
 
+def test_run_task_requires_profile_to_be_read_first():
+    run = tool("run_agent_task", "task_1",
+               '{"agent_id":"reporting","task_type":"sales_overview","input_data":{}}')
+    client = FakeClient([FakeResponse("resp_1", [run]), FakeResponse("resp_2", output_text="Yetki yok")])
+
+    result = agent_chat.run_assistant_turn(client, "gpt-test", "Raporla", "tester")
+
+    assert result["message"] == "Yetki yok"
+    assert len(client.responses.calls) == 2
+
+
 def test_tool_call_count_is_bounded():
-    calls = [
-        SimpleNamespace(type="function_call", name="run_agent_task", call_id=f"c{i}", arguments="{}")
-        for i in range(agent_chat.MAX_TOOL_CALLS + 1)
-    ]
+    calls = [tool("read_agent_profile", f"c{i}", '{"agent_id":"reporting"}')
+             for i in range(agent_chat.MAX_TOOL_CALLS + 1)]
     client = FakeClient([FakeResponse("resp_1", calls)])
 
     with pytest.raises(ValueError, match="sınırı"):

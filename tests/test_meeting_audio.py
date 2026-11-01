@@ -31,7 +31,7 @@ def capture_payload(*, company_id=None, company_name="ABC Makina", sector="Mobil
         "company": {
             "company_id": company_id,
             "name": company_name,
-            "sector": sector,
+            "sectors": sector if isinstance(sector, list) else ([sector] if sector else []),
             "authorized_people": ["Ayşe Yılmaz"],
             "phone_numbers": ["05551234567"],
             "city": "Konya",
@@ -81,6 +81,7 @@ def test_extract_new_company_and_meeting_only_uses_explicit_catalogue_data():
     )
     assert extracted["company_id"] is None
     assert extracted["company_name"] == "ABC Makina"
+    assert extracted["sectors"] == ["Mobilya"]
     assert extracted["sector"] == "Mobilya"
     assert extracted["is_new_company"] is True
     assert extracted["meeting_type"] == "visit"
@@ -92,6 +93,17 @@ def test_extract_new_company_and_meeting_only_uses_explicit_catalogue_data():
     assert response is not None
 
 
+def test_extract_new_company_supports_multiple_sectors():
+    payload = capture_payload(sector=["Mobilya", "Baza", "Otomotiv"])
+    extracted, _ = extract_meeting_capture(
+        FakeOpenAI(payload), "gpt-test",
+        "ABC Makina mobilya, baza ve otomotiv sektörlerine üretim yapıyor. Ziyaret yapıldı.",
+        [], [],
+    )
+    assert extracted["sectors"] == ["Mobilya", "Baza", "Otomotiv"]
+    assert extracted["sector"] == "Mobilya, Baza, Otomotiv"
+
+
 def test_extract_existing_company_does_not_change_a_known_sector():
     company = {"id": "company-1", "name": "ABC Makina", "sector": "Çelik Eşya", "city": "Konya"}
     payload = capture_payload(company_id="company-1", sector="Mobilya")
@@ -99,6 +111,7 @@ def test_extract_existing_company_does_not_change_a_known_sector():
         FakeOpenAI(payload), "gpt-test", "ABC Makina ile telefon görüşmesi yapıldı.", [company], []
     )
     assert extracted["company_id"] == "company-1"
+    assert extracted["sectors"] == ["Çelik Eşya"]
     assert extracted["sector"] == "Çelik Eşya"
     assert extracted["is_new_company"] is False
 
@@ -279,6 +292,7 @@ def test_capture_existing_legacy_company_fills_sector_without_duplicate(tmp_path
         companies = client.get("/api/companies", headers=headers).json()
         assert len(companies) == 1
         assert companies[0]["sector"] == "Mobilya"
+        assert companies[0]["sectors"] == ["Mobilya"]
 
 
 def test_capture_endpoint_rejects_missing_csrf(tmp_path, monkeypatch):

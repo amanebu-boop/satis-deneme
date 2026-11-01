@@ -174,7 +174,7 @@ def list_wiki_documents(request: Request) -> list[dict[str, Any]]:
     with db.connect() as connection:
         rows = connection.execute(
             """SELECT source_id, title, updated_at FROM llm_wiki_documents
-               WHERE source_type='uploaded_document' ORDER BY title"""
+               WHERE source_type='uploaded_document_meta' ORDER BY title"""
         ).fetchall()
     return [dict(row) for row in rows]
 
@@ -202,8 +202,33 @@ async def upload_wiki_document(request: Request, file: UploadFile = File(...)) -
     if len(content) > MAX_EXTRACTED_CHARS:
         content = content[:MAX_EXTRACTED_CHARS]
     source_id = hashlib.sha256((filename + hashlib.sha256(data).hexdigest()).encode("utf-8")).hexdigest()[:32]
-    _upsert("uploaded_document", source_id, filename, content)
-    return {"source_id": source_id, "title": filename, "characters_indexed": len(content)}
+    _upsert("uploaded_document_meta", source_id, filename, json.dumps({"characters": len(content)}, ensure_ascii=False))
+    # Chunk long manuals so later pages remain retrievable instead of indexing only
+    # the first few thousand characters. Small overlap preserves split paragraphs.
+    chunks = []
+    position = 0
+    while position < len(content):
+        end = min(len(content), position + 1600)
+        if end < len(content):
+            boundary = content.rfind(" ", position + 1100, end)
+            if boundary > position:
+                end = boundary
+        chunk = content[position:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        if end >= len(content):
+            break
+        position = max(position + 1, end - 180)
+    with db.connect() as connection:
+        connection.execute(
+            "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
+            (source_id + ":%",),
+        )
+    for index, chunk in enumerate(chunks, start=1):
+        _upsert("uploaded_document", f"{source_id}:{index:04d}",
+                f"{filename} · Bölüm {index}", chunk)
+    return {"source_id": source_id, "title": filename, "characters_indexed": len(content),
+            "chunks_indexed": len(chunks)}
 
 
 @router.delete("/api/wiki/documents/{source_id}")
@@ -211,12 +236,20 @@ def delete_wiki_document(source_id: str, request: Request) -> dict[str, bool]:
     from app.main import _require_browser_session, _require_csrf
     _require_csrf(request, _require_browser_session(request))
     with db.connect() as connection:
-        changed = connection.execute(
-            "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id=?",
+        exists = connection.execute(
+            "SELECT 1 FROM llm_wiki_documents WHERE source_type='uploaded_document_meta' AND source_id=?",
             (source_id,),
-        ).rowcount
-    if not changed:
-        raise HTTPException(status_code=404, detail="Bilgi belgesi bulunamadı.")
+        ).fetchone()
+        if exists is None:
+            raise HTTPException(status_code=404, detail="Bilgi belgesi bulunamadı.")
+        connection.execute(
+            "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
+            (source_id + ":%",),
+        )
+        connection.execute(
+            "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document_meta' AND source_id=?",
+            (source_id,),
+        )
     return {"deleted": True}
 
 
@@ -229,7 +262,7 @@ def search_wiki(query: str, limit: int = 5) -> dict[str, Any]:
     refresh_wiki_index()
     with db.connect() as connection:
         rows = connection.execute(
-            "SELECT source_type, source_id, title, content FROM llm_wiki_documents"
+            "SELECT source_type, source_id, title, content FROM llm_wiki_documents WHERE source_type != 'uploaded_document_meta'"
         ).fetchall()
     ranked = []
     for row in rows:

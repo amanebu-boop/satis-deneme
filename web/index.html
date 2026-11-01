@@ -1069,7 +1069,7 @@ document.getElementById("dashboard-wiki-upload")?.addEventListener("click",async
   const result=await response.json().catch(()=>({}));
   if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
   if(!response.ok)throw new Error(result.detail||"Belge Wiki'ye eklenemedi.");
-  status.textContent=result.title+" eklendi ("+Number(result.characters_indexed||0).toLocaleString("tr-TR")+" karakter).";
+  status.textContent=result.title+" eklendi ("+Number(result.characters_indexed||0).toLocaleString("tr-TR")+" karakter, "+Number(result.chunks_indexed||0)+" bölüm)."+(result.truncated?" İlk 200.000 karakter indekslendi; belgenin kalanı alınmadı.":"");
   fileInput.value="";if(!document.getElementById("dashboard-wiki-documents").hidden)await loadDashboardWikiDocuments();
  }catch(error){status.textContent=error.message||"Belge yüklenemedi.";}
  finally{button.disabled=false;}

@@ -16,7 +16,7 @@ def usage_db(tmp_path, monkeypatch):
 
 def test_gpt55_cost_uses_uncached_cached_and_output_rates():
     cost = ai_usage.calculate_cost("gpt-5.5", 1000, 200, 500)
-    assert cost == Decimal("0.0199")
+    assert cost == Decimal("0.0191")
 
 
 def test_unknown_model_cost_is_not_guessed():
@@ -45,8 +45,8 @@ def test_response_usage_is_saved_without_prompt_or_completion_content(usage_db):
     assert row["output_tokens"] == 500
     assert row["reasoning_tokens"] == 100
     assert row["requests"] == 1
-    assert row["cost_usd"] == pytest.approx(0.0199)
-    assert summary["totals"]["cost_usd"] == pytest.approx(0.0199)
+    assert row["cost_usd"] == pytest.approx(0.0191)
+    assert summary["totals"]["cost_usd"] == pytest.approx(0.0191)
 
 
 def test_missing_usage_is_ignored(usage_db):

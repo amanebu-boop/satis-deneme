@@ -181,7 +181,7 @@ def extract_meeting_capture(
             "product_catalog": product_context,
         }, ensure_ascii=False),
         text={"format": {"type": "json_schema", "name": "meeting_capture", "strict": True, "schema": MEETING_CAPTURE_SCHEMA}},
-        max_output_tokens=1800,
+        max_output_tokens=1200,
     )
     parsed = json.loads(response.output_text)
     company_data = parsed.get("company") or {}
@@ -305,7 +305,7 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
         raise HTTPException(status_code=503, detail="Firma ve görüşme kaydı oluşturmak için OpenAI API anahtarı sunucuda tanımlı değil.")
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=api_key, timeout=45.0, max_retries=1)
+        client = OpenAI(api_key=api_key, timeout=45.0, max_retries=0)
         model = os.environ.get("OPENAI_MODEL", "gpt-5.5")
         companies = db.list_companies()
         products = db.list_products()

@@ -25,6 +25,7 @@ from app import agent_foundation
 from app import agent_runtime
 from app import ai_usage
 from app import llm_wiki
+from app import push_notifications
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
@@ -35,10 +36,18 @@ from app.quote_pdf import convert_excel_to_pdf
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db.init_db()
+    push_notifications.initialize()
     agent_foundation.init_agent_foundation()
     ai_usage.init_ai_usage()
     llm_wiki.init_wiki()
-    yield
+    import asyncio
+    push_stop = asyncio.Event()
+    push_task = asyncio.create_task(push_notifications.run_scheduler(push_stop))
+    try:
+        yield
+    finally:
+        push_stop.set()
+        await push_task
 
 
 app = FastAPI(
@@ -713,6 +722,53 @@ def browser_update_meeting(meeting_id: str, payload: MeetingCreate, request: Req
     if updated is None:
         raise HTTPException(status_code=404, detail="Meeting not found")
     return updated
+
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str = Field(min_length=20, max_length=200)
+    auth: str = Field(min_length=10, max_length=100)
+
+
+class PushSubscriptionCreate(BaseModel):
+    endpoint: str = Field(min_length=20, max_length=2048)
+    keys: PushSubscriptionKeys
+
+    @field_validator("endpoint")
+    @classmethod
+    def validate_endpoint(cls, value: str) -> str:
+        from urllib.parse import urlparse
+        parsed = urlparse(value)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError("Push endpoint must be an HTTPS URL")
+        return value
+
+
+@app.get("/api/push/public-key")
+def browser_push_public_key(request: Request) -> dict:
+    _require_browser_session(request)
+    if not push_notifications.configured():
+        raise HTTPException(status_code=503, detail="Push notifications are not configured")
+    return {"publicKey": push_notifications.public_key()}
+
+
+@app.post("/api/push/subscribe", status_code=201)
+def browser_push_subscribe(payload: PushSubscriptionCreate, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    if not push_notifications.configured():
+        raise HTTPException(status_code=503, detail="Push notifications are not configured")
+    return push_notifications.save_subscription(payload.model_dump())
+
+
+@app.delete("/api/push/subscribe")
+def browser_push_unsubscribe(request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    endpoint = request.headers.get("X-Push-Endpoint", "")
+    if not endpoint.startswith("https://") or len(endpoint) > 2048:
+        raise HTTPException(status_code=422, detail="Invalid push endpoint")
+    push_notifications.remove_subscription(endpoint)
+    return {"unregistered": True}
+
 
 class FollowUpCreate(BaseModel):
     company_id: str

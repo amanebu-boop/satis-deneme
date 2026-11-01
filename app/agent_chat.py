@@ -169,7 +169,7 @@ def _record_response_usage(response: Any, model: str, agent_id: str,
 def _should_search_wiki(message: str) -> bool:
     normalized = " ".join((message or "").casefold().split())
     wiki_intents = (
-        "makine fiyat", "makina fiyat", "makinası fiyat", "makine opsiyon", "opsiyon", "ürün fiyat", "opsiyon fiyat", "teknik özellik", "teknik bilgi",
+        "makine fiyat", "makina fiyat", "makinası fiyat", "makine opsiyon", "opsiyon listesi", "opsiyon özellik", "ürün fiyat", "opsiyon fiyat", "teknik özellik", "teknik bilgi",
         "makine özellik", "ürün özellik", "katalog", "teslimat süresi", "satış kural",
         "teklif şart", "geçmiş görüşme", "önceki görüşme", "görüşmede ne konuş",
         "müşteri geçmişi", "önceki teklif", "teklif geçmişi",

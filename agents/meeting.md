@@ -30,5 +30,5 @@ Görüşmeden teklif taslağı talebi Teklif Ajanı'na yönlendirilir.
 - Firma, sektör, görüşme türü ve ürün eşleşmeleri mevcut kayıtlar/katalogla doğrulanır; belirsizlik varsa kayıt yapılmaz ve kullanıcıdan açıklama istenir.
 - Kullanıcının açıkça başlattığı işlem firma ve görüşme kaydını tek veritabanı transaction'ında oluşturabilir. Bu işlem arka planda veya zamanlanmış biçimde çalışmaz.
 - Ürün yalnızca katalogdaki kayıtlı ürün kimliğiyle eklenir; fiyat ve para birimi modelden alınmaz.
-- Ses kaydı, ses dosyası yükleme ve transkripsiyon özelliği yoktur.
+- Görüşme AI girişi yalnızca kullanıcının yazdığı metni işler. Mikrofon kaydı, ses dosyası yükleme ve transkripsiyon uç noktası mevcut değildir.
 - Her kalıcı AI destekli yazma işlemi, ilgili ajan çalışması ve denetim kaydıyla ilişkilendirilmelidir.

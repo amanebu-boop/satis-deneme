@@ -47,3 +47,11 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 5. İşlem ajanlarının gerçek iş akışlarının tamamlanması ve test edilmesi.
 
 Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsamı ifade eder; henüz geliştirilmemiş görevler tamamlandı kabul edilmez.
+
+
+## Ajan talimatlarının başlangıç kaynağı
+
+- Bütün ajanlar için ilk okunacak dosya kök dizindeki `AGENTS.md` yönlendirme dosyasıdır.
+- Yönlendirme dosyası her ajanı kendi `agents/{agent_id}.md` talimat dosyasına gönderir.
+- Çalışma zamanı bu sırayı `app.agent_instructions.load_agent_instructions` ile uygular; kendi dosyasında izinli olmayan görev çalıştırılmaz.
+- Her ajanın rol, yetki, yapabilecekleri, yapamayacakları ve görev listesi kendi dosyasında tutulur.

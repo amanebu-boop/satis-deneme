@@ -216,8 +216,7 @@ def test_succeeded_non_quotation_run_cannot_request_approval(isolated_database):
 
 
 def test_audit_agent_returns_aggregate_counts_without_actor_or_event_details(isolated_database):
-    _enable("audit")
-    foundation.set_agent_enabled("company", True, "test-user")
+    foundation.set_agent_enabled("audit", True, "test-user")
     foundation.create_run("company", "directory_overview", "another-user")
     run = foundation.create_run("audit", "audit_overview", "test-user")
 

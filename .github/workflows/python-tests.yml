@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feature/agent-foundation
+      - feature/unified-sales-assistant-followups
   pull_request:
     branches:
       - main
+      - feature/agent-foundation
   workflow_dispatch:
 
 jobs:

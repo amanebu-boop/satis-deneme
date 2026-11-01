@@ -31,9 +31,9 @@ def _tokens(value: str) -> list[str]:
 
 def _redact_meeting_contacts(value: str | None) -> str:
     text = value or ""
-    text = re.sub(r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b", "[e-posta gizlendi]", text)
+    text = re.sub(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", "[e-posta gizlendi]", text)
     # Mask Turkish phone-number shapes while leaving ordinary short numeric values intact.
-    phone_pattern = r"(?<!\\w)(?:\\+?90[ .-]?)?0?\\(?[2-5]\\d{2}\\)?[ .-]?\\d{3}[ .-]?\\d{2}[ .-]?\\d{2}(?!\\w)"
+    phone_pattern = r"(?<!\w)(?:\+?90[ .-]?)?0?\\(?[2-5]\d{2}\\)?[ .-]?\d{3}[ .-]?\d{2}[ .-]?\d{2}(?!\w)"
     return re.sub(phone_pattern, "[telefon gizlendi]", text)
 
 

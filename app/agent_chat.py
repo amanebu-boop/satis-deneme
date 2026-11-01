@@ -161,7 +161,7 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
         "veya başka kritik işlem yapma. Kritik işlem gerekiyorsa uygulamanın onay "
         "akışına yönlendir; hiçbir değişikliği kendiliğinden yapma. Eksik bilgiyi sor. "
         "Makine, opsiyon, teknik bilgi, satış kuralı, teklif, takip görevi veya geçmiş görüşme sorularında "
-        "search_sales_wiki aracını kullan; yanıtında kullandığın Wiki belge başlıklarını belirt ve kaynakta bulunmayan teknik özellik veya fiyatı uydurma."
+        "sunucu isteği model API'sine göndermeden önce yerel LLM Wiki'de arama yapar; yanıtında Wiki belge başlıklarını belirt ve kaynakta bulunmayan teknik özellik veya fiyatı uydurma."
     )
     wiki_terms = ("makine", "ürün", "opsiyon", "teknik", "fiyat", "teklif", "satış kural",
                   "teslimat", "görüşme", "takip", "katalog", "geçmiş")

@@ -35,3 +35,53 @@ def test_wiki_removes_deleted_dynamic_records(tmp_path, monkeypatch):
     products.clear()
     result = llm_wiki.search_wiki("eski makine")
     assert not any(item["source_type"] == "product" for item in result["results"])
+
+
+def test_authenticated_document_upload_search_and_delete(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki-api.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post(
+            "/api/login", json={"password": "a-secure-test-password-123"},
+            headers={"Origin": "https://testserver"},
+        )
+        assert login.status_code == 200
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
+        uploaded = client.post(
+            "/api/wiki/documents", headers=headers,
+            files={"file": ("bukum-teknik-notu.txt", "Büküm makinası için teknik bakım talimatı.".encode(), "text/plain")},
+        )
+        assert uploaded.status_code == 201, uploaded.json()
+        source_id = uploaded.json()["source_id"]
+        assert uploaded.json()["characters_indexed"] > 0
+        listed = client.get("/api/wiki/documents")
+        assert listed.status_code == 200
+        assert any(item["source_id"] == source_id for item in listed.json())
+        result = llm_wiki.search_wiki("teknik bakım talimatı")
+        assert any(item["source_type"] == "uploaded_document" for item in result["results"])
+        deleted = client.delete(f"/api/wiki/documents/{source_id}", headers=headers)
+        assert deleted.status_code == 200
+        result = llm_wiki.search_wiki("teknik bakım talimatı")
+        assert not any(item["source_type"] == "uploaded_document" for item in result["results"])
+
+
+def test_wiki_upload_rejects_unsupported_file_type(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki-invalid.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post(
+            "/api/login", json={"password": "a-secure-test-password-123"},
+            headers={"Origin": "https://testserver"},
+        )
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
+        response = client.post(
+            "/api/wiki/documents", headers=headers,
+            files={"file": ("payload.exe", b"not executable", "application/octet-stream")},
+        )
+        assert response.status_code == 415

@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app import db
 
 router = APIRouter()
 _rate_lock = Lock()
@@ -101,3 +103,139 @@ async def transcribe_meeting_audio(request: Request, file: UploadFile = File(...
         return TranscriptionResponse(text=transcript)
     finally:
         await file.close()
+
+
+class MeetingDraftRequest(BaseModel):
+    transcript: str = Field(min_length=10, max_length=15000)
+
+
+MEETING_DRAFT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "company_id": {"type": ["string", "null"]},
+        "meeting_type": {"type": "string", "enum": ["phone", "visit", "unknown"]},
+        "topic": {"type": "string"},
+        "notes": {"type": "string"},
+        "product_lines": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "product_id": {"type": ["string", "null"]},
+                    "quantity": {"type": "integer"},
+                    "mention": {"type": "string"},
+                },
+                "required": ["product_id", "quantity", "mention"],
+                "additionalProperties": False,
+            },
+        },
+        "unmatched_company": {"type": ["string", "null"]},
+        "unmatched_products": {"type": "array", "items": {"type": "string"}},
+        "questions": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": [
+        "company_id", "meeting_type", "topic", "notes", "product_lines",
+        "unmatched_company", "unmatched_products", "questions",
+    ],
+    "additionalProperties": False,
+}
+
+
+def prepare_meeting_draft(client: Any, model: str, transcript: str,
+                          companies: list[dict[str, Any]], products: list[dict[str, Any]]) -> tuple[dict[str, Any], Any]:
+    # Only the minimum company and catalogue fields needed for exact matching are sent.
+    company_context = [
+        {"id": item["id"], "name": item["name"], "city": item.get("city"), "district": item.get("district")}
+        for item in companies
+    ]
+    product_context = [
+        {"id": item["id"], "sku": item["sku"], "name": item["name"],
+         "description": item.get("description"), "product_type": item.get("product_type", "machine"),
+         "parent_product_id": item.get("parent_product_id")}
+        for item in products
+    ]
+    response = client.responses.create(
+        model=model,
+        instructions=(
+            "Sen Erşen Makina satış görüşmesi taslak yardımcısısın. Türkçe konuşma/not metninden yalnızca açıkça söylenen bilgileri çıkar. "
+            "Firma ve ürünleri yalnızca verilen katalog kayıtlarıyla eşleştir; verilen ID'ler dışında ID üretme. "
+            "Firma adı yoksa, birden fazla olası firma varsa veya eşleşme kesin değilse company_id null olsun ve unmatched_company alanını doldur. "
+            "Ürün açıkça katalogdaki tek bir kayıtla eşleşmiyorsa product_id null olsun ve unmatched_products/ questions alanlarına yaz. "
+            "Ürün miktarı belirtilmemişse 1 varsayma; quantity alanında 0 kullan ve soru ekle. "
+            "Fiyat, indirim, teslimat tarihi, para birimi veya ticari taahhüt uydurma. Fiyatı modelden çıkarma; fiyatları kullanıcı formda kontrol eder. "
+            "Notları anlamı koruyarak düzenle. Bu yalnızca taslaktır; hiçbir kayıt oluşturma veya değiştirme."
+        ),
+        input=json.dumps({
+            "transcript": transcript,
+            "companies": company_context,
+            "products": product_context,
+        }, ensure_ascii=False),
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "meeting_capture_draft",
+                "strict": True,
+                "schema": MEETING_DRAFT_SCHEMA,
+            }
+        },
+        max_output_tokens=1200,
+    )
+    parsed = json.loads(response.output_text)
+    company_ids = {str(item["id"]) for item in companies}
+    product_by_id = {str(item["id"]): item for item in products}
+    company_id = parsed.get("company_id")
+    if company_id is not None and str(company_id) not in company_ids:
+        parsed["company_id"] = None
+        parsed["questions"].append("Firma eşleşmesi doğrulanamadı; firmayı listeden seçin.")
+    clean_lines = []
+    for line in parsed.get("product_lines", []):
+        product_id = line.get("product_id")
+        product = product_by_id.get(str(product_id)) if product_id is not None else None
+        quantity = line.get("quantity")
+        if product is None:
+            parsed["unmatched_products"].append(line.get("mention") or "Katalogda eşleşmeyen ürün")
+            continue
+        if not isinstance(quantity, int) or quantity < 1 or quantity > 999999:
+            parsed["questions"].append(f"{product['name']} için miktarı belirtin.")
+            continue
+        clean_lines.append({
+            "product_id": product["id"], "sku": product["sku"], "name": product["name"],
+            "product_type": product.get("product_type", "machine"),
+            "parent_product_id": product.get("parent_product_id"),
+            "quantity": quantity, "unit_price": None, "currency": product["currency"],
+        })
+    parsed["product_lines"] = clean_lines
+    parsed["meeting_type"] = parsed["meeting_type"] if parsed["meeting_type"] in {"phone", "visit"} else None
+    parsed["topic"] = str(parsed.get("topic") or "Genel görüşme")[:200]
+    parsed["notes"] = str(parsed.get("notes") or transcript)[:10000]
+    return parsed, response
+
+
+@router.post("/api/meetings/prepare")
+def prepare_meeting_capture(payload: MeetingDraftRequest, request: Request) -> dict[str, Any]:
+    from app.main import _require_browser_session, _require_csrf
+
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    _check_transcription_rate_limit(request.cookies.get("sales_session", ""))
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Görüşme taslağı hazırlamak için OpenAI API anahtarı sunucuda tanımlı değil.")
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, timeout=45.0, max_retries=1)
+        model = os.environ.get("OPENAI_MODEL", "gpt-5.5")
+        companies = db.list_companies()
+        products = db.list_products()
+        draft, response = prepare_meeting_draft(client, model, payload.transcript.strip(), companies, products)
+        try:
+            from app import ai_usage
+            session_hash = hashlib.sha256(request.cookies.get("sales_session", "").encode("utf-8")).hexdigest()
+            ai_usage.record_response_usage(response, model, "meeting", session_hash)
+        except Exception:
+            pass
+        return draft
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Görüşme taslağı hazırlanamadı. Metni kontrol edip tekrar deneyin.") from exc

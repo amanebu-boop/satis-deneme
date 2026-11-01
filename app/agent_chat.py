@@ -159,7 +159,7 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
     )
     kwargs: dict[str, Any] = {
         "model": model, "instructions": instructions, "input": message,
-        "tools": TOOLS, "tool_choice": "auto", "max_output_tokens": 900,
+        "tools": TOOLS, "tool_choice": "auto", "max_output_tokens": 700,
     }
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
@@ -237,7 +237,7 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
         raise HTTPException(status_code=503, detail="OpenAI API anahtarı sunucuda tanımlı değil")
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=api_key, timeout=30.0, max_retries=1)
+        client = OpenAI(api_key=api_key, timeout=30.0, max_retries=0)
         with _response_lock:
             expected_previous = _last_response_by_session.get(session_key)
         if payload.previous_response_id and payload.previous_response_id != expected_previous:

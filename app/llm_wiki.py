@@ -42,7 +42,7 @@ def _redact_meeting_contacts(value: str | None) -> str:
     # Mask Turkish phone-number shapes while leaving ordinary short numeric values intact.
     phone_pattern = r"(?<!\w)(?:\+?90[ .-]?)?0?\(?[2-5]\d{2}\)?[ .-]?\d{3}[ .-]?\d{2}[ .-]?\d{2}(?!\w)"
     text = re.sub(phone_pattern, "[telefon gizlendi]", text)
-    text = re.sub(r"(?i)\\bTR\\d{2}(?:[ .-]?\\d{4}){5}\\b", "[IBAN gizlendi]", text)
+    text = re.sub(r"(?i)\bTR\d{2}(?:[ .-]?\d{4}){5}\b", "[IBAN gizlendi]", text)
     return re.sub(r"(?<!\d)\d{10,11}(?!\d)", "[vergi/kimlik numarası gizlendi]", text)
 
 

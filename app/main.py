@@ -391,9 +391,16 @@ def browser_prepare_meeting_quotation(meeting_id: str, request: Request) -> dict
         )
         result = agent_runtime.execute_run(run["id"], str(session["subject"]))
         preview = result["output"]
+        if not agent_foundation.rule_enabled("critical_actions_require_approval", default=True):
+            raise HTTPException(status_code=503, detail="Kritik işlemler için onay zorunluluğu devre dışı bırakılamaz.")
+        approval_config = agent_foundation.get_rule_config("approval_ttl_seconds", {"value": 900})
+        approval_ttl = approval_config.get("value", 900) if isinstance(approval_config, dict) else 900
+        if not isinstance(approval_ttl, int) or isinstance(approval_ttl, bool):
+            approval_ttl = 900
+        approval_ttl = max(60, min(86400, approval_ttl))
         approval = agent_foundation.request_approval(
             run["id"], "quotation.create_from_meeting", preview,
-            str(session["subject"]), 900,
+            str(session["subject"]), approval_ttl,
         )
         return {"run_id": run["id"], "approval_id": approval["id"], "preview": preview,
                 "approval_status": approval["status"], "expires_at": approval["expires_at"]}

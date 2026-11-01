@@ -353,7 +353,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="start-meeting-recording" type="button">● Kaydı başlat</button><button class="btn" id="stop-meeting-recording" type="button" disabled>Kaydı durdur ve yazıya çevir</button><label class="btn" for="meeting-audio-file" style="cursor:pointer">Ses dosyası seç</label><input id="meeting-audio-file" type="file" accept="audio/webm,audio/wav,audio/mpeg,audio/mp4,.m4a,.mp3,.wav,.webm,.mp4" hidden></div>
 <p id="meeting-audio-status" class="footer-note" role="status" aria-live="polite">Ses kaydı için mikrofon izni gerekir. En fazla 25 MB.</p>
 </div>
-<div><label for="meeting-notes">Görüşme notları (raporda gösterilmez)</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea></div>
+<div><label for="meeting-notes">Görüşmeyi yazın veya ses kaydının metnini buraya alın</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea><button class="btn" id="prepare-meeting-ai" type="button" style="margin-top:8px">Yapay zekâ ile görüşme taslağı hazırla</button><p id="meeting-ai-status" class="footer-note" role="status" aria-live="polite">Yapay zekâ metni firma ve ürün kataloğuyla eşleştirir. Taslak siz kontrol etmeden kaydedilmez.</p></div>
 <div><div class="panel-head"><h3>Görüşmede konuşulan ürünler</h3><button class="btn" id="add-meeting-product" type="button">＋ Ürün ekle</button></div><div id="meeting-product-lines" class="meeting-product-lines"></div><p class="footer-note">Katalogdan seçin; miktar ve fiyatı kontrol edin. Kalıp kullanılan makinelerde 1 takım kalıp seti makina fiyatına dahildir; ekstra set bedelini görüşmede siz belirlersiniz.</p></div>
 <p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><div class="location-picker follow-up-company-picker"><input id="follow-up-company-search" type="search" placeholder="" autocomplete="off" aria-label="Firma seç" aria-expanded="false" required><div id="follow-up-company-results" class="autocomplete-results"></div><select id="follow-up-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="follow-up-date">Takip tarihi</label><div class="custom-date-field" data-date-picker="date"><input id="follow-up-date" type="date" hidden><input id="follow-up-date-display" class="date-picker-display" type="text" readonly required placeholder="Tarih seçin" aria-haspopup="dialog" aria-expanded="false" aria-controls="follow-up-date-calendar"></div></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder=""></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
 <section class="page" id="page-products">
@@ -841,7 +841,7 @@ function addMeetingProductRow(prefill=null,targetId="meeting-product-lines"){
  }
  search.addEventListener("input",renderResults);search.addEventListener("focus",renderResults);
  productWrap.append(productLabel,search,results,productSelect);
- const quantityWrap=document.createElement("div"),quantityLabel=document.createElement("label");quantityLabel.textContent="Miktar";const quantity=document.createElement("input");quantity.className="meeting-product-quantity";quantity.type="number";quantity.min="1";quantity.max="999999";quantity.step="1";quantity.value=prefill?.quantity||"1";quantity.required=true;quantity.inputMode="numeric";quantityLabel.append(quantity);quantityWrap.append(quantityLabel);
+ const quantityWrap=document.createElement("div"),quantityLabel=document.createElement("label");quantityLabel.textContent="Miktar";const quantity=document.createElement("input");quantity.className="meeting-product-quantity";quantity.type="number";quantity.min="1";quantity.max="999999";quantity.step="1";quantity.value=prefill?.quantity===0?"":String(prefill?.quantity??1);quantity.required=true;quantity.inputMode="numeric";quantityLabel.append(quantity);quantityWrap.append(quantityLabel);
  const priceWrap=document.createElement("div"),listLabel=document.createElement("label");listLabel.textContent="Liste fiyatı";const listValue=document.createElement("div");listValue.className="meeting-list-price";const selectedProduct=products.find(p=>p.id===prefill?.product_id);listValue.textContent=selectedProduct?.unit_price==null?"—":formatMoney(selectedProduct.unit_price,selectedProduct.currency);priceWrap.append(listLabel,listValue);const negotiatedWrap=document.createElement("div"),priceLabel=document.createElement("label");priceLabel.textContent="Pazarlıklı birim fiyat";const price=document.createElement("input");price.className="meeting-product-price";price.type="number";price.min="0";price.max="99999999";price.step="1";price.value=prefill?.unit_price==null||String(prefill?.unit_price)===""?(selectedProduct?.unit_price==null?"":String(Number(selectedProduct.unit_price))):String(prefill.unit_price);price.placeholder="";price.inputMode="numeric";priceLabel.append(price);negotiatedWrap.append(priceLabel);
  const remove=document.createElement("button");remove.type="button";remove.className="btn remove-meeting-product";remove.textContent="−";remove.setAttribute("aria-label","Ürünü kaldır");remove.addEventListener("click",()=>row.remove());
  row.append(productWrap,quantityWrap,priceWrap,negotiatedWrap,remove);container.append(row);
@@ -1040,6 +1040,40 @@ document.getElementById("start-meeting-recording")?.addEventListener("click",asy
 document.getElementById("stop-meeting-recording")?.addEventListener("click",()=>{
  if(meetingMediaRecorder&&meetingMediaRecorder.state!=="inactive"){meetingMediaRecorder.stop();}
  document.getElementById("start-meeting-recording").disabled=false;document.getElementById("stop-meeting-recording").disabled=true;
+});
+
+document.getElementById("prepare-meeting-ai")?.addEventListener("click",async()=>{
+ const button=document.getElementById("prepare-meeting-ai"),status=document.getElementById("meeting-ai-status"),notes=document.getElementById("meeting-notes");
+ const transcript=notes.value.trim();if(transcript.length<10){status.textContent="Önce görüşmeyi yazın veya ses kaydını metne dönüştürün.";return;}
+ button.disabled=true;status.textContent="Yapay zekâ firma ve ürün kayıtlarını eşleştiriyor…";
+ try{
+  if(!csrfToken)await readCsrf();
+  const response=await fetch("/api/meetings/prepare",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({transcript})});
+  const draft=await response.json().catch(()=>({}));
+  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
+  if(!response.ok)throw new Error(draft.detail||"Görüşme taslağı hazırlanamadı.");
+  const companySelect=document.getElementById("meeting-company"),companySearch=document.getElementById("meeting-company-search");
+  const company=meetingCompanyOptions.find(item=>String(item.id)===String(draft.company_id||""));
+  companySelect.value=company?company.id:"";companySearch.value=company?company.name:(draft.unmatched_company||"");
+  if(draft.meeting_type){document.getElementById("meeting-type").value=draft.meeting_type;}
+  else{const typeSelect=document.getElementById("meeting-type");if(![...typeSelect.options].some(option=>option.value===""))typeSelect.insertBefore(new Option("Görüşme türünü seçin",""),typeSelect.firstChild);typeSelect.value="";}
+  document.getElementById("meeting-topic").value=draft.topic||"Genel görüşme";
+  notes.value=draft.notes||transcript;
+  const lines=document.getElementById("meeting-product-lines");lines.replaceChildren();
+  const selectedIds=new Set((draft.product_lines||[]).map(item=>String(item.product_id)));
+  for(const line of (draft.product_lines||[])){
+   const product=productCatalog.find(item=>String(item.id)===String(line.product_id));if(!product)continue;
+   if((product.product_type||"machine")==="option"&&product.parent_product_id&&!selectedIds.has(String(product.parent_product_id))){
+    const parent=productCatalog.find(item=>String(item.id)===String(product.parent_product_id));
+    if(parent){addMeetingProductRow({product_id:parent.id,quantity:0});selectedIds.add(String(parent.id));}
+   }
+   addMeetingProductRow({product_id:product.id,quantity:line.quantity===0?0:line.quantity,unit_price:null});
+  }
+  const issues=[...(draft.questions||[]),...(draft.unmatched_products||[]).map(item=>"Katalogda eşleşmeyen ürün: "+item)];
+  if(!company)issues.unshift("Firma eşleşmesi kesin değil; firma alanını listeden seçin.");
+  status.textContent=issues.length?"Taslak hazır. Kontrol edilmesi gerekenler: "+issues.join(" · "):"Taslak hazır. Firma, ürünler, miktarlar ve notları kontrol edip ardından görüşmeyi kaydedin.";
+ }catch(error){status.textContent=error.message||"Yapay zekâ taslağı hazırlanamadı.";}
+ finally{button.disabled=false;}
 });
 
 document.getElementById("meeting-form").addEventListener("submit",async event=>{

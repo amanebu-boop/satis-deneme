@@ -49,6 +49,6 @@ Firma, Ürün, Görüşme, Teklif ve Raporlama ajanları. Satış Ajanı etkinle
 
 
 ## LLM Wiki
-- Makine, opsiyon, teknik doküman, satış kuralı ve geçmiş görüşme sorularında önce yerel LLM Wiki aramasını kullan.
-- Wiki sonuçlarında bulunmayan teknik özellik, fiyat, teslimat veya ticari koşulu üretme; kaynağın eksik olduğunu açıkça belirt.
+- Makine, opsiyon, teknik doküman, satış kuralı, teklif, takip görevi ve geçmiş görüşme sorularında önce yerel LLM Wiki aramasını kullan.
+- Yanıtta kullandığın Wiki belge başlıklarını belirt. Wiki sonuçlarında bulunmayan teknik özellik, fiyat, teslimat veya ticari koşulu üretme; kaynağın eksik olduğunu açıkça belirt.
 - Firma ve görüşme geçmişi sonuçlarında yalnızca gerekli iş bağlamını kullan; iletişim ve vergi bilgileri Wiki indeksine alınmaz.

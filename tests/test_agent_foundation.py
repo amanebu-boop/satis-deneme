@@ -207,3 +207,14 @@ def test_generic_unused_approval_endpoint_is_removed():
     from app.main import app
     assert not any(getattr(route, "path", None) == "/api/agent-approvals" and
                    "POST" in getattr(route, "methods", set()) for route in app.routes)
+
+
+def test_explicit_external_ai_disable_survives_app_reinitialization(isolated_database):
+    from app import db
+    with db.connect() as connection:
+        connection.execute(
+            "UPDATE agent_rules SET config_json=? WHERE rule_key='external_ai_enabled'",
+            ('{"enabled":false}',),
+        )
+    agents.init_agent_foundation()
+    assert agents.rule_enabled("external_ai_enabled") is False

@@ -22,7 +22,7 @@ AGENT_DEFINITIONS = (
     ("meeting", "Görüşme Ajanı", "Görüşme kayıtlarını yapılandırmak için altyapı."),
     ("quotation", "Teklif Ajanı", "Teklif hazırlama akışını desteklemek için altyapı."),
     ("warehouse", "Depo Ajanı", "Stok altyapısı tamamlanana kadar pasif tutulur."),
-    ("sales", "Satış Ajanı", "Satış süreçlerini analiz etmek için altyapı."),
+    ("sales", "Satış Ajanı", "Satış sürecini koordine eder ve gerekli işlem ajanlarını yönlendirir."),
     ("reporting", "Raporlama Ajanı", "Raporlama ve özetleme için altyapı."),
     ("audit", "Denetim Ajanı", "İşlem ve güvenlik kayıtlarını incelemek için altyapı."),
 )
@@ -141,6 +141,10 @@ def init_agent_foundation() -> None:
                    VALUES (?, ?, ?, 0, ?, ?)""",
                 (agent_id, name, description, now, now),
             )
+        connection.execute(
+            "UPDATE agents SET description = ? WHERE id = 'sales'",
+            ("Satış sürecini koordine eder ve gerekli işlem ajanlarını yönlendirir.",),
+        )
         for rule_key, config in DEFAULT_RULES:
             connection.execute(
                 """INSERT OR IGNORE INTO agent_rules

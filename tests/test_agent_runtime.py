@@ -402,11 +402,12 @@ def test_meeting_product_link_review_reports_broken_catalog_links_and_invalid_va
                (id, meeting_id, product_id, name, quantity, unit_price, currency)
                VALUES (?, 'm1', ?, ?, ?, ?, ?)""",
             [("mp1", "p1", "Makine", "1", "100", "EUR"),
-             ("mp2", None, "Eski ürün", "1.5", "", "USD")],
+             ("mp2", None, "Eski ürün", "1.5", "", "EUR"),
+             ("mp3", "p1", "Makine", "1", "100", "USD")],
         )
     run = foundation.create_run("meeting", "product_link_review", "test-user")
     output = agent_runtime.execute_run(run["id"], "test-user")["output"]
-    assert output["meeting_product_lines"] == 2
+    assert output["meeting_product_lines"] == 3
     assert output["missing_catalog_link"] == 1
     assert output["invalid_quantity"] == 1
     assert output["invalid_unit_price"] == 1

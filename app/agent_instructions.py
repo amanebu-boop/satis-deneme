@@ -35,7 +35,9 @@ def load_agent_instructions(agent_id: str, task_type: str) -> dict[str, str]:
     if route not in router_text:
         raise ValueError("agent router does not route to the expected instruction file")
 
-    identity = re.search(r"(?m)^\s*`agent_id:\s*([a-z_]+)`\s*$", own_text)
+    identity = re.search(r"(?m)^agent_id:\\s*([a-z_]+)\\s*$", own_text)
+    if identity is None:
+        identity = re.search(r"(?m)^\\s*`agent_id:\\s*([a-z_]+)`\\s*$", own_text)
     if identity is None or identity.group(1) != agent_id:
         raise ValueError("agent instruction identity does not match the executing agent")
 

@@ -61,6 +61,12 @@ def run_sales_coordination(
     for name in ordered:
         agent_id, task_type = TASKS[name]
         task_input = {"meeting_id": meeting_id.strip()} if name == "meeting_quotation_preview" else {}
+        if not enabled_agents.get(agent_id, False):
+            failures.append({
+                "task": name, "status": "blocked",
+                "message": f"{agent_id} ajanı devre dışı; Ajan Yönetimi'nden etkinleştirin.",
+            })
+            continue
         try:
             result = execute_task(agent_id, task_type, task_input, actor)
             results.append({"task": name, "agent_id": agent_id, "status": "succeeded",

@@ -147,3 +147,37 @@ def test_agent_status_change_rejects_unknown_agent_and_invalid_actor(isolated_da
 
     with pytest.raises(ValueError, match="boolean"):
         agents.set_agent_enabled("reporting", 1, "test-user")
+
+
+
+def test_enabling_sales_coordinator_automatically_enables_required_workflow_agents(isolated_database):
+    enabled = agents.set_agent_enabled("sales", True, "test-user")
+
+    assert enabled["enabled"] is True
+    states = {item["id"]: item["enabled"] for item in agents.list_agents()}
+    assert states["company"] is True
+    assert states["product"] is True
+    assert states["meeting"] is True
+    assert states["quotation"] is True
+    assert states["audit"] is False
+    auto_events = [item for item in agents.list_audit_logs() if item["event_type"] == "agent_auto_enabled"]
+    assert {item["agent_id"] for item in auto_events} == {"company", "product", "meeting", "quotation"}
+
+
+def test_enabling_audit_does_not_enable_unrelated_business_agents(isolated_database):
+    agents.set_agent_enabled("audit", True, "test-user")
+
+    states = {item["id"]: item["enabled"] for item in agents.list_agents()}
+    assert states["audit"] is True
+    assert states["quotation"] is False
+    assert states["company"] is False
+
+
+def test_disabling_coordinator_does_not_disable_shared_dependencies(isolated_database):
+    agents.set_agent_enabled("sales", True, "test-user")
+    agents.set_agent_enabled("sales", False, "test-user")
+
+    states = {item["id"]: item["enabled"] for item in agents.list_agents()}
+    assert states["sales"] is False
+    assert states["company"] is True
+    assert states["quotation"] is True

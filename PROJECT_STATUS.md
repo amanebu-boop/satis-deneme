@@ -368,3 +368,13 @@ Her görevde:
 - Gerçek OpenAI API çağrısı bu doğrulamada yapılmadı ve API anahtarının mevcut varlığı yeniden kontrol edilmedi. Wiki teknik belgeleri kullanıcı ana ekrandaki alandan yüklediğinde indekslenir. Mevcut Wiki araması yerel sözcük eşleştirmesidir; vektör embedding veya OCR içermez.
 - `OPENAI_DAILY_BUDGET_USD` günlük maliyet freni isteğe bağlıdır; Render Environment'a pozitif bir USD tutarı girilene kadar uygulama içi günlük bütçe sınırı etkin değildir.
 - Depo Ajanı, uygulamada stok kartı/hareket/bakiye veri modeli bulunmadığı için kapalı ve çalıştırılabilir görev olmadan bırakıldı. Bu veriler olmadan stok sonucu üretmek güvenilir olmayacaktır.
+
+
+## 2026-11-01 — Yetim bağlantı denetimi düzeltmeleri
+
+- LLM Wiki belge silme/değiştirme yolları, belge satırlarıyla eşleşen FTS5 satırlarını aynı SQLite işlemi içinde temizleyecek şekilde düzenlendi. Aynı dosya içeriği hash'i değişmediyse FTS5 satırı tekrar yazılmaz.
+- Kullanılmayan `SEARCH_WIKI_TOOL` tanımı kaldırıldı; Wiki araması sunucu tarafı ön yükleme yaklaşımında kalır.
+- Ajan Yönetimi'ne Raporlama ajanı için `Dönemsel satış özeti` görevi eklendi.
+- Mimari belgesi Raporlama bağımlılığını, FTS5/BM25 arama yöntemini, lexical fallback davranışını ve 8 araç çağrısı/8 kullanıcı turu sınırlarını yansıtacak şekilde güncellendi.
+- Eski API uçları dış istemci uyumluluğu bilinmediği için korundu.
+- Test/CI ve Render test dağıtım durumu bu kayıt sırasında henüz doğrulanmadı. `main` ve production Render servisine değişiklik gönderilmedi.

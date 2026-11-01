@@ -86,19 +86,19 @@ def refresh_wiki_index() -> None:
                     (row["source_id"],),
                 )
 
-    for item in db.list_products():
-        options = []
+    products = db.list_products()
+    product_by_id = {str(item["id"]): item for item in products}
+    active_ids: dict[str, set[str]] = {"product": set(), "company": set(), "meeting": set()}
+    for item in products:
         parent_id = item.get("parent_product_id")
-        if parent_id:
-            parent = db.get_product(str(parent_id))
-            if parent:
-                options.append(f"Ana ürün: {parent.get('name')}")
+        parent = product_by_id.get(str(parent_id)) if parent_id else None
         content = {
             "sku": item.get("sku"), "name": item.get("name"),
             "description": item.get("description"), "type": item.get("product_type"),
             "currency": item.get("currency"), "unit_price": item.get("unit_price"),
-            "parent_product_id": parent_id, "relations": options,
+            "parent_product": parent.get("name") if parent else None,
         }
+        active_ids["product"].add(str(item["id"]))
         _upsert("product", str(item["id"]), str(item.get("name") or item.get("sku") or "Ürün"),
                 json.dumps(content, ensure_ascii=False))
 
@@ -108,6 +108,7 @@ def refresh_wiki_index() -> None:
             "name": item.get("name"), "sectors": sectors,
             "city": item.get("city"), "district": item.get("district"),
         }
+        active_ids["company"].add(str(item["id"]))
         _upsert("company", str(item["id"]), str(item.get("name") or "Firma"),
                 json.dumps(content, ensure_ascii=False))
 
@@ -122,7 +123,22 @@ def refresh_wiki_index() -> None:
             ],
         }
         title = f"Görüşme · {item.get('company_name') or 'Firma'} · {item.get('meeting_date') or ''}"
+        active_ids["meeting"].add(str(item["id"]))
         _upsert("meeting", str(item["id"]), title, json.dumps(content, ensure_ascii=False))
+
+    # Deleted catalog/customer records must not remain searchable in the Wiki.
+    with db.connect() as connection:
+        for source_type, ids in active_ids.items():
+            existing_ids = connection.execute(
+                "SELECT source_id FROM llm_wiki_documents WHERE source_type=?",
+                (source_type,),
+            ).fetchall()
+            for row in existing_ids:
+                if row["source_id"] not in ids:
+                    connection.execute(
+                        "DELETE FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
+                        (source_type, row["source_id"]),
+                    )
 
 
 def search_wiki(query: str, limit: int = 5) -> dict[str, Any]:

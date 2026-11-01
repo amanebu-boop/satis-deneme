@@ -15,10 +15,10 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 |---|---|---|
 | Firma | Firma ve yetkili kayıtları | Rehber özeti + eksik sektör/şehir/adres/telefon ve yinelenen ad kalite kontrolü |
 | Ürün | Ürün kataloğu ve opsiyonlar | Katalog özeti + açıklama/tam sayı fiyat/para birimi/opsiyon bağlantısı kalite kontrolü |
-| Görüşme | Görüşme ve görüşme ürünleri | Görüşme özeti + gecikmiş ve 7 gün içindeki açık takip görevleri |
-| Teklif | Görüşmeden teklif taslağı, teklif süreci ve onaylı teklif oluşturma | Taslak önizleme + onaylı oluşturma akışı mevcut; teklif süreci özeti mevcut |
+| Görüşme | Görüşme ve görüşme ürünleri | Görüşme özeti + gecikmiş ve 7 gün içindeki açık takip görevleri + katalog bağlantısı/miktar/fiyat/para birimi kontrolü |
+| Teklif | Görüşmeden teklif taslağı, teklif süreci ve onaylı teklif oluşturma | Taslak önizleme + onaylı oluşturma akışı + firma/satır/ara toplam/genel toplam bütünlük kontrolü + teklif süreci özeti |
 | Depo | Stok ve depo süreçleri | Kullanılabilir görev yok; etkinleştirilmez |
-| Satış | Süreç koordinasyonu ve ajanlar arası iş akışı | İzinli görev kataloğuyla salt-okunur koordinasyon mevcut; her alt görev ayrı yetki/etkinlik kontrolünden geçer |
+| Satış | Süreç koordinasyonu ve ajanlar arası iş akışı | İzinli görev kataloğuyla salt-okunur koordinasyon mevcut; üst çalışma kaydı alt görevleri parent_run_id ile ilişkilendirir |
 | Raporlama | Satış raporları ve performans analizi | Genel özet + tarih aralığında görüşme/teklif sayıları ve para birimine göre teklif toplamları |
 | Denetim | Ajan ve onay kayıtlarının denetimi | Toplu özet + başarısız/engellenmiş görev ve süresi geçmiş onay anomalileri |
 
@@ -65,8 +65,8 @@ Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsam�
 - Modelin araç çağrısı doğrudan veritabanına erişmez. `run_agent_task` sunucu tarafında sabit izin listesine, ajanın etkin olmasına, görev kaydına ve `AGENTS.md` + ajana ait talimat dosyasına bağlıdır. Ajan talimatı bir önceki model turunda okunmadan aynı turda görev çalıştırılamaz.
 - Asistanın tek kullanıcı arayüzü ana ekrandadır. Ayrı `/assistant` sayfası kaldırılmıştır; sohbet API'si yalnızca ana ekrandaki arayüz tarafından çağrılır.
 - İzinli özet/rapor görevleri, görüşmeden teklif önizlemesi ve yerel LLM Wiki araması açılır. Teklifin kalıcı oluşturulması ayrı, onaylı işlem akışıdır. Firma/ürün/görüşme/teklif silme araçları modele sunulmaz.
-- LLM Wiki; ürün kataloğu ve bağlı opsiyonları, firma temel bilgileri, görüşme geçmişi, teklif satırları, takip görevleri ve Markdown satış/ajan dokümanlarını SQLite FTS5 üzerinde BM25 sıralamasıyla indeksler; FTS5 kullanılamazsa sözcüksel yedek arama kullanılır. Ana ekrandan PDF/DOCX/TXT/MD belge alır ve uzun belgeleri parçalara böler. Sadece en alakalı birkaç sonuç modele bağlam olarak verilir; arka plan LLM çağrısı veya harici embedding isteği yapılmaz.
-- İndeks, silinen ürün/firma/görüşme/teklif/takip kayıtlarını arama dışı bırakır. Firma iletişim alanları Wiki indeksine alınmaz; görüşme notlarında e-posta, telefon ve 10–11 haneli vergi/kimlik numarası biçimleri maskelenir.
+- LLM Wiki; ürün kataloğu ve bağlı opsiyonları, firma temel bilgileri, görüşme geçmişi, teklif satırları, takip görevleri ve Markdown satış/ajan dokümanlarını SQLite FTS5 üzerinde BM25 sıralamasıyla indeksler; FTS5 kullanılamazsa sözcüksel yedek arama kullanılır. Ana ekrandan PDF/DOCX/TXT/MD belge alır ve uzun belgeleri parçalara böler. Sadece en alakalı en fazla üç sonuç, belge başına en fazla 900 karakterle modele bağlam olarak verilir; arka plan LLM çağrısı veya harici embedding isteği yapılmaz. Tam indeks uzlaştırması en fazla 180 saniyede bir yapılır ve eşzamanlı yenileme kilitlenir.
+- İndeks, silinen ürün/firma/görüşme/teklif/takip kayıtlarını arama dışı bırakır. Firma iletişim alanları Wiki indeksine alınmaz; görüşme notlarında e-posta, telefon, IBAN ve 10–11 haneli vergi/kimlik numarası biçimleri maskelenir.
 - Kritik işlemler için modelin onayı yeterli değildir. Uygulamanın mevcut onay kaydı, kullanıcı incelemesi, onay süresi ve onaylanan içerik özeti doğrulaması tamamlanmadan işlem yürütülmez. Mevcut görüşmeden teklif oluşturma onay akışı bu ayrımı örnekler.
 - Gerçek OpenAI bağlantısının çalıştığı, yalnızca Render test servisine anahtar eklendikten ve uçtan uca çağrı başarıyla tamamlandıktan sonra doğrulanmış sayılır. Kaynak kodda anahtar bulunmaz.
 - API kullanımı ChatGPT aboneliğinden ayrıdır ve OpenAI API hesabında ayrıca ücretlendirilir.

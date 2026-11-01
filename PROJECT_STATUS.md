@@ -323,4 +323,5 @@ Her görevde:
 - Mevcut SQLite kayıtlarındaki tekil sektörler migration gerektirmeden okunurken tek elemanlı sektör listesine dönüştürülür. Yeni seçimler aynı mevcut `sector` sütununda JSON dizi olarak saklanır; API yanıtında hem `sectors` dizisi hem geriye dönük uyumlu birleştirilmiş `sector` metni bulunur.
 - Ana ekrandaki AI firma/görüşme kayıt akışı birden fazla sektörü çıkarabilir; yalnızca izinli sektörleri kaydeder. Mevcut firmanın sektörleri otomatik olarak değiştirilmez.
 - Testler çoklu sektör API doğrulamasını, veritabanına yazma/okumayı, AI çoklu sektör çıkarımını, eski tekil sektör uyumluluğunu ve Ajan Yönetimi sayfasındaki bağlantının kaldırıldığını kapsayacak şekilde güncellendi.
-- Değişiklikler yalnızca `feature/agent-foundation` dalındadır. PR #11 açık/draft; `main` ve production Render servisi değiştirilmedi. CI ve test Render dağıtımı bu güncelleme için ayrıca doğrulanacak.
+- Doğrulama commit'i: `d2a7e90f62e7611cae82c99e5b3791190ea124f0`. Python CI: **104 passed, 1 skipped, 1 warning**. LibreOffice + Docker doğrulama CI: **105 passed, 1 warning**; Docker image build başarılı.
+- Render test servisi `satis-deneme-test` (`srv-dbhssmd9el5s738cnr9g`) aynı commit için **live**. Değişiklikler yalnızca `feature/agent-foundation` dalındadır. PR #11 açık/draft; `main` ve production Render servisi değiştirilmedi.

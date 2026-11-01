@@ -404,3 +404,12 @@ Her görevde:
 - Bu değişiklikler yalnızca feature/agent-foundation test dalındadır. CI ve test Render doğrulaması bu kayıt güncellemesi sırasında henüz yapılmadı; main ve production Render servisine gönderim yapılmadı.
 
 - İlk Python CI çalışması 132 başarılı, 1 atlanan ve 4 başarısız test verdi. Başarısızlıklar: eski asistan test beklentileri, ürün para birimi test verisinin DB CHECK kuralını ihlali ve IBAN deseninin Türkiye IBAN uzunluğunu kapsamaması. Kod/test düzeltmeleri yapıldı; yeniden CI doğrulaması bekleniyor.
+
+
+## 2026-11-01 — Son doğrulama
+
+- Python CI (commit c37b62e22ec57b8a936f5a3f439b04eaca32e80e): **136 passed, 1 skipped, 1 warning**.
+- Teklif şablonu / LibreOffice doğrulaması aynı commit için: **137 passed, 1 warning**; Docker image build başarılı.
+- Test Render servisi (satis-deneme-test) commit e16606cd961da535d74befff6482ab9998f51d8a ile **live**. Bu commit, doğrulanan kod değişikliklerini ve mimari dokümantasyon güncellemelerini içerir.
+- Üretim Render servisi ve main dalı değiştirilmedi. PR #11 açık/draft bırakıldı.
+- Gerçek OpenAI API ücretli uçtan uca çağrısı yapılmadı; token tasarrufu kod akışı ve bağlam sınırları üzerinden sağlandı, parasal tasarruf miktarı ölçülmedi.

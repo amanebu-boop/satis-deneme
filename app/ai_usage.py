@@ -144,25 +144,16 @@ def usage_summary() -> dict[str, Any]:
     }
 
 
-def daily_spend_usd() -> Decimal:
-    """Return priced API usage recorded since UTC midnight."""
-    start = datetime.now(timezone.utc).date().isoformat()
-    with db.connect() as connection:
-        row = connection.execute(
-            """SELECT COALESCE(SUM(CAST(cost_usd AS REAL)), 0) AS cost,
-                      COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN 1 ELSE 0 END), 0) AS unpriced
-               FROM agent_ai_usage WHERE created_at >= ?""",
-            (start,),
-        ).fetchone()
-    return Decimal(str(row["cost"] or 0))
-
-
 def daily_budget_status() -> dict[str, Any]:
     raw = os.environ.get("OPENAI_DAILY_BUDGET_USD", "").strip()
+    config_invalid = False
     try:
         limit = Decimal(raw) if raw else None
     except InvalidOperation:
         limit = None
+        config_invalid = bool(raw)
+    if raw and (limit is None or limit <= 0):
+        config_invalid = True
     start = datetime.now(timezone.utc).date().isoformat()
     with db.connect() as connection:
         row = connection.execute(
@@ -173,10 +164,11 @@ def daily_budget_status() -> dict[str, Any]:
         ).fetchone()
     spent = Decimal(str(row["cost"] or 0))
     unpriced = int(row["unpriced"] or 0)
-    enabled = limit is not None and limit > 0
-    exceeded = bool(enabled and (spent >= limit or unpriced > 0))
+    enabled = bool(raw) and not config_invalid and limit is not None and limit > 0
+    exceeded = bool(config_invalid or (enabled and (spent >= limit or unpriced > 0)))
     return {
         "enabled": enabled,
+        "configuration_error": config_invalid,
         "limit_usd": str(limit) if enabled else None,
         "spent_usd": str(spent),
         "remaining_usd": str(max(Decimal("0"), limit - spent)) if enabled else None,

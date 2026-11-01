@@ -267,6 +267,22 @@ async def upload_wiki_document(request: Request, file: UploadFile = File(...)) -
     if len(content) > MAX_EXTRACTED_CHARS:
         content = content[:MAX_EXTRACTED_CHARS]
     source_id = hashlib.sha256((filename + hashlib.sha256(data).hexdigest()).encode("utf-8")).hexdigest()[:32]
+    # A newer upload with the same filename replaces the old indexed version.
+    with db.connect() as connection:
+        old_versions = connection.execute(
+            """SELECT source_id FROM llm_wiki_documents
+               WHERE source_type='uploaded_document_meta' AND lower(title)=lower(?)""",
+            (filename,),
+        ).fetchall()
+        for old in old_versions:
+            connection.execute(
+                "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
+                (str(old["source_id"]) + ":%",),
+            )
+            connection.execute(
+                "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document_meta' AND source_id=?",
+                (old["source_id"],),
+            )
     _upsert("uploaded_document_meta", source_id, filename, json.dumps({"characters": len(content)}, ensure_ascii=False))
     # Chunk long manuals so later pages remain retrievable instead of indexing only
     # the first few thousand characters. Small overlap preserves split paragraphs.

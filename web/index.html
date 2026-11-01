@@ -319,8 +319,10 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <label for="dashboard-wiki-file" class="footer-note">Teknik bilgi belgesi ekle (PDF, DOCX, TXT, MD)</label>
 <input id="dashboard-wiki-file" type="file" accept=".pdf,.docx,.txt,.md" style="max-width:250px">
 <button class="btn" id="dashboard-wiki-upload" type="button">Wiki'ye ekle</button>
+<button class="btn" id="dashboard-wiki-list-toggle" type="button">Yüklenen belgeler</button>
 <span id="dashboard-wiki-status" class="footer-note" role="status"></span>
 </div>
+<div id="dashboard-wiki-documents" hidden style="margin-top:8px"></div>
 </div>
 <div class="panel dashboard-ai-capture" style="margin-bottom:12px;padding:12px">
 <div class="panel-head" style="margin-bottom:7px"><h2>Yapay zekâ ile firma ve görüşme kaydı</h2><span class="pill blue">Hızlı kayıt</span></div>
@@ -1037,6 +1039,25 @@ async function sendDashboardAssistantMessage(){
 document.getElementById("dashboard-assistant-send")?.addEventListener("click",sendDashboardAssistantMessage);
 document.getElementById("dashboard-assistant-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendDashboardAssistantMessage();}});
 document.getElementById("dashboard-assistant-new")?.addEventListener("click",()=>{dashboardAssistantPreviousResponseId=null;dashboardAssistantMessages.replaceChildren();const empty=document.createElement("div");empty.className="empty";empty.textContent="Yeni sohbet başladı.";dashboardAssistantMessages.append(empty);document.getElementById("dashboard-assistant-status").textContent="";});
+async function loadDashboardWikiDocuments(){
+ const list=document.getElementById("dashboard-wiki-documents");if(!list)return;
+ list.replaceChildren();const loading=document.createElement("div");loading.className="empty";loading.textContent="Bilgi belgeleri yükleniyor…";list.append(loading);
+ try{
+  const response=await fetch("/api/wiki/documents",{credentials:"same-origin",cache:"no-store"});
+  if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Bilgi belgeleri yüklenemedi.");
+  const docs=await response.json();list.replaceChildren();
+  if(!docs.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="Henüz Wiki belgesi eklenmemiş.";list.append(empty);return;}
+  for(const doc of docs){
+   const row=document.createElement("div");row.className="list-item";row.style.display="flex";row.style.alignItems="center";row.style.justifyContent="space-between";row.style.gap="8px";
+   const title=document.createElement("span");title.textContent=doc.title;const remove=document.createElement("button");remove.type="button";remove.className="btn";remove.textContent="Sil";
+   remove.addEventListener("click",async()=>{if(!window.confirm("Bu bilgi belgesini Wiki indeksinden silmek istiyor musunuz?"))return;remove.disabled=true;
+    try{if(!csrfToken)await readCsrf();const result=await fetch("/api/wiki/documents/"+encodeURIComponent(doc.source_id),{method:"DELETE",credentials:"same-origin",headers:{"X-CSRF-Token":csrfToken}});const body=await result.json().catch(()=>({}));if(!result.ok)throw new Error(body.detail||"Belge silinemedi.");await loadDashboardWikiDocuments();}
+    catch(error){document.getElementById("dashboard-wiki-status").textContent=error.message||"Belge silinemedi.";}finally{remove.disabled=false;}
+   });row.append(title,remove);list.append(row);
+  }
+ }catch(error){list.textContent=error.message||"Bilgi belgeleri yüklenemedi.";}
+}
+document.getElementById("dashboard-wiki-list-toggle")?.addEventListener("click",async()=>{const list=document.getElementById("dashboard-wiki-documents");list.hidden=!list.hidden;if(!list.hidden)await loadDashboardWikiDocuments();});
 document.getElementById("dashboard-wiki-upload")?.addEventListener("click",async()=>{
  const fileInput=document.getElementById("dashboard-wiki-file"),status=document.getElementById("dashboard-wiki-status"),button=document.getElementById("dashboard-wiki-upload");
  const file=fileInput.files?.[0];if(!file){status.textContent="Önce bir belge seçin.";return;}
@@ -1049,7 +1070,7 @@ document.getElementById("dashboard-wiki-upload")?.addEventListener("click",async
   if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
   if(!response.ok)throw new Error(result.detail||"Belge Wiki'ye eklenemedi.");
   status.textContent=result.title+" eklendi ("+Number(result.characters_indexed||0).toLocaleString("tr-TR")+" karakter).";
-  fileInput.value="";
+  fileInput.value="";if(!document.getElementById("dashboard-wiki-documents").hidden)await loadDashboardWikiDocuments();
  }catch(error){status.textContent=error.message||"Belge yüklenemedi.";}
  finally{button.disabled=false;}
 });

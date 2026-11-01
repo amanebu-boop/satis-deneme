@@ -24,7 +24,7 @@ Görüşme ürünlerinden teklif taslağı hazırlamak ve teklif sürecini yür�
 - `prepare_from_meeting`
 - `integrity_review`
 
-Teklif bütünlüğü denetimi firma bağlantısı, boş satırlar, tam sayı miktar/fiyat, satır toplamı, ara toplam ve genel toplam tutarlılığını toplu sayımla kontrol eder; kayıtları değiştirmez.
+Teklif bütünlüğü denetimi firma bağlantısı, boş satırlar, tam sayı miktar/fiyat, satır toplamı, ara toplam, KDV tutarı ve genel toplam tutarlılığını toplu sayımla kontrol eder; kayıtları değiştirmez.
 
 ## Kritik işlem
 Gerçek teklif kaydı yalnızca Onay Merkezi'ndeki geçerli onaydan sonra oluşturulur. Taslak önizleme gerçek teklif değildir. Şablon ve renk paleti korunur.

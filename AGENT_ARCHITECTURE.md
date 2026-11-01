@@ -44,7 +44,7 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 
 1. Depo ajanını ancak gerçek stok kartı, depo hareketi ve stok bakiyesi veri modeli eklendiğinde etkinleştirmek.
 2. Raporlama için dönüşüm oranı ve satış hedefi raporlarını, kaynak veri alanları doğrulandıktan sonra eklemek.
-3. Wiki aramasını ihtiyaç halinde yerel FTS5 BM25 sıralamasının ötesinde semantik retrieval ile ölçeklemek; FTS5 kullanılamazsa sözcüksel yedek arama devrededir.
+3. Wiki semantik retrieval ihtiyacını ancak gerçek sorgu kalitesi ve veri hacmi ölçümleri bunu gerektirirse değerlendirmek; mevcut yerel FTS5/BM25 ve sınırlandırılmış lexical yedek arama korunur.
 
 Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsamı ifade eder; henüz geliştirilmemiş görevler tamamlandı kabul edilmez.
 

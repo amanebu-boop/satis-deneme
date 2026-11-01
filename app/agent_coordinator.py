@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from app.agent_instructions import load_agent_instructions
+from app import agent_foundation
 
 # Public intent -> (agent id, allowlisted task type).
 TASKS: dict[str, tuple[str, str]] = {
@@ -29,6 +30,9 @@ def run_sales_coordination(
 ) -> dict[str, Any]:
     """Run a validated sequence of allowlisted read-only sub-agent tasks."""
     load_agent_instructions("sales", "sales_coordinate")
+    enabled_agents = {item["id"]: item["enabled"] for item in agent_foundation.list_agents()}
+    if not enabled_agents.get("sales", False):
+        raise ValueError("Satış Ajanı etkin değil; ajan yönetiminden etkinleştirilmelidir")
     if not isinstance(input_data, dict) or set(input_data) - {"tasks", "meeting_id"}:
         raise ValueError("sales_coordinate accepts only tasks and optional meeting_id")
     requested = input_data.get("tasks")

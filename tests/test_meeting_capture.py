@@ -197,7 +197,7 @@ def test_capture_endpoint_creates_new_company_and_meeting(tmp_path, monkeypatch)
         fake.responses.payload = capture_payload(product_id=product.json()["id"])
         response = client.post(
             "/api/meetings/capture", headers=headers,
-            json={"transcript": "ABC Makina Konya'da mobilya üretir. Ziyaret yapıldı; iki adet çift kafa büküm makinesi."},
+            json={"notes_text": "ABC Makina Konya'da mobilya üretir. Ziyaret yapıldı; iki adet çift kafa büküm makinesi."},
         )
         assert response.status_code == 201, response.json()
         result = response.json()
@@ -226,7 +226,7 @@ def test_capture_endpoint_reuses_existing_company_and_does_not_duplicate(tmp_pat
         assert company.status_code == 201
         payload["company"]["company_id"] = company.json()["id"]
         fake.responses.payload = payload
-        response = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina ile ziyaret yapıldı."})
+        response = client.post("/api/meetings/capture", headers=headers, json={"notes_text": "ABC Makina ile ziyaret yapıldı."})
         assert response.status_code == 201, response.json()
         assert response.json()["company"]["created"] is False
         assert len(client.get("/api/companies", headers=headers).json()) == 1
@@ -238,10 +238,10 @@ def test_capture_endpoint_requires_auth_and_api_key(tmp_path, monkeypatch):
     monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with TestClient(app, base_url="https://testserver") as client:
-        unauthorized = client.post("/api/meetings/capture", json={"transcript": "ABC Makina ile görüşme notu."})
+        unauthorized = client.post("/api/meetings/capture", json={"notes_text": "ABC Makina ile görüşme notu."})
         assert unauthorized.status_code == 401
         headers = _login(client)
-        unavailable = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina ile görüşme notu."})
+        unavailable = client.post("/api/meetings/capture", headers=headers, json={"notes_text": "ABC Makina ile görüşme notu."})
         assert unavailable.status_code == 503
 
 
@@ -282,7 +282,7 @@ def test_capture_missing_required_data_creates_no_partial_records(tmp_path, monk
     monkeypatch.setattr(openai, "OpenAI", lambda **kwargs: fake)
     with TestClient(app, base_url="https://testserver") as client:
         headers = _login(client)
-        response = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina hakkında görüşme notu."})
+        response = client.post("/api/meetings/capture", headers=headers, json={"notes_text": "ABC Makina hakkında görüşme notu."})
         assert response.status_code == 200
         assert response.json()["created"] is False
         assert client.get("/api/companies", headers=headers).json() == []
@@ -302,7 +302,7 @@ def test_capture_existing_legacy_company_fills_sector_without_duplicate(tmp_path
             "authorized_people": [], "phone_numbers": [],
         })
         fake.responses.payload["company"]["company_id"] = "legacy-1"
-        response = client.post("/api/meetings/capture", headers=headers, json={"transcript": "ABC Makina ile ziyaret yapıldı."})
+        response = client.post("/api/meetings/capture", headers=headers, json={"notes_text": "ABC Makina ile ziyaret yapıldı."})
         assert response.status_code == 201, response.json()
         companies = client.get("/api/companies", headers=headers).json()
         assert len(companies) == 1
@@ -315,7 +315,7 @@ def test_capture_endpoint_rejects_missing_csrf(tmp_path, monkeypatch):
     monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
     with TestClient(app, base_url="https://testserver") as client:
         _login(client)
-        response = client.post("/api/meetings/capture", json={"transcript": "ABC Makina ile görüşme notu."})
+        response = client.post("/api/meetings/capture", json={"notes_text": "ABC Makina ile görüşme notu."})
         assert response.status_code == 403
 
 

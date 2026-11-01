@@ -148,8 +148,14 @@ def test_sales_coordinator_executes_real_read_only_subagents(isolated_enabled_sa
     outputs = {item["task"]: item["result"] for item in result["results"]}
     assert outputs["company_overview"]["companies"] == 1
     assert outputs["sales_overview"]["companies"] == 1
-    assert {run["agent_id"] for run in foundation.list_runs()} == {"company", "reporting"}
-    assert all(run["status"] == "succeeded" for run in foundation.list_runs())
+    runs = foundation.list_runs()
+    assert {run["agent_id"] for run in runs} == {"sales", "company", "reporting"}
+    parent = next(run for run in runs if run["agent_id"] == "sales")
+    children = [run for run in runs if run["parent_run_id"] == parent["id"]]
+    assert parent["task_type"] == "sales_coordinate"
+    assert parent["status"] == "succeeded"
+    assert {run["agent_id"] for run in children} == {"company", "reporting"}
+    assert all(run["status"] == "succeeded" for run in runs)
 
 
 def test_optional_audit_task_reports_disabled_agent_without_running_it(monkeypatch):

@@ -1248,6 +1248,6 @@ def quotation_document(quotation_id: str) -> HTMLResponse:
 from app.agent_chat import router as agent_chat_router
 app.include_router(agent_chat_router)
 
-from app.meeting_audio import router as meeting_audio_router
-app.include_router(meeting_audio_router)
+from app.meeting_capture import router as meeting_capture_router
+app.include_router(meeting_capture_router)
 app.include_router(llm_wiki.router)

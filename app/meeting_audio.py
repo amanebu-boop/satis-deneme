@@ -257,7 +257,6 @@ def _company_record_from_capture(data: dict[str, Any]) -> dict[str, Any]:
         "notes": company.get("notes"),
         "address": ", ".join(str(company.get(key)).strip() for key in
             ("neighborhood", "street", "building_number", "district", "city") if company.get(key)) or None,
-        "tax_office": None, "tax_number": None, "mersis_number": None,
     }
 
 

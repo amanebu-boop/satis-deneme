@@ -227,6 +227,8 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
 
     session = _require_browser_session(request)
     _require_csrf(request, session)
+    if not agent_foundation.rule_enabled("external_ai_enabled", default=True):
+        raise HTTPException(status_code=503, detail="Harici yapay zekâ kullanımı ajan güvenlik kurallarında kapalı.")
     session_token = request.cookies.get("sales_session", "")
     session_key = __import__("hashlib").sha256(session_token.encode("utf-8")).hexdigest()
     _check_rate_limit(session_key)

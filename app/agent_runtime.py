@@ -162,7 +162,7 @@ def _prepare_quotation_from_meeting(input_data: dict[str, Any]) -> dict[str, Any
             "meeting_id": meeting["id"], "company_id": meeting["company_id"], "company_name": meeting["company_name"],
             "currency": currency, "lines": lines, "line_count": len(lines),
             "subtotal": str(sum(line["quantity"] * line["unit_price"] for line in lines)),
-            "discount": "none", "tax_rate": "0.20", "action": "quotation.create_from_meeting"}
+            "tax_rate": "0.20", "action": "quotation.create_from_meeting"}
 
 
 def _audit_overview(input_data: dict[str, Any]) -> dict[str, Any]:

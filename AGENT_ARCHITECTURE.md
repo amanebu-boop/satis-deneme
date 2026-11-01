@@ -40,13 +40,12 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 - Kullanıcının ana ekrandan açıkça başlattığı firma/görüşme kaydı arka plan otomasyonu değildir; işlem atomik olmalı ve ajan denetim izi üretmelidir.
 - Kritik iş etkisi olan değişiklikler uygulamanın onay akışından geçer; sohbet modelinin çıktısı tek başına onay sayılmaz.
 
-## Uygulama sırası
+## Kalan geliştirme sırası
 
-1. Görevlerin doğru ajana bağlanması ve arayüz etiketlerinin açıklığa kavuşturulması.
-2. Açık bağımlılıkların otomatik etkinleştirilmesi.
-3. Satış Ajanı koordinasyon akışının geliştirilmesi.
-4. Raporlama ve Denetim kapsamlarının genişletilmesi.
-5. İşlem ajanlarının gerçek iş akışlarının tamamlanması ve test edilmesi.
+1. Raporlama ve Denetim kapsamlarını dönemsel analiz ve anomali tespitiyle genişletmek.
+2. Ürün/firma/görüşme ajanlarına doğrulama ve veri kalitesi görevleri eklemek.
+3. Depo ajanını ancak gerçek stok verisi ve süreçleri eklendiğinde etkinleştirmek.
+4. Teknik PDF/DOCX dosyaları için kontrollü belge alma ve metin çıkarma akışını eklemek.
 
 Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsamı ifade eder; henüz geliştirilmemiş görevler tamamlandı kabul edilmez.
 
@@ -65,9 +64,12 @@ Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsam�
 - İstek yolu: oturum açmış arayüz → `POST /api/assistant/chat` → sunucu oturum/CSRF kontrolü → OpenAI Responses API → yalnızca uygulamanın tanımladığı araçlar → ajan yönlendiricisi ve ilgili ajanın Markdown talimatları → yanıt.
 - `OPENAI_API_KEY` yalnızca Render ortam değişkeninde tutulur; kaynak kod, tarayıcı, GitHub ve loglara yazılmaz. `OPENAI_MODEL` model seçimini sunucu tarafında belirler; varsayılan `gpt-5.5`.
 - Modelin araç çağrısı doğrudan veritabanına erişmez. `run_agent_task` sunucu tarafında sabit izin listesine, ajanın etkin olmasına, görev kaydına ve `AGENTS.md` + ajana ait talimat dosyasına bağlıdır.
-- İlk aşamada yalnızca mevcut özet/rapor görevleri ve görüşmeden teklif hazırlama önizlemesi açılır. Teklif oluşturma önizlemedir; kalıcı teklif kaydı oluşturmaz. Firma/ürün/görüşme/teklif silme veya değiştirme araçları modele sunulmaz.
+- Asistanın tek kullanıcı arayüzü ana ekrandadır. Ayrı `/assistant` sayfası kaldırılmıştır; sohbet API'si yalnızca ana ekrandaki arayüz tarafından çağrılır.
+- İzinli özet/rapor görevleri, görüşmeden teklif önizlemesi ve yerel LLM Wiki araması açılır. Teklifin kalıcı oluşturulması ayrı, onaylı işlem akışıdır. Firma/ürün/görüşme/teklif silme araçları modele sunulmaz.
+- LLM Wiki; ürün kataloğu, firma temel bilgileri, görüşme geçmişi ve Markdown satış/ajan dokümanlarını SQLite üzerinde yerel sözcük eşleştirmesiyle indeksler. Sadece arama sonuçları modele bağlam olarak verilir; arka plan LLM çağrısı veya harici embedding isteği yapılmaz.
+- İndeks, silinen ürün/firma/görüşme kayıtlarını arama dışı bırakır. İletişim bilgileri ve vergi numaraları Wiki indeksine alınmaz.
 - Kritik işlemler için modelin onayı yeterli değildir. Uygulamanın mevcut onay kaydı, kullanıcı incelemesi, onay süresi ve onaylanan içerik özeti doğrulaması tamamlanmadan işlem yürütülmez. Mevcut görüşmeden teklif oluşturma onay akışı bu ayrımı örnekler.
-- API anahtarı henüz Render'a eklenmedi. Bu nedenle canlı OpenAI çağrısı henüz yapılandırılmış veya doğrulanmış değildir. Anahtar kullanıcı tarafından Render test servisine güvenli biçimde eklendikten sonra uçtan uca bağlantı testi yapılmalıdır.
+- Gerçek OpenAI bağlantısının çalıştığı, yalnızca Render test servisine anahtar eklendikten ve uçtan uca çağrı başarıyla tamamlandıktan sonra doğrulanmış sayılır. Kaynak kodda anahtar bulunmaz.
 - API kullanımı ChatGPT aboneliğinden ayrıdır ve OpenAI API hesabında ayrıca ücretlendirilir.
 
 
@@ -78,7 +80,7 @@ Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsam�
 - Anahtar kullanıcı tarafından Render arayüzüne girilir; sohbet veya destek mesajı üzerinden paylaşılmaz. Anahtar yenilenirse eski anahtar iptal edilir.
 - Asistan uç noktası mevcut oturum + same-origin + CSRF kontrollerini korur; oturum başına süreç belleğinde dakikada en fazla 10 istek kabul eder.
 - `previous_response_id` yalnızca aynı tarayıcı oturumunun sunucuda saklanan son yanıt kimliğiyle eşleşirse kabul edilir; istemci başka oturumun yanıt kimliğini kullanamaz. Sunucu yeniden başlatılırsa sohbet devamlılığı sıfırlanır.
-- Kullanıcı mesajı 6.000 karakterle, model çıktısı 900 tokenla, araç çağrıları tur başına 6 ile sınırlandırılır. OpenAI istemcisi 30 saniye zaman aşımı ve bir yeniden deneme kullanır.
+- Kullanıcı mesajı 6.000 karakterle, model çıktısı 900 tokenla, araç çağrıları tur başına 6 ile sınırlandırılır. Görüşme kayıt isteği modeline tüm katalog yerine metinle ilişkili en fazla 12 firma ve 20 ürün adayı gönderilir; ilişkili ana/alt ürünler de korunur. OpenAI istemcisi 30 saniye zaman aşımı ve bir yeniden deneme kullanır.
 - Araç hatalarının iç ayrıntıları modele iletilmez; API anahtarı veya ham sağlayıcı hata metni kullanıcıya döndürülmez.
 - Dakikalık sınır süreç belleğindedir; tek Render instance için koruyucu katmandır, dağıtık/çok instance limit garantisi değildir. Kalıcı ve çok instance limitleri gerekirse ortak depolama tabanlı rate limiter ayrıca eklenmelidir.
 - Bu önlemler anahtarın Render hesap yetkileri ihlal edilirse açığa çıkma riskini ortadan kaldırmaz. Render hesap erişimi MFA ile korunmalı, erişim yalnızca gerekli kişilerle sınırlandırılmalı ve anahtar düzenli yenilenmelidir.

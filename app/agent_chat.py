@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app import agent_foundation, agent_runtime
-from app.agent_instructions import load_agent_instructions
+from app.agent_instructions import read_agent_profile
 
 router = APIRouter()
 MAX_MESSAGE_CHARS = 6000
@@ -106,7 +106,7 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
                 if call.name == "read_agent_profile":
                     if set(args) != {"agent_id"} or args["agent_id"] not in SAFE_TASKS:
                         raise ValueError("Ajan kimliği geçersiz")
-                    profile = load_agent_instructions(args["agent_id"], "__profile_read__")
+                    profile = read_agent_profile(args["agent_id"])
                     loaded_profiles.add(args["agent_id"])
                     payload = {"ok": True, "agent_id": args["agent_id"],
                                "router_markdown": profile["router_text"],

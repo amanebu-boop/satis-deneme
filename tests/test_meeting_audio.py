@@ -17,7 +17,7 @@ class FakeResponses:
 
     def create(self, **kwargs):
         self.kwargs = kwargs
-        return type("Response", (), {"output_text": json.dumps(self.payload, ensure_ascii=False), "usage": None})()
+        return type("Response", (), {"id": "test-response", "output_text": json.dumps(self.payload, ensure_ascii=False), "usage": {"input_tokens": 100, "output_tokens": 30}})()
 
 
 class FakeOpenAI:

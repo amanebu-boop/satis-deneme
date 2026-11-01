@@ -164,8 +164,36 @@ def _prepare_quotation_from_meeting(input_data: dict[str, Any]) -> dict[str, Any
             "discount": "none", "tax_rate": "0.20", "action": "quotation.create_from_meeting"}
 
 
+def _audit_overview(input_data: dict[str, Any]) -> dict[str, Any]:
+    """Return aggregate audit health only; never expose actors or event details."""
+    if input_data:
+        raise ValueError("audit_overview does not accept input fields")
+    with db.connect() as connection:
+        total_events = connection.execute(
+            "SELECT COUNT(*) AS total FROM agent_audit_logs"
+        ).fetchone()["total"]
+        events_by_type = connection.execute(
+            "SELECT event_type, COUNT(*) AS total FROM agent_audit_logs GROUP BY event_type ORDER BY event_type"
+        ).fetchall()
+        runs_by_status = connection.execute(
+            "SELECT status, COUNT(*) AS total FROM agent_runs GROUP BY status ORDER BY status"
+        ).fetchall()
+        approvals_by_status = connection.execute(
+            "SELECT status, COUNT(*) AS total FROM agent_approvals GROUP BY status ORDER BY status"
+        ).fetchall()
+    return {
+        "report": "audit_overview",
+        "scope": "aggregate_counts_only",
+        "audit_events": total_events,
+        "events_by_type": {str(row["event_type"]): row["total"] for row in events_by_type},
+        "agent_runs_by_status": {str(row["status"]): row["total"] for row in runs_by_status},
+        "approvals_by_status": {str(row["status"]): row["total"] for row in approvals_by_status},
+    }
+
+
 HANDLERS = {
     ("reporting", "sales_overview"): _sales_overview,
+    ("audit", "audit_overview"): _audit_overview,
     ("company", "directory_overview"): _company_directory_overview,
     ("product", "catalog_overview"): _product_catalog_overview,
     ("meeting", "activity_overview"): _meeting_activity_overview,

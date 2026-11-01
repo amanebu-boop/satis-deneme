@@ -120,3 +120,18 @@ Her görevde:
 - Test: GitHub commit durum kontrolünde kontrol sonucu bulunmadı; commit için workflow run da görünmedi. Bu nedenle otomatik test başarılı olarak raporlanamaz. Kullanıcı, Render test ortamında ajan kartlarını kontrol ederek istenen davranışların çalıştığını doğruladı: kare kartlar, masaüstünde yan yana üç kart, kart üzerinden aç/kapa, ayrı etkinleştirme düğmesi/onayı olmaması ve durumun korunması. Bu, kullanıcı tarafından yapılan arayüz doğrulamasıdır; otomatik test sonucu değildir.
 - Render test servisi için `b0a7c7f` dokümantasyon commit’ini içeren sonraki dağıtım da `dep-dbjfc3qvcj2c73eu2jrg` kimliğiyle `live` oldu (2026-11-01 08:20 UTC).
 - Sonraki adım: bu ajan arayüzü işi kullanıcı doğrulamasıyla tamamlandı. Otomatik test altyapısı/sonuçları ayrıca doğrulanmadıkça test başarısı iddia edilmemeli.
+
+
+## 10. 2026-11-01 — Kullanıcı doğrulaması
+
+- Kullanıcı, görüşme takviminde geçmiş tarih seçiminin düzeldiğini doğruladı.
+- Kullanıcı, teklif PDF sayfa yerleşimini doğruladı.
+- Bu iki iş, kullanıcı tarafından test ortamında kontrol edilerek tamamlandı kabul edildi; otomatik test sonucu olarak değerlendirilmez.
+
+## 11. 2026-11-01 — Denetim ajanı (test dalı)
+
+- Sonraki ajan geliştirme adımı olarak Denetim Ajanı için salt-okunur audit_overview görevi eklendi.
+- Görev yalnızca denetim olayları, ajan görevleri ve onay durumlarının sayısal dağılımını döndürür; aktör kimlikleri, olay ayrıntıları veya müşteri verileri rapora çıkarılmaz.
+- Denetim ajanı etkinleştirme izin listesine ve Ajan Yönetimi görev düğmelerine eklendi.
+- Regresyon testi eklendi; test sonucu ve Render dağıtımı henüz doğrulanmadı.
+- Çalışma dalı: feature/agent-foundation. main ve canlı Render servisine dokunulmadı.

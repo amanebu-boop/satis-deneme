@@ -213,3 +213,21 @@ def test_succeeded_non_quotation_run_cannot_request_approval(isolated_database):
     agent_runtime.execute_run(run["id"], "test-user")
     with pytest.raises(ValueError, match="not eligible"):
         foundation.request_approval(run["id"], "arbitrary.action", {}, "test-user")
+
+
+def test_audit_agent_returns_aggregate_counts_without_actor_or_event_details(isolated_database):
+    _enable("audit")
+    foundation.set_agent_enabled("company", True, "test-user")
+    foundation.create_run("company", "directory_overview", "another-user")
+    run = foundation.create_run("audit", "audit_overview", "test-user")
+
+    output = agent_runtime.execute_run(run["id"], "test-user")["output"]
+
+    assert output["report"] == "audit_overview"
+    assert output["scope"] == "aggregate_counts_only"
+    assert output["audit_events"] >= 3
+    assert output["events_by_type"]["agent_enabled"] == 1
+    assert output["events_by_type"]["run_blocked"] == 1
+    assert output["agent_runs_by_status"]["blocked"] == 1
+    assert "another-user" not in str(output)
+    assert "details" not in output

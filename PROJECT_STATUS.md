@@ -168,3 +168,9 @@ Her görevde:
 - Talimat yükleme ve izinli/izinsiz görev senaryoları için testler eklendi; testler henüz çalıştırılmadı.
 - Çalışma dalı `feature/agent-foundation`. `main` ve canlı Render'a dokunulmadı.
 - Sıradaki adım: dosyaların GitHub'da tam olduğunu doğrulamak, test dalında dağıtımı ve çalışma zamanı davranışını kontrol etmek.
+
+
+- Çalışma zamanı talimat kontrolü eklendi: `app/agent_instructions.py` önce `AGENTS.md`, sonra ilgili ajan dosyasını okur; rota, kimlik ve izinli görev listesini doğrular. `app/agent_runtime.py` bu kontrolü her görevden önce zorunlu kılar.
+- Sekiz ajanın tamamında `Çalıştırılabilir görevler` bölümü standartlaştırıldı. Satış ve Depo ajanlarının izinli görev listesi boş; bu ajanlar henüz görev çalıştıramaz.
+- Testler eklendi ancak henüz çalıştırılmadı. GitHub Actions sonucu doğrulanmadı; otomatik test başarısı iddia edilmez.
+- Son kod commit'i: `0b83737f4e51f6accd85a1b37d5f85d3dfa3824f`. `main` ve canlı Render değiştirilmedi.

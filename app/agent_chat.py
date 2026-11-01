@@ -91,14 +91,43 @@ class AssistantChatRequest(BaseModel):
     previous_response_id: str | None = Field(default=None, min_length=1, max_length=200)
 
 
-def _run_safe_task(agent_id: str, task_type: str, input_data: dict[str, Any], actor: str) -> dict[str, Any]:
+def _run_safe_task(
+    agent_id: str, task_type: str, input_data: dict[str, Any], actor: str,
+    parent_run_id: str | None = None,
+) -> dict[str, Any]:
     if task_type not in SAFE_TASKS.get(agent_id, set()):
         raise ValueError("Bu ajan/görev eşleşmesi güvenli görev listesinde değil")
     if agent_id == "sales" and task_type == "sales_coordinate":
-        return run_sales_coordination(input_data, actor, _run_safe_task)
-    run = agent_foundation.create_run(agent_id, task_type, actor, input_data, str(uuid4()))
+        parent = agent_foundation.create_run(
+            "sales", "sales_coordinate", actor, input_data, str(uuid4())
+        )
+        if parent["status"] != "queued":
+            raise ValueError("Satış Ajanı koordinasyon görevi başlatılamadı")
+        parent_id = parent["id"]
+        agent_foundation.start_coordinated_run(parent_id, actor)
+        try:
+            result = run_sales_coordination(
+                input_data, actor,
+                lambda child_agent, child_task, child_input, child_actor:
+                    _run_safe_task(child_agent, child_task, child_input, child_actor, parent_id),
+            )
+            child_ids = [
+                item["id"] for item in agent_foundation.list_runs(500)
+                if item.get("parent_run_id") == parent_id
+            ]
+            result["run_id"] = parent_id
+            result["child_run_ids"] = child_ids
+            agent_foundation.finish_coordinated_run(parent_id, "succeeded", result, actor)
+            return result
+        except Exception as exc:
+            agent_foundation.finish_coordinated_run(
+                parent_id, "failed", {"error_type": type(exc).__name__}, actor
+            )
+            raise
+    run = agent_foundation.create_run(
+        agent_id, task_type, actor, input_data, str(uuid4()), parent_run_id=parent_run_id
+    )
     return agent_runtime.execute_run(run["id"], actor)
-
 
 def _tool_calls(response: Any) -> list[Any]:
     return [item for item in getattr(response, "output", []) if getattr(item, "type", None) == "function_call"]

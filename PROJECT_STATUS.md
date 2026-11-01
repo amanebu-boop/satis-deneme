@@ -378,3 +378,11 @@ Her görevde:
 - Mimari belgesi Raporlama bağımlılığını, FTS5/BM25 arama yöntemini, lexical fallback davranışını ve 8 araç çağrısı/8 kullanıcı turu sınırlarını yansıtacak şekilde güncellendi.
 - Eski API uçları dış istemci uyumluluğu bilinmediği için korundu.
 - Test/CI ve Render test dağıtım durumu bu kayıt sırasında henüz doğrulanmadı. `main` ve production Render servisine değişiklik gönderilmedi.
+
+
+## 2026-11-01 — Ses özelliği kapsam dışı
+
+- Satış uygulamasında mikrofon kaydı, ses dosyası yükleme ve ses transkripsiyonu kullanılmayacaktır; bunlara ait aktif bir kullanıcı arayüzü veya API akışı bulunmamalıdır.
+- Eski `app/meeting_audio.py` ve `tests/test_meeting_audio.py` dosyaları kaldırıldı. Yazılı görüşme metniyle çalışan mevcut işlev korunarak `app/meeting_capture.py` ve `tests/test_meeting_capture.py` adlarına taşındı.
+- Yazılı görüşme girişinde `transcript` alanı yerine `notes_text` kullanılır. Bu metin tabanlı kayıt işlevi ses kaydı/transkripsiyon özelliği değildir.
+- `app/main.py` yeni metin tabanlı modülü yükler. Bu değişiklikler yalnızca `feature/agent-foundation` dalındadır; canlıya yayın yapılmadı.

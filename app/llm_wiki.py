@@ -15,7 +15,7 @@ from app import db
 
 _ROOT = Path(__file__).resolve().parent.parent
 _MAX_CONTENT = 12000
-_TOKEN_RE = re.compile(r"[\\w-]+", re.UNICODE)
+_TOKEN_RE = re.compile(r"[\w-]+", re.UNICODE)
 
 
 def _tokens(value: str) -> list[str]:
@@ -45,7 +45,7 @@ def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
     content = (content or "").strip()[:_MAX_CONTENT]
     if not content:
         return
-    digest = hashlib.sha256((title + "\\n" + content).encode("utf-8")).hexdigest()
+    digest = hashlib.sha256((title + "\n" + content).encode("utf-8")).hexdigest()
     with db.connect() as connection:
         connection.execute(
             """INSERT INTO llm_wiki_documents

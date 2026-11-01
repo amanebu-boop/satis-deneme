@@ -360,6 +360,29 @@ def _sales_period_summary(input_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _meeting_product_link_review(input_data: dict[str, Any]) -> dict[str, Any]:
+    if input_data:
+        raise ValueError("product_link_review does not accept input fields")
+    sql = """SELECT COUNT(*) AS total,
+        SUM(CASE WHEN mp.product_id IS NULL OR p.id IS NULL THEN 1 ELSE 0 END) AS missing_catalog_link,
+        SUM(CASE WHEN trim(COALESCE(mp.name,''))='' THEN 1 ELSE 0 END) AS missing_product_name,
+        SUM(CASE WHEN trim(COALESCE(mp.quantity,''))='' OR mp.quantity GLOB '*[^0-9]*' OR CAST(mp.quantity AS INTEGER)<1 THEN 1 ELSE 0 END) AS invalid_quantity,
+        SUM(CASE WHEN trim(COALESCE(mp.unit_price,''))='' OR mp.unit_price GLOB '*[^0-9]*' OR CAST(mp.unit_price AS INTEGER)<0 THEN 1 ELSE 0 END) AS invalid_unit_price,
+        SUM(CASE WHEN length(trim(COALESCE(mp.currency,'')))!=3 THEN 1 ELSE 0 END) AS invalid_currency
+        FROM meeting_products mp LEFT JOIN products p ON p.id=mp.product_id"""
+    with db.connect() as connection:
+        row = connection.execute(sql).fetchone()
+    return {
+        "report": "meeting_product_link_review", "scope": "aggregate_quality_counts",
+        "meeting_product_lines": row["total"],
+        "missing_catalog_link": row["missing_catalog_link"] or 0,
+        "missing_product_name": row["missing_product_name"] or 0,
+        "invalid_quantity": row["invalid_quantity"] or 0,
+        "invalid_unit_price": row["invalid_unit_price"] or 0,
+        "invalid_currency": row["invalid_currency"] or 0,
+    }
+
+
 HANDLERS = {
     ("reporting", "sales_overview"): _sales_overview,
     ("reporting", "period_summary"): _sales_period_summary,
@@ -371,6 +394,7 @@ HANDLERS = {
     ("product", "catalog_health"): _product_catalog_health,
     ("meeting", "activity_overview"): _meeting_activity_overview,
     ("meeting", "follow_up_review"): _meeting_follow_up_review,
+    ("meeting", "product_link_review"): _meeting_product_link_review,
     ("quotation", "pipeline_overview"): _quotation_pipeline_overview,
     ("quotation", "prepare_from_meeting"): _prepare_quotation_from_meeting,
 }

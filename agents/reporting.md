@@ -10,6 +10,7 @@ Satış performansını ve süreç sonuçlarını analiz eder.
 
 ## Yapabilir
 - Genel satış özetini salt-okunur üretmek.
+- Kullanıcının verdiği tarih aralığında görüşme ve teklif sayılarını, durumlarını ve para birimine göre teklif toplamlarını raporlamak.
 
 ## Yapamaz
 - Kaynak kayıtları değiştirmek veya silmek.
@@ -18,6 +19,7 @@ Satış performansını ve süreç sonuçlarını analiz eder.
 
 ## Çalıştırılabilir görevler
 - `sales_overview`
+- `period_summary`
 
 ## Güvenlik
 Sayılar gerçek veritabanı kayıtlarından alınır; para birimleri ayrı raporlanır.

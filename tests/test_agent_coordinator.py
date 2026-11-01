@@ -114,3 +114,39 @@ def test_meeting_preview_passes_only_meeting_id_to_quotation_agent(enabled_sales
 
     assert calls == [("quotation", "prepare_from_meeting", {"meeting_id": "meeting-123"})]
     assert result["results"][0]["result"]["scope"] == "draft_preview_only"
+
+
+@pytest.fixture
+def isolated_enabled_sales_database(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales-coordinator.db"))
+    from app import db, agent_foundation
+
+    db.init_db()
+    agent_foundation.init_agent_foundation()
+    agent_foundation.set_agent_enabled("sales", True, "integration-test")
+    return db, agent_foundation
+
+
+def test_sales_coordinator_executes_real_read_only_subagents(isolated_enabled_sales_database):
+    from app import agent_chat
+
+    db, foundation = isolated_enabled_sales_database
+    with db.connect() as connection:
+        connection.execute("INSERT INTO companies (id, name) VALUES ('company-1', 'TEST FIRM')")
+
+    result = agent_chat._run_safe_task(
+        "sales",
+        "sales_coordinate",
+        {"tasks": ["sales_overview", "company_overview"]},
+        "integration-test",
+    )
+
+    assert result["workflow"] == "sales_coordinate"
+    assert result["completed"] == 2
+    assert result["failed"] == 0
+    assert result["writes_performed"] == 0
+    outputs = {item["task"]: item["result"] for item in result["results"]}
+    assert outputs["company_overview"]["companies"] == 1
+    assert outputs["sales_overview"]["companies"] == 1
+    assert {run["agent_id"] for run in foundation.list_runs()} == {"company", "reporting"}
+    assert all(run["status"] == "succeeded" for run in foundation.list_runs())

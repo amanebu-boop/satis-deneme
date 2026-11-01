@@ -18,7 +18,7 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 | Görüşme | Görüşme ve görüşme ürünleri | Şimdilik salt-okunur görüşme özeti |
 | Teklif | Görüşmeden teklif taslağı, teklif süreci ve onaylı teklif oluşturma | Taslak önizleme + onaylı oluşturma akışı mevcut; teklif süreci özeti mevcut |
 | Depo | Stok ve depo süreçleri | Kullanılabilir görev yok; etkinleştirilmez |
-| Satış | Süreç koordinasyonu ve ajanlar arası iş akışı | Koordinatör rolü tanımlı; yürütülebilir koordinasyon henüz geliştirilmedi |
+| Satış | Süreç koordinasyonu ve ajanlar arası iş akışı | İzinli görev kataloğuyla salt-okunur koordinasyon mevcut; her alt görev ayrı yetki/etkinlik kontrolünden geçer |
 | Raporlama | Satış raporları ve performans analizi | Salt-okunur genel satış özeti mevcut |
 | Denetim | Ajan ve onay kayıtlarının denetimi | Salt-okunur toplu denetim özeti mevcut |
 
@@ -36,7 +36,9 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 - Güvenli ve açıkça tanımlanmış işlemler otomatik yürütülebilir.
 - Teklif oluşturma gibi kritik iş etkisi olan adımlar mevcut onay akışından geçer.
 - Ajanların etkin olması tek başına onay gerektiren bir işlemi onaysız yapma yetkisi vermez.
-- Harici yapay zekâ çağrıları ve otomatik iş verisi yazımı, ilgili güvenlik kuralları ayrıca tasarlanıp test edilene kadar kapalı kalır.
+- Harici yapay zekâ çağrıları sunucu tarafında yapılandırılmış izin bayrağı ve API anahtarıyla sınırlandırılır; API anahtarı yoksa çağrı yapılmaz.
+- Kullanıcının ana ekrandan açıkça başlattığı firma/görüşme kaydı arka plan otomasyonu değildir; işlem atomik olmalı ve ajan denetim izi üretmelidir.
+- Kritik iş etkisi olan değişiklikler uygulamanın onay akışından geçer; sohbet modelinin çıktısı tek başına onay sayılmaz.
 
 ## Uygulama sırası
 

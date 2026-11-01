@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import time
 from collections import deque
@@ -113,6 +114,23 @@ def _normalized_company_name(value: str | None) -> str:
     return " ".join((value or "").casefold().split())
 
 
+def _candidate_score(item: dict[str, Any], transcript_tokens: set[str], fields: tuple[str, ...]) -> int:
+    values = " ".join(str(item.get(field) or "") for field in fields).casefold()
+    tokens = {token for token in __import__("re").findall(r"[\\w-]+", values, flags=__import__("re").UNICODE) if len(token) > 1}
+    return len(tokens & transcript_tokens)
+
+
+def _relevant_candidates(
+    items: list[dict[str, Any]], transcript: str, fields: tuple[str, ...], limit: int
+) -> list[dict[str, Any]]:
+    import re
+    query_tokens = {token for token in re.findall(r"[\\w-]+", transcript.casefold(), flags=re.UNICODE) if len(token) > 1}
+    ranked = [(score, index, item) for index, item in enumerate(items)
+              if (score := _candidate_score(item, query_tokens, fields)) > 0]
+    ranked.sort(key=lambda entry: (-entry[0], entry[1]))
+    return [item for _, _, item in ranked[:limit]]
+
+
 def extract_meeting_capture(
     client: Any,
     model: str,
@@ -120,16 +138,28 @@ def extract_meeting_capture(
     companies: list[dict[str, Any]],
     products: list[dict[str, Any]],
 ) -> tuple[dict[str, Any], Any]:
+    # Send only transcript-relevant candidates to the model. Full records remain
+    # server-side for validating any IDs returned by the model.
+    company_candidates = _relevant_candidates(companies, transcript, ("name", "city", "district"), 12)
+    product_candidates = _relevant_candidates(products, transcript, ("sku", "name", "description"), 20)
+    # Keep directly related parent/child options so a matched machine retains its options.
+    selected_ids = {str(item["id"]) for item in product_candidates}
+    for item in products:
+        if str(item.get("parent_product_id") or "") in selected_ids:
+            selected_ids.add(str(item["id"]))
+        if str(item["id"]) in selected_ids and item.get("parent_product_id"):
+            selected_ids.add(str(item["parent_product_id"]))
+    product_candidates = [item for item in products if str(item["id"]) in selected_ids][:30]
     company_context = [
         {"id": item["id"], "name": item["name"], "sectors": item.get("sectors") or ([item["sector"]] if item.get("sector") else []),
          "city": item.get("city"), "district": item.get("district")}
-        for item in companies
+        for item in company_candidates
     ]
     product_context = [
         {"id": item["id"], "sku": item["sku"], "name": item["name"],
          "description": item.get("description"), "product_type": item.get("product_type", "machine"),
          "parent_product_id": item.get("parent_product_id")}
-        for item in products
+        for item in product_candidates
     ]
     response = client.responses.create(
         model=model,
@@ -295,8 +325,8 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
             from app import ai_usage
             session_hash = hashlib.sha256(request.cookies.get("sales_session", "").encode("utf-8")).hexdigest()
             ai_usage.record_response_usage(ai_response, model, "meeting", session_hash)
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.getLogger(__name__).warning("AI usage metering failed (%s)", type(exc).__name__)
         return {
             "created": True,
             "company": {"id": saved["company"]["id"], "name": saved["company"]["name"],

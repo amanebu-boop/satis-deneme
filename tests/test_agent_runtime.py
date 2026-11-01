@@ -421,7 +421,7 @@ def test_quotation_integrity_review_reports_arithmetic_and_company_anomalies(iso
         connection.execute(
             """INSERT INTO quotations
                (id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
-               VALUES ('q1', NULL, 'EUR', '100', '0.20', '20', '121', 'draft', '2026-10-31')"""
+               VALUES ('q1', NULL, 'EUR', '100', '0.20', '19', '121', 'draft', '2026-10-31')"""
         )
         connection.execute(
             """INSERT INTO quotation_lines
@@ -432,4 +432,5 @@ def test_quotation_integrity_review_reports_arithmetic_and_company_anomalies(iso
     output = agent_runtime.execute_run(run["id"], "test-user")["output"]
     assert output["missing_company"] == 1
     assert output["subtotal_or_line_total_mismatches"] == 0
+    assert output["tax_amount_mismatches"] == 1
     assert output["total_mismatches"] == 1

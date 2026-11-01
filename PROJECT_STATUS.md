@@ -425,3 +425,12 @@ Her görevde:
 - Gerekli Render gizli değişkenleri: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CLAIMS_SUB`. Örnek isimler .env.example dosyasına eklendi; gerçek anahtarlar kaynak koda konulmadı.
 - Otomatik testler `tests/test_push_notifications.py` dosyasına eklendi. Bu commit aşamasında testler henüz çalıştırılmadı.
 - Değişiklikler yalnızca `feature/unified-sales-assistant-followups` dalındadır. PR açılmadı; test veya production Render servisine dağıtım yapılmadı. Gerçek cihaz bildirimi, Render VAPID değişkenleri ve cihaz aboneliği kurulmadan doğrulanmış değildir.
+
+
+### 2026-11-02 — Render çalışma koşulları nedeniyle bildirim yayını beklemede
+
+- Render servis ayrıntıları yeniden kontrol edildi: production `satis-deneme` ve test `satis-deneme-test` servisleri Free planda, her biri tek instance. Servis ayrıntılarında kalıcı disk görünmüyor.
+- Free web servisinin uykuya geçebilmesi nedeniyle FastAPI lifespan içindeki asyncio zamanlayıcısının her gün 10.00'da çalışması garanti edilemez. Kalıcı disk doğrulanmadan SQLite push abonelik/teslim kayıtlarının deploy ve restart boyunca korunacağı da garanti edilemez.
+- Bu nedenle PR #31 taslak bırakıldı; Render servis dalı, environment değişkenleri, deploy veya production değiştirilmedi. Gerçek cihaz bildirimi henüz test edilmedi.
+- Güvenilir canlı bildirim için altyapı kararı gerekiyor: mevcut servisi kalıcı disk destekleyen ücretli plana geçirmek ve aynı serviste zamanlayıcıyı sürekli çalıştırmak ya da ayrı bir zamanlanmış iş/cron altyapısına izin vermek. Kullanıcının daha önceki “yeni Render servisi oluşturma” kısıtı nedeniyle ikinci seçenek kendiliğinden uygulanmayacaktır.
+- Python CI, ilk PR commit'i `90b825a1407d871bd794635d328e2c91c011006a` için başarılı sonuç verdi; son güvenlik düzeltmeleri ve test dosyasını içeren `60b5e6ca17f166c25f9f540d28a86b3239ae0419` ve sonraki workflow commit'i için Python test koşusu henüz doğrulanmadı. Quote-template CI çalışmaları devam ediyor.

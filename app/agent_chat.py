@@ -153,16 +153,28 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
         "Makine, opsiyon, teknik bilgi, satış kuralı, teklif, takip görevi veya geçmiş görüşme sorularında "
         "sunucu isteği model API'sine göndermeden önce yerel LLM Wiki'de arama yapar; yanıtında Wiki belge başlıklarını belirt ve kaynakta bulunmayan teknik özellik veya fiyatı uydurma."
     )
-    wiki_terms = ("makine", "ürün", "opsiyon", "teknik", "fiyat", "teklif", "satış kural",
-                  "teslimat", "görüşme", "takip", "katalog", "geçmiş")
     wiki_context = ""
-    if any(term in message.casefold() for term in wiki_terms):
-        knowledge = llm_wiki.search_wiki(message, limit=5)
-        wiki_context = (
-            "\n\nYerel LLM Wiki arama sonucu (kaynak başlıklarını yanıtta belirt; "
-            "bulunmayan bilgiyi uydurma):\n" +
-            json.dumps(knowledge, ensure_ascii=False)
-        )
+    normalized_message = " ".join(message.casefold().split())
+    wiki_intents = (
+        "makine fiyat", "ürün fiyat", "opsiyon fiyat", "teknik özellik", "teknik bilgi",
+        "makine özellik", "ürün özellik", "katalog", "teslimat süresi", "satış kural",
+        "teklif şart", "geçmiş görüşme", "önceki görüşme", "görüşmede ne konuş",
+        "müşteri geçmişi", "önceki teklif", "teklif geçmişi",
+    )
+    if any(intent in normalized_message for intent in wiki_intents):
+        knowledge = llm_wiki.search_wiki(message, limit=3)
+        compact_results = [
+            {"source_type": item["source_type"], "title": item["title"],
+             "content": item["content"][:900]}
+            for item in knowledge.get("results", [])
+        ]
+        if compact_results:
+            wiki_context = (
+                "\n\nYerel LLM Wiki kaynakları (yalnızca ilgili bilgiyi kullan; "
+                "belge başlıklarını yanıtta belirt; eksik bilgiyi uydurma):\n" +
+                json.dumps(compact_results, ensure_ascii=False)
+            )
+
     kwargs: dict[str, Any] = {
         "model": model, "instructions": instructions,
         "input": message + wiki_context,

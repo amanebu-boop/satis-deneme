@@ -330,9 +330,9 @@ def test_meeting_capture_sends_only_transcript_relevant_company_and_product_cand
     ]
     products = [
         {"id": "p1", "sku": "M-001", "name": "Çift Kafa Büküm Makinası",
-         "description": "Çift kafa makine", "product_type": "machine", "parent_product_id": None},
+         "description": "Çift kafa makine", "product_type": "machine", "currency": "EUR", "parent_product_id": None},
         {"id": "p2", "sku": "P-002", "name": "Enjeksiyon Plastik Kalıbı",
-         "description": "Plastik kalıp", "product_type": "machine", "parent_product_id": None},
+         "description": "Plastik kalıp", "product_type": "machine", "currency": "EUR", "parent_product_id": None},
     ]
     fake = FakeOpenAI(capture_payload(company_id="c1", product_id="p1"))
     extract_meeting_capture(

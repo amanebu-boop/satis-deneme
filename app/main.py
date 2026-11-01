@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app import db
 from app.company_sectors import is_valid_company_sector
@@ -543,7 +543,9 @@ def browser_get_company(company_id: str, request: Request):
 
 class CompanyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    sector: str = Field(min_length=1, max_length=100)
+    # "sector" remains accepted for older clients; "sectors" is the canonical multi-select field.
+    sector: str | None = Field(default=None, max_length=100)
+    sectors: list[str] = Field(default_factory=list, min_length=1, max_length=10)
     authorized_people: list[str] = Field(default_factory=list, max_length=50)
     phone_numbers: list[str] = Field(default_factory=list, max_length=50)
     address: str | None = Field(default=None, max_length=3000)
@@ -561,6 +563,13 @@ class CompanyCreate(BaseModel):
     mersis_number: str | None = Field(default=None, max_length=50)
     notes: str | None = Field(default=None, max_length=5000)
 
+    @model_validator(mode="before")
+    @classmethod
+    def support_legacy_single_sector(cls, values):
+        if isinstance(values, dict) and not values.get("sectors") and values.get("sector"):
+            values = {**values, "sectors": [values["sector"]]}
+        return values
+
     @field_validator("name")
     @classmethod
     def clean_company_name(cls, value: str) -> str:
@@ -571,17 +580,23 @@ class CompanyCreate(BaseModel):
 
     @field_validator("sector")
     @classmethod
-    def validate_company_sector(cls, value: str) -> str:
-        value = value.strip()
-        if not is_valid_company_sector(value):
+    def validate_legacy_company_sector(cls, value: str | None) -> str | None:
+        if value is not None and not is_valid_company_sector(value.strip()):
             raise ValueError("Geçerli bir firma sektörü seçilmelidir")
-        return value
+        return value.strip() if value else None
+
+    @field_validator("sectors")
+    @classmethod
+    def validate_company_sectors(cls, values: list[str]) -> list[str]:
+        clean = list(dict.fromkeys(value.strip() for value in values if isinstance(value, str) and value.strip()))
+        if not clean or any(not is_valid_company_sector(value) for value in clean):
+            raise ValueError("En az bir geçerli firma sektörü seçilmelidir")
+        return clean
 
     @field_validator("authorized_people", "phone_numbers")
     @classmethod
     def clean_repeated_values(cls, values: list[str]) -> list[str]:
         return [value.strip() for value in values if value and value.strip()]
-
 
 @app.post("/api/companies", status_code=201)
 def browser_create_company(payload: CompanyCreate, request: Request) -> dict:

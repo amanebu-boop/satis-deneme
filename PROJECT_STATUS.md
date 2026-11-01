@@ -182,3 +182,18 @@ Her görevde:
 - Test ortamı Render dağıtımı commit `a2ed70171a0201e7fd2ce2670b2f2d1438e467ec` için `live` oldu. Build başarılı, uygulama başlangıcı tamamlandı ve Render sağlık isteği `GET /` için `200 OK` döndü.
 - GitHub Actions test sonucunu mevcut bağlantı üzerinden doğrulayamadım: commit workflow sorgusu yalnızca PR tetiklemeli çalışmaları döndürüyor; commit status sorgusunda da henüz kontrol sonucu görünmüyor. Bu nedenle pytest testleri geçti denemez. Test workflow dosyası eklendi, fakat test koşum sonucu beklemede/doğrulanamadı.
 - Test servisi: `https://satis-deneme-test.onrender.com`. `main` ve canlı Render'a dokunulmadı.
+
+
+## 2026-11-01 — OpenAI API sohbet entegrasyonu (ilk uygulama aşaması)
+
+- Kullanıcı tercihi: uygulama içine OpenAI API entegrasyonu; tanımlı güvenli işlemler otomatik, kritik işlemler kullanıcı onayıyla.
+- Test dalında `app/agent_chat.py` eklendi. `POST /api/assistant/chat` uç noktası mevcut uygulama oturumu ve CSRF doğrulamasının arkasında çalışır; tarayıcıya OpenAI anahtarı verilmez.
+- Resmi OpenAI Python SDK ve Responses API kullanılır. Model `OPENAI_MODEL` ile sunucu tarafında seçilir; varsayılan `gpt-5.5`.
+- Ajan görev akışı profil-önceliklidir: model önce `read_agent_profile` aracını çağırır; sunucu önce `AGENTS.md`, sonra seçilen ajanın kendi MD dosyasını okur ve içeriği modele verir. Ardından `run_agent_task` çağrısı, aynı turda profil okunmuşsa, izin listesi uygunsa ve ajan etkinse çalışır. Çalışma zamanı ayrıca kendi MD dosyasındaki görev iznini tekrar doğrular.
+- Modelin kullanabildiği görevler mevcut salt-okunur özetler ve görüşmeden teklif hazırlama önizlemesidir. Teklif önizlemesi kayıt oluşturmaz. Firma/ürün/görüşme/teklif oluşturma, değiştirme veya silme araçları modele açılmadı.
+- Kritik işlemler için model çağrısı veya modelin kendi beyanı onay sayılmaz. Uygulamanın mevcut onay akışı ve sunucu tarafı doğrulamaları zorunludur.
+- `pyproject.toml` içine `openai>=2.0,<3.0` bağımlılığı eklendi. `tests/test_agent_chat.py` içinde sohbet yanıtı, MD profilini önce okuma, izinli görev, profil okunmadan görev reddi ve araç çağrısı sınırı testleri eklendi.
+- Gerekli Render test ortamı değişkenleri: `OPENAI_API_KEY` (kullanıcının kendi API anahtarı; gizli ortam değişkeni) ve isteğe bağlı `OPENAI_MODEL`. API anahtarı henüz Render'a eklenmedi; canlı OpenAI çağrısı yapılandırılmadı/doğrulanmadı.
+- OpenAI API kullanımı ChatGPT aboneliğinden ayrıdır ve API hesabında ayrıca ücretlendirilir.
+- Testler bu aşamada henüz çalıştırılmadı; başarı iddiası yoktur. Render dağıtımı ve GitHub Actions test sonucu ayrıca doğrulanmalıdır.
+- Çalışma dalı `feature/agent-foundation`; `main` ve canlı Render servisine dokunulmadı.

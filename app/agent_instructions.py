@@ -58,5 +58,5 @@ def load_agent_instructions(agent_id: str, task_type: str) -> dict[str, str]:
         if line.startswith("- `") and line.endswith("`")
     }
     if task_type not in allowed_tasks:
-        raise ValueError("task is not permitted by this agent's instruction file")
+        raise ValueError("unsupported task: not permitted by this agent's instruction file")
     return {**profile, "task_type": task_type}

@@ -5,6 +5,11 @@ import pytest
 from app import agent_chat
 
 
+@pytest.fixture(autouse=True)
+def mock_usage_metering(monkeypatch):
+    monkeypatch.setattr(agent_chat.ai_usage, "record_response_usage", lambda *args, **kwargs: True)
+
+
 class FakeResponse:
     def __init__(self, response_id, output=None, output_text="Tamam"):
         self.id = response_id

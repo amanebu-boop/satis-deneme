@@ -38,3 +38,12 @@ def test_configuration_requires_all_vapid_secrets(monkeypatch):
     assert push_notifications.configured() is False
     monkeypatch.setenv("VAPID_CLAIMS_SUB", "mailto:admin@example.com")
     assert push_notifications.configured() is True
+
+
+def test_rejects_untrusted_push_endpoint():
+    import pytest
+    with pytest.raises(ValueError, match="Unsupported push service endpoint"):
+        push_notifications.save_subscription({
+            "endpoint": "https://127.0.0.1/admin",
+            "keys": {"p256dh": "p" * 40, "auth": "a" * 20},
+        })

@@ -22,6 +22,7 @@ from app import db
 from app import session_store
 from app import agent_foundation
 from app import agent_runtime
+from app import ai_usage
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
@@ -33,6 +34,7 @@ from app.quote_pdf import convert_excel_to_pdf
 async def lifespan(_: FastAPI):
     db.init_db()
     agent_foundation.init_agent_foundation()
+    ai_usage.init_ai_usage()
     yield
 
 
@@ -279,6 +281,21 @@ def browser_set_agent_status(
         message = str(exc)
         status = 404 if message == "unknown agent" else 422
         raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.get("/api/agent-ai-usage")
+def browser_agent_ai_usage(request: Request) -> dict:
+    _require_browser_session(request)
+    summary = ai_usage.usage_summary()
+    agent_names = {item["id"]: item["name"] for item in agent_foundation.list_agents()}
+    for row in summary["agents"]:
+        row["agent_name"] = agent_names.get(row["agent_id"], row["agent_id"])
+    return {
+        **summary,
+        "provider_configured": bool(os.environ.get("OPENAI_API_KEY", "").strip()),
+        "model": os.environ.get("OPENAI_MODEL", "gpt-5.5"),
+        "pricing_basis": "OpenAI published standard API token rates; unknown model rates are not estimated",
+    }
 
 
 @app.get("/api/agent-rules")

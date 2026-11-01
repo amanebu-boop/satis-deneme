@@ -230,3 +230,21 @@ def test_audit_agent_returns_aggregate_counts_without_actor_or_event_details(iso
     assert output["agent_runs_by_status"]["blocked"] == 1
     assert "another-user" not in str(output)
     assert "details" not in output
+
+
+def test_agent_task_requires_router_and_own_markdown_permission(isolated_database):
+    from app.agent_instructions import load_agent_instructions
+
+    loaded = load_agent_instructions("audit", "audit_overview")
+    assert loaded["agent_id"] == "audit"
+    assert loaded["task_type"] == "audit_overview"
+
+    with pytest.raises(ValueError, match="not permitted"):
+        load_agent_instructions("audit", "prepare_from_meeting")
+
+
+def test_sales_agent_has_no_executable_task_until_coordinator_is_implemented(isolated_database):
+    from app.agent_instructions import load_agent_instructions
+
+    with pytest.raises(ValueError, match="not permitted"):
+        load_agent_instructions("sales", "sales_coordinate")

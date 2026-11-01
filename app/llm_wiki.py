@@ -25,7 +25,7 @@ _fts_available = False
 _INDEX_REFRESH_SECONDS = 180
 _last_refresh_at = 0.0
 _refresh_lock = Lock()
-_wiki_initialized = False
+_wiki_initialized_path: str | None = None
 
 _ROOT = Path(__file__).resolve().parent.parent
 _MAX_CONTENT = 12000
@@ -46,7 +46,7 @@ def _redact_meeting_contacts(value: str | None) -> str:
 
 
 def init_wiki() -> None:
-    global _wiki_initialized
+    global _wiki_initialized_path, _fts_available
     with db.connect() as connection:
         connection.execute(
             """CREATE TABLE IF NOT EXISTS llm_wiki_documents (
@@ -85,7 +85,7 @@ def init_wiki() -> None:
             )
         except Exception:
             _fts_available = False
-        _wiki_initialized = True
+        _wiki_initialized_path = str(db.database_path().resolve())
 
 
 def _delete_wiki_documents(connection, where_sql: str, params: tuple[Any, ...]) -> None:
@@ -149,7 +149,7 @@ def refresh_wiki_index() -> None:
 def _refresh_wiki_index_locked() -> None:
     """Reconcile indexed sources. Schema/FTS initialization runs only at startup."""
     global _last_refresh_at
-    if not _wiki_initialized:
+    if _wiki_initialized_path != str(db.database_path().resolve()):
         init_wiki()
     markdown_paths = [_ROOT / "AGENTS.md", _ROOT / "AGENT_ARCHITECTURE.md"]
     markdown_paths.extend(sorted((_ROOT / "agents").glob("*.md")))

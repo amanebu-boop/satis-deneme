@@ -170,7 +170,7 @@ def extract_meeting_capture(
     questions: list[str] = []
     if existing is None and not company_name:
         questions.append("Firma unvanı metinde bulunamadı. Firma adını belirtin.")
-    sector = existing.get("sector") if existing else company_data.get("sector")
+    sector = ((existing.get("sector") or company_data.get("sector")) if existing else company_data.get("sector"))
     if not is_valid_company_sector(sector):
         questions.append("Firma sektörü belirlenemedi. Firma kaydını oluşturmak için sektörünü belirtin.")
     meeting_type = meeting_data.get("meeting_type")
@@ -271,7 +271,7 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request) 
             "meeting_type": extracted["meeting_type"], "topic": extracted["topic"],
             "notes": extracted["notes"], "product_lines": extracted["product_lines"],
         }
-        saved = db.create_company_and_meeting(company_record, meeting_record)
+        saved = db.create_company_and_meeting(company_record, meeting_record, company_sector=extracted["sector"])
         try:
             from app import ai_usage
             session_hash = hashlib.sha256(request.cookies.get("sales_session", "").encode("utf-8")).hexdigest()

@@ -304,6 +304,7 @@ def browser_agent_ai_usage(request: Request) -> dict:
         "provider_configured": bool(os.environ.get("OPENAI_API_KEY", "").strip()),
         "model": os.environ.get("OPENAI_MODEL", "gpt-5.5"),
         "pricing_basis": "OpenAI published standard API token rates; unknown model rates are not estimated",
+        "daily_budget": ai_usage.daily_budget_status(),
     }
 
 

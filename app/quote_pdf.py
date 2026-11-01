@@ -236,7 +236,7 @@ def convert_excel_to_pdf(excel_content: bytes) -> bytes:
                             str(sheet.cell(row_index, column_index).value or "").strip()
                             for column_index in range(1, sheet.max_column + 1)
                         ]
-                        if any(re.match(r"^7\\s*[.)]", value) for value in row_values):
+                        if any(re.match(r"^7\s*[.)]", value) for value in row_values):
                             section_seven_row = row_index
                             break
                     if section_seven_row is None:

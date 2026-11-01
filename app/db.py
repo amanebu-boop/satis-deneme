@@ -177,6 +177,7 @@ def init_db() -> None:
             "tax_office": "TEXT",
             "tax_number": "TEXT",
             "mersis_number": "TEXT",
+            "sector": "TEXT",
         }
         for column, definition in additions.items():
             if column not in columns:
@@ -201,11 +202,11 @@ def create_company(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         connection.execute(
             """INSERT INTO companies
-               (id, name, authorized_people, phone_numbers, address, city, district,
+               (id, name, sector, authorized_people, phone_numbers, address, city, district,
                 neighborhood, street, building_number, postal_code, address_extra,
                 website, email, tax_office, tax_number, mersis_number, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (stored["id"], stored["name"], stored["authorized_people"], stored["phone_numbers"],
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (stored["id"], stored["name"], stored.get("sector"), stored["authorized_people"], stored["phone_numbers"],
              stored.get("address"), stored.get("city"), stored.get("district"),
              stored.get("neighborhood"), stored.get("street"), stored.get("building_number"),
              stored.get("postal_code"), stored.get("address_extra"), stored.get("website"),
@@ -269,11 +270,11 @@ def update_company(company_id: str, record: dict[str, Any]) -> dict[str, Any] | 
     stored["phone_numbers"] = json.dumps(record.get("phone_numbers") or [], ensure_ascii=False)
     with connect() as connection:
         cursor = connection.execute(
-            """UPDATE companies SET name=?, authorized_people=?, phone_numbers=?, address=?,
+            """UPDATE companies SET name=?, sector=?, authorized_people=?, phone_numbers=?, address=?,
                city=?, district=?, neighborhood=?, street=?, building_number=?, postal_code=?,
                address_extra=?, website=?, email=?, tax_office=?, tax_number=?, mersis_number=?, notes=?
                WHERE id=?""",
-            (stored["name"], stored["authorized_people"], stored["phone_numbers"],
+            (stored["name"], stored.get("sector"), stored["authorized_people"], stored["phone_numbers"],
              stored.get("address"), stored.get("city"), stored.get("district"),
              stored.get("neighborhood"), stored.get("street"), stored.get("building_number"),
              stored.get("postal_code"), stored.get("address_extra"), stored.get("website"),
@@ -347,6 +348,41 @@ def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
         _save_meeting_products(connection, record["id"], record.get("product_lines") or [])
         saved_lines = _meeting_products(connection, record["id"])
     return {**record, "product_lines": saved_lines}
+
+
+def create_company_and_meeting(company_record: dict[str, Any] | None, meeting_record: dict[str, Any]) -> dict[str, Any]:
+    """Atomically create a company when needed and its first meeting."""
+    with connect() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        if company_record is not None:
+            stored = {**company_record}
+            stored["authorized_people"] = json.dumps(company_record.get("authorized_people") or [], ensure_ascii=False)
+            stored["phone_numbers"] = json.dumps(company_record.get("phone_numbers") or [], ensure_ascii=False)
+            connection.execute(
+                """INSERT INTO companies
+                   (id, name, sector, authorized_people, phone_numbers, address, city, district,
+                    neighborhood, street, building_number, postal_code, address_extra,
+                    website, email, tax_office, tax_number, mersis_number, notes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (stored["id"], stored["name"], stored["sector"], stored["authorized_people"],
+                 stored["phone_numbers"], stored.get("address"), stored.get("city"),
+                 stored.get("district"), stored.get("neighborhood"), stored.get("street"),
+                 stored.get("building_number"), stored.get("postal_code"), stored.get("address_extra"),
+                 stored.get("website"), stored.get("email"), stored.get("tax_office"),
+                 stored.get("tax_number"), stored.get("mersis_number"), stored.get("notes")),
+            )
+        connection.execute(
+            """INSERT INTO meetings
+               (id, company_id, meeting_date, notes, meeting_type, topic)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (meeting_record["id"], meeting_record["company_id"], meeting_record["meeting_date"],
+             meeting_record["notes"], meeting_record["meeting_type"], meeting_record["topic"]),
+        )
+        _save_meeting_products(connection, meeting_record["id"], meeting_record.get("product_lines") or [])
+        company_row = connection.execute("SELECT * FROM companies WHERE id = ?", (meeting_record["company_id"],)).fetchone()
+        saved_lines = _meeting_products(connection, meeting_record["id"])
+        company = _company_record(company_row)
+    return {"company": company, "meeting": {**meeting_record, "company_name": company["name"], "product_lines": saved_lines}}
 
 
 def update_meeting(meeting_id: str, record: dict[str, Any]) -> dict[str, Any] | None:

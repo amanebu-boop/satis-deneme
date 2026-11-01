@@ -67,3 +67,16 @@ Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsam�
 - Kritik işlemler için modelin onayı yeterli değildir. Uygulamanın mevcut onay kaydı, kullanıcı incelemesi, onay süresi ve onaylanan içerik özeti doğrulaması tamamlanmadan işlem yürütülmez. Mevcut görüşmeden teklif oluşturma onay akışı bu ayrımı örnekler.
 - API anahtarı henüz Render'a eklenmedi. Bu nedenle canlı OpenAI çağrısı henüz yapılandırılmış veya doğrulanmış değildir. Anahtar kullanıcı tarafından Render test servisine güvenli biçimde eklendikten sonra uçtan uca bağlantı testi yapılmalıdır.
 - API kullanımı ChatGPT aboneliğinden ayrıdır ve OpenAI API hesabında ayrıca ücretlendirilir.
+
+
+## OpenAI API anahtarı — Render gizli değişkeni ve ek korumalar
+
+- Anahtar yalnızca test servisi Render Dashboard → Environment içindeki `OPENAI_API_KEY` gizli değişkeninde tutulur. Anahtar GitHub'a, kaynak koda, tarayıcıya, sohbet yanıtına veya loglara konmaz.
+- OpenAI için ayrı bir API Project ve yalnızca bu uygulamaya ait, mümkün olan en dar izinli ve harcama limiti izlenen bir Project API key kullanılmalıdır. ChatGPT aboneliği API ücretini kapsamaz.
+- Anahtar kullanıcı tarafından Render arayüzüne girilir; sohbet veya destek mesajı üzerinden paylaşılmaz. Anahtar yenilenirse eski anahtar iptal edilir.
+- Asistan uç noktası mevcut oturum + same-origin + CSRF kontrollerini korur; oturum başına süreç belleğinde dakikada en fazla 10 istek kabul eder.
+- `previous_response_id` yalnızca aynı tarayıcı oturumunun sunucuda saklanan son yanıt kimliğiyle eşleşirse kabul edilir; istemci başka oturumun yanıt kimliğini kullanamaz. Sunucu yeniden başlatılırsa sohbet devamlılığı sıfırlanır.
+- Kullanıcı mesajı 6.000 karakterle, model çıktısı 900 tokenla, araç çağrıları tur başına 6 ile sınırlandırılır. OpenAI istemcisi 30 saniye zaman aşımı ve bir yeniden deneme kullanır.
+- Araç hatalarının iç ayrıntıları modele iletilmez; API anahtarı veya ham sağlayıcı hata metni kullanıcıya döndürülmez.
+- Dakikalık sınır süreç belleğindedir; tek Render instance için koruyucu katmandır, dağıtık/çok instance limit garantisi değildir. Kalıcı ve çok instance limitleri gerekirse ortak depolama tabanlı rate limiter ayrıca eklenmelidir.
+- Bu önlemler anahtarın Render hesap yetkileri ihlal edilirse açığa çıkma riskini ortadan kaldırmaz. Render hesap erişimi MFA ile korunmalı, erişim yalnızca gerekli kişilerle sınırlandırılmalı ve anahtar düzenli yenilenmelidir.

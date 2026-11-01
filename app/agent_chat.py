@@ -83,16 +83,6 @@ RUN_TASK_TOOL = {
     },
     "strict": False,
 }
-SEARCH_WIKI_TOOL = {
-    "type": "function", "name": "search_sales_wiki",
-    "description": "Ersen Makina makine/opsiyon kataloğu, teknik dokümanları, satış kuralları ve geçmiş görüşmeler hakkında yanıt vermeden önce yerel LLM Wiki'de ara.",
-    "parameters": {
-        "type": "object",
-        "properties": {"query": {"type": "string", "minLength": 2, "maxLength": 500}},
-        "required": ["query"], "additionalProperties": False,
-    },
-    "strict": True,
-}
 TOOLS = [READ_PROFILE_TOOL, RUN_TASK_TOOL]
 
 

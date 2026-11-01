@@ -72,12 +72,25 @@ def init_wiki() -> None:
             _fts_available = False
 
 
+def _delete_wiki_documents(connection, where_sql: str, params: tuple[Any, ...]) -> None:
+    """Delete matching documents and FTS rows in the same transaction."""
+    rows = connection.execute(f"SELECT rowid FROM llm_wiki_documents WHERE {where_sql}", params).fetchall()
+    if _fts_available and rows:
+        connection.executemany("DELETE FROM llm_wiki_fts WHERE rowid=?", [(row["rowid"],) for row in rows])
+    connection.execute(f"DELETE FROM llm_wiki_documents WHERE {where_sql}", params)
+
+
 def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
     content = (content or "").strip()[:_MAX_CONTENT]
     if not content:
         return
     digest = hashlib.sha256((title + "\n" + content).encode("utf-8")).hexdigest()
     with db.connect() as connection:
+        existing = connection.execute(
+            "SELECT rowid, content_hash FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
+            (source_type, source_id),
+        ).fetchone()
+        changed = existing is None or existing["content_hash"] != digest
         connection.execute(
             """INSERT INTO llm_wiki_documents
                (id, source_type, source_id, title, content, content_hash, updated_at)
@@ -88,17 +101,16 @@ def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
                WHERE llm_wiki_documents.content_hash != excluded.content_hash""",
             (f"{source_type}:{source_id}", source_type, source_id, title, content, digest),
         )
-        if _fts_available and source_type != "uploaded_document_meta":
-            row = connection.execute(
+        if _fts_available and source_type != "uploaded_document_meta" and changed:
+            rowid = existing["rowid"] if existing else connection.execute(
                 "SELECT rowid FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
                 (source_type, source_id),
-            ).fetchone()
-            if row:
-                connection.execute("DELETE FROM llm_wiki_fts WHERE rowid=?", (row["rowid"],))
-                connection.execute(
-                    "INSERT INTO llm_wiki_fts(rowid, title, content) VALUES (?, ?, ?)",
-                    (row["rowid"], title, content),
-                )
+            ).fetchone()["rowid"]
+            connection.execute("DELETE FROM llm_wiki_fts WHERE rowid=?", (rowid,))
+            connection.execute(
+                "INSERT INTO llm_wiki_fts(rowid, title, content) VALUES (?, ?, ?)",
+                (rowid, title, content),
+            )
 
 
 def refresh_wiki_index() -> None:
@@ -127,10 +139,7 @@ def refresh_wiki_index() -> None:
         rows = connection.execute("SELECT source_id FROM llm_wiki_documents WHERE source_type='markdown'").fetchall()
         for row in rows:
             if row["source_id"] not in active_markdown_ids:
-                connection.execute(
-                    "DELETE FROM llm_wiki_documents WHERE source_type='markdown' AND source_id=?",
-                    (row["source_id"],),
-                )
+                _delete_wiki_documents(connection, "source_type='markdown' AND source_id=?", (row["source_id"],))
 
     products = db.list_products()
     product_by_id = {str(item["id"]): item for item in products}
@@ -237,10 +246,7 @@ def refresh_wiki_index() -> None:
             ).fetchall()
             for row in existing_ids:
                 if row["source_id"] not in ids:
-                    connection.execute(
-                        "DELETE FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
-                        (source_type, row["source_id"]),
-                    )
+                    _delete_wiki_documents(connection, "source_type=? AND source_id=?", (source_type, row["source_id"]))
 
 
     _last_refresh_at = time.monotonic()
@@ -311,14 +317,8 @@ async def upload_wiki_document(request: Request, file: UploadFile = File(...)) -
             (filename,),
         ).fetchall()
         for old in old_versions:
-            connection.execute(
-                "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
-                (str(old["source_id"]) + ":%",),
-            )
-            connection.execute(
-                "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document_meta' AND source_id=?",
-                (old["source_id"],),
-            )
+            _delete_wiki_documents(connection, "source_type='uploaded_document' AND source_id LIKE ?", (str(old["source_id"]) + ":%",))
+            _delete_wiki_documents(connection, "source_type='uploaded_document_meta' AND source_id=?", (old["source_id"],))
     _upsert("uploaded_document_meta", source_id, filename, json.dumps({"characters": len(content)}, ensure_ascii=False))
     # Chunk long manuals so later pages remain retrievable instead of indexing only
     # the first few thousand characters. Small overlap preserves split paragraphs.
@@ -337,10 +337,7 @@ async def upload_wiki_document(request: Request, file: UploadFile = File(...)) -
             break
         position = max(position + 1, end - 180)
     with db.connect() as connection:
-        connection.execute(
-            "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
-            (source_id + ":%",),
-        )
+        _delete_wiki_documents(connection, "source_type='uploaded_document' AND source_id LIKE ?", (source_id + ":%",))
     for index, chunk in enumerate(chunks, start=1):
         _upsert("uploaded_document", f"{source_id}:{index:04d}",
                 f"{filename} · Bölüm {index}", chunk)
@@ -359,14 +356,8 @@ def delete_wiki_document(source_id: str, request: Request) -> dict[str, bool]:
         ).fetchone()
         if exists is None:
             raise HTTPException(status_code=404, detail="Bilgi belgesi bulunamadı.")
-        connection.execute(
-            "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
-            (source_id + ":%",),
-        )
-        connection.execute(
-            "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document_meta' AND source_id=?",
-            (source_id,),
-        )
+        _delete_wiki_documents(connection, "source_type='uploaded_document' AND source_id LIKE ?", (source_id + ":%",))
+        _delete_wiki_documents(connection, "source_type='uploaded_document_meta' AND source_id=?", (source_id,))
     return {"deleted": True}
 
 

@@ -62,4 +62,6 @@ def load_agent_instructions(agent_id: str, task_type: str) -> dict[str, str]:
         "agent_file": str(own_path),
         "agent_id": agent_id,
         "task_type": task_type,
+        "router_text": router_text,
+        "agent_text": own_text,
     }

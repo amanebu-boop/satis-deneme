@@ -1206,3 +1206,8 @@ def quotation_document(quotation_id: str) -> HTMLResponse:
     response.headers["Content-Disposition"] = 'inline; filename="teklif-taslagi.html"'
     response.headers["Cache-Control"] = "no-store, private"
     return response
+
+
+# OpenAI Responses API assistant routes; tools remain server-allowlisted.
+from app.agent_chat import router as agent_chat_router
+app.include_router(agent_chat_router)

@@ -299,6 +299,9 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
     _require_csrf(request, session)
     if not agent_foundation.rule_enabled("external_ai_enabled", default=True):
         raise HTTPException(status_code=503, detail="Harici yapay zekâ kullanımı ajan güvenlik kurallarında kapalı.")
+    from app import ai_usage
+    if ai_usage.daily_budget_exceeded():
+        raise HTTPException(status_code=429, detail="Günlük OpenAI harcama sınırına ulaşıldı.")
     _check_meeting_ai_rate_limit(request.cookies.get("sales_session", ""))
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:

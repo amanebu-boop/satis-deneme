@@ -173,3 +173,31 @@ def test_parent_product_wiki_entry_contains_linked_options(tmp_path, monkeypatch
     machine = next(item for item in result["results"] if item["source_type"] == "product")
     assert "Askı delik kulesi" in machine["content"]
     assert "4500" in machine["content"]
+
+
+def test_uploading_same_filename_replaces_previous_wiki_version(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki-version.db"))
+    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post(
+            "/api/login", json={"password": "a-secure-test-password-123"},
+            headers={"Origin": "https://testserver"},
+        )
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
+        first = client.post(
+            "/api/wiki/documents", headers=headers,
+            files={"file": ("machine-manual.txt", b"obsolete legacy machine procedure", "text/plain")},
+        )
+        second = client.post(
+            "/api/wiki/documents", headers=headers,
+            files={"file": ("machine-manual.txt", b"updated current machine procedure", "text/plain")},
+        )
+        assert first.status_code == second.status_code == 201
+        documents = client.get("/api/wiki/documents").json()
+        assert len([doc for doc in documents if doc["title"] == "machine-manual.txt"]) == 1
+        old_results = llm_wiki.search_wiki("obsolete legacy")
+        new_results = llm_wiki.search_wiki("updated current")
+        assert not any(item["source_type"] == "uploaded_document" for item in old_results["results"])
+        assert any(item["source_type"] == "uploaded_document" for item in new_results["results"])

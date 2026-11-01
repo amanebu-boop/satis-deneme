@@ -229,3 +229,41 @@ def test_wiki_fts_rows_are_removed_and_unchanged_upserts_do_not_rewrite(tmp_path
         llm_wiki._delete_wiki_documents(connection, "source_type=? AND source_id=?", ("markdown", "sample.md"))
         assert connection.execute("SELECT COUNT(*) FROM llm_wiki_documents WHERE rowid=?", (rowid,)).fetchone()[0] == 0
         assert connection.execute("SELECT COUNT(*) FROM llm_wiki_fts WHERE rowid=?", (rowid,)).fetchone()[0] == 0
+
+
+def test_wiki_refresh_cache_skips_repeated_refresh_and_serializes_work(monkeypatch):
+    calls = []
+    monkeypatch.setattr(llm_wiki.time, "monotonic", lambda: 100.0)
+
+    def refresh():
+        calls.append(True)
+        llm_wiki._last_refresh_at = 100.0
+
+    monkeypatch.setattr(llm_wiki, "_refresh_wiki_index_locked", refresh)
+    llm_wiki._last_refresh_at = 0.0
+    llm_wiki.refresh_wiki_index()
+    llm_wiki.refresh_wiki_index()
+    assert len(calls) == 1
+
+
+def test_wiki_intent_detection_avoids_generic_meeting_and_followup_questions():
+    from app.agent_chat import _should_search_wiki
+
+    assert not _should_search_wiki("Görüşme ekranında tarih neden değişmiyor?")
+    assert not _should_search_wiki("Açık takip görevlerimi göster")
+    assert _should_search_wiki("Çift kafa büküm makinası fiyatı nedir?")
+    assert _should_search_wiki("Önceki görüşmede müşteri ne istemişti?")
+
+
+def test_wiki_lexical_fallback_only_loads_matching_bounded_candidates(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki-fallback-bounded.db"))
+    db.init_db()
+    llm_wiki.init_wiki()
+    monkeypatch.setattr(llm_wiki, "_fts_available", False)
+    for index in range(620):
+        llm_wiki._upsert("uploaded_document", f"doc-{index}", f"Belge {index}",
+                         "büküm makinası teknik bakım" if index < 8 else "alakasız içerik")
+    result = llm_wiki.search_wiki("büküm makinası", limit=3)
+    assert result["retrieval"] == "local_lexical"
+    assert len(result["results"]) <= 3
+    assert all("büküm" in item["content"] for item in result["results"])

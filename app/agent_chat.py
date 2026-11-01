@@ -89,6 +89,8 @@ class AssistantChatRequest(BaseModel):
 def _run_safe_task(agent_id: str, task_type: str, input_data: dict[str, Any], actor: str) -> dict[str, Any]:
     if task_type not in SAFE_TASKS.get(agent_id, set()):
         raise ValueError("Bu ajan/görev eşleşmesi güvenli görev listesinde değil")
+    if agent_id == "sales" and task_type == "sales_coordinate":
+        return run_sales_coordination(input_data, actor, _run_safe_task)
     run = agent_foundation.create_run(agent_id, task_type, actor, input_data, str(uuid4()))
     return agent_runtime.execute_run(run["id"], actor)
 

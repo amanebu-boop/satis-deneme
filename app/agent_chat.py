@@ -165,6 +165,19 @@ def _record_response_usage(response: Any, model: str, agent_id: str,
         raise HTTPException(status_code=503, detail="Yapay zekâ kullanım kaydı doğrulanamadı; güvenlik için işlem durduruldu.") from exc
 
 
+
+def _should_search_wiki(message: str) -> bool:
+    normalized = " ".join((message or "").casefold().split())
+    wiki_intents = (
+        "makine fiyat", "ürün fiyat", "opsiyon fiyat", "teknik özellik", "teknik bilgi",
+        "makine özellik", "ürün özellik", "katalog", "teslimat süresi", "satış kural",
+        "teklif şart", "geçmiş görüşme", "önceki görüşme", "görüşmede ne konuş",
+        "müşteri geçmişi", "önceki teklif", "teklif geçmişi",
+    )
+    return any(intent in normalized for intent in wiki_intents)
+
+
+
 def run_assistant_turn(client: Any, model: str, message: str, actor: str,
                        previous_response_id: str | None = None,
                        usage_session_hash: str | None = None) -> dict[str, Any]:
@@ -183,14 +196,7 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
         "sunucu isteği model API'sine göndermeden önce yerel LLM Wiki'de arama yapar; yanıtında Wiki belge başlıklarını belirt ve kaynakta bulunmayan teknik özellik veya fiyatı uydurma."
     )
     wiki_context = ""
-    normalized_message = " ".join(message.casefold().split())
-    wiki_intents = (
-        "makine fiyat", "ürün fiyat", "opsiyon fiyat", "teknik özellik", "teknik bilgi",
-        "makine özellik", "ürün özellik", "katalog", "teslimat süresi", "satış kural",
-        "teklif şart", "geçmiş görüşme", "önceki görüşme", "görüşmede ne konuş",
-        "müşteri geçmişi", "önceki teklif", "teklif geçmişi",
-    )
-    if any(intent in normalized_message for intent in wiki_intents):
+    if _should_search_wiki(message):
         knowledge = llm_wiki.search_wiki(message, limit=3)
         compact_results = [
             {"source_type": item["source_type"], "title": item["title"],

@@ -207,3 +207,16 @@ Her görevde:
 - OpenAI anahtarı tanımlı olmadığı için gerçek OpenAI API isteği henüz denenmedi. Bu beklenen yapılandırma adımıdır; API anahtarı olmadan sohbet uç noktası güvenli biçimde `503` döndürür.
 - Son kullanıcı arayüzü: `/assistant`; ajan yönetimi ekranından bağlantı: `/agents`.
 - `main` ve canlı Render servisine hiçbir değişiklik gönderilmedi.
+
+
+## 2026-11-01 — OpenAI API anahtar güvenliği (test dalı)
+
+- Kullanıcı tercihi: OpenAI API anahtarı Render gizli değişkeninde tutulacak; ek güvenlik önlemleri uygulanacak.
+- `app/agent_chat.py`: istek başına mevcut oturum ve CSRF kontrolüne ek olarak oturum başına dakikada 10 istek sınırı eklendi. Limit süreç belleğindedir; çok instance için dağıtık limit değildir.
+- Sohbet devamlılığı için istemciden gelen `previous_response_id`, aynı oturum için sunucuda tutulan son yanıt kimliğiyle eşleştirilir. Başka oturumdan veya değiştirilmiş bir kimlikten devam etme isteği reddedilir.
+- Ajan aracı hata ayrıntıları modele aktarılmaz; genel hata mesajı kullanılır. OpenAI API anahtarı kodda sabitlenmez ve hata yanıtlarında gösterilmez.
+- `tests/test_agent_chat.py`: hız sınırı, oturumlar arası limit ayrımı ve araç hatası içeriğinin gizlenmesi için testler eklendi.
+- Render test servisine henüz `OPENAI_API_KEY` eklenmedi. Anahtar kullanıcı tarafından Render Dashboard → Environment alanına eklenecek; sohbetten paylaşılmayacak. Bu nedenle gerçek OpenAI API çağrısı henüz doğrulanmış değildir.
+- API Project için ayrı, yalnızca uygulamaya ait bir anahtar; kullanım/harcama limiti; Render hesabında MFA ve sınırlı erişim önerilir. Anahtar düzenli yenilenmeli ve eski anahtar iptal edilmelidir.
+- Değişiklikler yalnızca `feature/agent-foundation` dalındadır. `main` ve canlı Render servisine dokunulmadı.
+- Test sonucu bu güncelleme sırasında henüz alınmadı; GitHub Actions ve Render test dağıtımı kontrol edilecek.

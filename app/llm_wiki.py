@@ -20,6 +20,7 @@ from app import db
 router = APIRouter()
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 MAX_EXTRACTED_CHARS = 200_000
+_fts_available = False
 _INDEX_REFRESH_SECONDS = 30
 _last_refresh_at = 0.0
 
@@ -58,6 +59,17 @@ def init_wiki() -> None:
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_llm_wiki_source ON llm_wiki_documents(source_type, source_id)"
         )
+        global _fts_available
+        try:
+            connection.execute("CREATE VIRTUAL TABLE IF NOT EXISTS llm_wiki_fts USING fts5(title, content, tokenize='unicode61')")
+            fts_count = connection.execute("SELECT COUNT(*) AS total FROM llm_wiki_fts").fetchone()["total"]
+            if fts_count == 0:
+                connection.execute(
+                    "INSERT INTO llm_wiki_fts(rowid, title, content) SELECT rowid, title, content FROM llm_wiki_documents WHERE source_type != 'uploaded_document_meta'"
+                )
+            _fts_available = True
+        except Exception:
+            _fts_available = False
 
 
 def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
@@ -76,6 +88,17 @@ def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
                WHERE llm_wiki_documents.content_hash != excluded.content_hash""",
             (f"{source_type}:{source_id}", source_type, source_id, title, content, digest),
         )
+        if _fts_available and source_type != "uploaded_document_meta":
+            row = connection.execute(
+                "SELECT rowid FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
+                (source_type, source_id),
+            ).fetchone()
+            if row:
+                connection.execute("DELETE FROM llm_wiki_fts WHERE rowid=?", (row["rowid"],))
+                connection.execute(
+                    "INSERT INTO llm_wiki_fts(rowid, title, content) VALUES (?, ?, ?)",
+                    (row["rowid"], title, content),
+                )
 
 
 def refresh_wiki_index() -> None:
@@ -348,31 +371,46 @@ def delete_wiki_document(source_id: str, request: Request) -> dict[str, bool]:
 
 
 def search_wiki(query: str, limit: int = 5) -> dict[str, Any]:
-    """Return a small lexical retrieval set; no external embedding call is made."""
+    """Use local SQLite FTS5 when available, with lexical fallback; no external embeddings."""
     query = (query or "").strip()
     terms = list(dict.fromkeys(_tokens(query)))
     if not terms:
-        return {"query": query, "results": [], "retrieval": "local_lexical"}
+        return {"query": query, "results": [], "retrieval": "local_fts5" if _fts_available else "local_lexical"}
     refresh_wiki_index()
-    with db.connect() as connection:
-        rows = connection.execute(
-            "SELECT source_type, source_id, title, content FROM llm_wiki_documents WHERE source_type != 'uploaded_document_meta'"
-        ).fetchall()
+    safe_match = " OR ".join('"' + term.replace('"', '""') + '"' for term in terms)
     ranked = []
-    for row in rows:
-        title = str(row["title"] or "")
-        content = str(row["content"] or "")
-        title_lower, content_lower = title.casefold(), content.casefold()
-        score = sum((4 if term in title_lower else 0) + content_lower.count(term) for term in terms)
-        if score:
-            ranked.append((score, row))
-    ranked.sort(key=lambda pair: (-pair[0], pair[1]["source_type"], pair[1]["title"]))
+    retrieval = "local_lexical"
+    with db.connect() as connection:
+        if _fts_available:
+            try:
+                rows = connection.execute(
+                    """SELECT d.source_type, d.source_id, d.title, d.content,
+                              bm25(llm_wiki_fts, 5.0, 1.0) AS rank
+                       FROM llm_wiki_fts JOIN llm_wiki_documents d ON d.rowid=llm_wiki_fts.rowid
+                       WHERE llm_wiki_fts MATCH ? AND d.source_type != 'uploaded_document_meta'
+                       ORDER BY rank ASC LIMIT ?""",
+                    (safe_match, max(1, min(int(limit) * 4, 32))),
+                ).fetchall()
+                ranked = [(float(row["rank"]), row) for row in rows]
+                retrieval = "local_fts5"
+            except Exception:
+                ranked = []
+        if not ranked:
+            rows = connection.execute(
+                "SELECT source_type, source_id, title, content FROM llm_wiki_documents WHERE source_type != 'uploaded_document_meta'"
+            ).fetchall()
+            for row in rows:
+                title = str(row["title"] or "").casefold()
+                content = str(row["content"] or "").casefold()
+                score = sum((5 if term in title else 0) + content.count(term) for term in terms)
+                if score:
+                    ranked.append((-float(score), row))
+            ranked.sort(key=lambda pair: (pair[0], pair[1]["source_type"], pair[1]["title"]))
     results = []
-    for score, row in ranked[:max(1, min(int(limit), 8))]:
+    for rank, row in ranked[:max(1, min(int(limit), 8))]:
         results.append({
-            "source_type": row["source_type"],
-            "title": row["title"],
+            "source_type": row["source_type"], "title": row["title"],
             "content": str(row["content"])[:1800],
-            "relevance_score": score,
+            "relevance_score": round(-rank, 4) if retrieval == "local_fts5" else int(-rank),
         })
-    return {"query": query, "retrieval": "local_lexical", "results": results}
+    return {"query": query, "retrieval": retrieval, "results": results}

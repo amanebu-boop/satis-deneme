@@ -13,14 +13,14 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 
 | Ajan | Sorumluluk | Mevcut uygulama durumu |
 |---|---|---|
-| Firma | Firma ve yetkili kayıtları | Şimdilik salt-okunur firma rehberi özeti |
-| Ürün | Ürün kataloğu ve opsiyonlar | Şimdilik salt-okunur katalog özeti |
-| Görüşme | Görüşme ve görüşme ürünleri | Şimdilik salt-okunur görüşme özeti |
+| Firma | Firma ve yetkili kayıtları | Rehber özeti + eksik sektör/şehir/adres/telefon ve yinelenen ad kalite kontrolü |
+| Ürün | Ürün kataloğu ve opsiyonlar | Katalog özeti + açıklama/tam sayı fiyat/para birimi/opsiyon bağlantısı kalite kontrolü |
+| Görüşme | Görüşme ve görüşme ürünleri | Görüşme özeti + gecikmiş ve 7 gün içindeki açık takip görevleri |
 | Teklif | Görüşmeden teklif taslağı, teklif süreci ve onaylı teklif oluşturma | Taslak önizleme + onaylı oluşturma akışı mevcut; teklif süreci özeti mevcut |
 | Depo | Stok ve depo süreçleri | Kullanılabilir görev yok; etkinleştirilmez |
 | Satış | Süreç koordinasyonu ve ajanlar arası iş akışı | İzinli görev kataloğuyla salt-okunur koordinasyon mevcut; her alt görev ayrı yetki/etkinlik kontrolünden geçer |
-| Raporlama | Satış raporları ve performans analizi | Salt-okunur genel satış özeti mevcut |
-| Denetim | Ajan ve onay kayıtlarının denetimi | Salt-okunur toplu denetim özeti mevcut |
+| Raporlama | Satış raporları ve performans analizi | Genel özet + tarih aralığında görüşme/teklif sayıları ve para birimine göre teklif toplamları |
+| Denetim | Ajan ve onay kayıtlarının denetimi | Toplu özet + başarısız/engellenmiş görev ve süresi geçmiş onay anomalileri |
 
 ## Bağımlılık ve otomatik etkinleştirme
 
@@ -42,10 +42,9 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 
 ## Kalan geliştirme sırası
 
-1. Raporlama ve Denetim kapsamlarını dönemsel analiz ve anomali tespitiyle genişletmek.
-2. Ürün/firma/görüşme ajanlarına doğrulama ve veri kalitesi görevleri eklemek.
-3. Depo ajanını ancak gerçek stok verisi ve süreçleri eklendiğinde etkinleştirmek.
-4. Teknik PDF/DOCX dosyaları için kontrollü belge alma ve metin çıkarma akışını eklemek.
+1. Depo ajanını ancak gerçek stok kartı, depo hareketi ve stok bakiyesi veri modeli eklendiğinde etkinleştirmek.
+2. Raporlama için dönüşüm oranı ve satış hedefi raporlarını, kaynak veri alanları doğrulandıktan sonra eklemek.
+3. Wiki aramasını ihtiyaç halinde yerel FTS/semantic retrieval ile ölçeklemek; mevcut ilk sürüm sözcük eşleştirmesidir.
 
 Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsamı ifade eder; henüz geliştirilmemiş görevler tamamlandı kabul edilmez.
 

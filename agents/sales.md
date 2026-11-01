@@ -40,4 +40,4 @@ Satış sürecinin koordinatörüdür; kullanıcının isteğini sınıflandır�
 - Teklif önizlemesi gerçek teklif kaydı değildir; tek firmaya bağlılık, indirim olmaması ve tam sayı miktar/fiyat kuralları korunur.
 
 ## Bağımlılıklar
-Firma, Ürün, Görüşme ve Teklif ajanları. Satış Ajanı etkinleştirildiğinde bu bağımlılıklar uygulama tarafından otomatik etkinleştirilir. Depo Ajanı bu koordinasyonun parçası değildir.
+Firma, Ürün, Görüşme, Teklif ve Raporlama ajanları. Satış Ajanı etkinleştirildiğinde bu bağımlılıklar uygulama tarafından otomatik etkinleştirilir. Depo Ajanı bu koordinasyonun parçası değildir.

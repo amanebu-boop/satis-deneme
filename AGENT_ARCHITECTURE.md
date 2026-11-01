@@ -55,3 +55,15 @@ Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsam�
 - Yönlendirme dosyası her ajanı kendi `agents/{agent_id}.md` talimat dosyasına gönderir.
 - Çalışma zamanı bu sırayı `app.agent_instructions.load_agent_instructions` ile uygular; kendi dosyasında izinli olmayan görev çalıştırılmaz.
 - Her ajanın rol, yetki, yapabilecekleri, yapamayacakları ve görev listesi kendi dosyasında tutulur.
+
+
+## OpenAI API entegrasyonu — ilk aşama
+
+- Uygulama içi asistan, sunucu tarafında OpenAI Responses API ve resmi Python SDK üzerinden çalışır. Tarayıcı OpenAI API'sine doğrudan bağlanmaz.
+- İstek yolu: oturum açmış arayüz → `POST /api/assistant/chat` → sunucu oturum/CSRF kontrolü → OpenAI Responses API → yalnızca uygulamanın tanımladığı araçlar → ajan yönlendiricisi ve ilgili ajanın Markdown talimatları → yanıt.
+- `OPENAI_API_KEY` yalnızca Render ortam değişkeninde tutulur; kaynak kod, tarayıcı, GitHub ve loglara yazılmaz. `OPENAI_MODEL` model seçimini sunucu tarafında belirler; varsayılan `gpt-5.5`.
+- Modelin araç çağrısı doğrudan veritabanına erişmez. `run_agent_task` sunucu tarafında sabit izin listesine, ajanın etkin olmasına, görev kaydına ve `AGENTS.md` + ajana ait talimat dosyasına bağlıdır.
+- İlk aşamada yalnızca mevcut özet/rapor görevleri ve görüşmeden teklif hazırlama önizlemesi açılır. Teklif oluşturma önizlemedir; kalıcı teklif kaydı oluşturmaz. Firma/ürün/görüşme/teklif silme veya değiştirme araçları modele sunulmaz.
+- Kritik işlemler için modelin onayı yeterli değildir. Uygulamanın mevcut onay kaydı, kullanıcı incelemesi, onay süresi ve onaylanan içerik özeti doğrulaması tamamlanmadan işlem yürütülmez. Mevcut görüşmeden teklif oluşturma onay akışı bu ayrımı örnekler.
+- API anahtarı henüz Render'a eklenmedi. Bu nedenle canlı OpenAI çağrısı henüz yapılandırılmış veya doğrulanmış değildir. Anahtar kullanıcı tarafından Render test servisine güvenli biçimde eklendikten sonra uçtan uca bağlantı testi yapılmalıdır.
+- API kullanımı ChatGPT aboneliğinden ayrıdır ve OpenAI API hesabında ayrıca ücretlendirilir.

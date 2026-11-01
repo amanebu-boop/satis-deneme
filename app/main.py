@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from io import BytesIO
 from decimal import Decimal
 import hmac
+import hashlib
 import logging
 import os
 import re
@@ -15,10 +16,15 @@ from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app import db
+from app.company_sectors import is_valid_company_sector
 from app import session_store
+from app import agent_foundation
+from app import agent_runtime
+from app import ai_usage
+from app import llm_wiki
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
@@ -29,6 +35,9 @@ from app.quote_pdf import convert_excel_to_pdf
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db.init_db()
+    agent_foundation.init_agent_foundation()
+    ai_usage.init_ai_usage()
+    llm_wiki.init_wiki()
     yield
 
 
@@ -229,6 +238,275 @@ def browser_session(request: Request):
     return response
 
 
+class AgentEnabledRequest(BaseModel):
+    enabled: bool
+
+
+class AgentRunRequest(BaseModel):
+    agent_id: str = Field(min_length=1, max_length=80)
+    task_type: str = Field(min_length=1, max_length=120)
+    input_data: dict = Field(default_factory=dict)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class AgentApprovalReviewRequest(BaseModel):
+    decision: str = Field(pattern=r"^(approved|rejected)$")
+    current_payload: dict
+
+
+@app.get("/api/agents")
+def browser_list_agents(request: Request) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_agents()
+
+
+@app.post("/api/agents/{agent_id}/status")
+def browser_set_agent_status(
+    agent_id: str, payload: AgentEnabledRequest, request: Request
+) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    # Only agents with implemented, read-only workflows can be enabled in this rollout.
+    if agent_id not in {"company", "product", "meeting", "quotation", "sales", "reporting", "audit"}:
+        raise HTTPException(status_code=403, detail="This agent is not available for activation")
+    try:
+        return agent_foundation.set_agent_enabled(
+            agent_id, payload.enabled, str(session["subject"])
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown agent" else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.get("/api/agent-ai-usage")
+def browser_agent_ai_usage(request: Request) -> dict:
+    _require_browser_session(request)
+    summary = ai_usage.usage_summary()
+    agent_names = {item["id"]: item["name"] for item in agent_foundation.list_agents()}
+    for row in summary["agents"]:
+        row["agent_name"] = agent_names.get(row["agent_id"], row["agent_id"])
+    with db.connect() as connection:
+        execution_rows = connection.execute(
+            "SELECT agent_id, COUNT(*) AS executions FROM agent_runs GROUP BY agent_id"
+        ).fetchall()
+    execution_counts = {row["agent_id"]: row["executions"] for row in execution_rows}
+    return {
+        **summary,
+        "execution_counts": execution_counts,
+        "provider_configured": bool(os.environ.get("OPENAI_API_KEY", "").strip()),
+        "model": os.environ.get("OPENAI_MODEL", "gpt-5.5"),
+        "pricing_basis": "OpenAI published standard API token rates; unknown model rates are not estimated",
+        "daily_budget": ai_usage.daily_budget_status(),
+    }
+
+
+@app.get("/api/agent-rules")
+def browser_list_agent_rules(request: Request) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_rules()
+
+
+@app.get("/api/agent-runs")
+def browser_list_agent_runs(request: Request, limit: int = Query(default=100, ge=1, le=500)) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_runs(limit)
+
+
+@app.get("/api/agent-approvals")
+def browser_list_agent_approvals(request: Request, limit: int = Query(default=100, ge=1, le=500)) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_approvals(limit)
+
+
+@app.get("/api/agent-audit")
+def browser_list_agent_audit(request: Request, limit: int = Query(default=100, ge=1, le=500)) -> list[dict]:
+    _require_browser_session(request)
+    return agent_foundation.list_audit_logs(limit)
+
+
+@app.post("/api/agent-runs", status_code=201)
+def browser_create_agent_run(payload: AgentRunRequest, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    try:
+        return agent_foundation.create_run(
+            payload.agent_id, payload.task_type, str(session["subject"]),
+            payload.input_data, payload.idempotency_key,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown agent" else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/agent-approvals/{approval_id}/review")
+def browser_review_agent_approval(
+    approval_id: str, payload: AgentApprovalReviewRequest, request: Request
+) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    try:
+        return agent_foundation.review_approval(
+            approval_id, payload.decision, str(session["subject"]), payload.current_payload,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown approval" else 409 if (
+            message in {"approval is no longer pending", "approval has expired",
+                        "approval payload changed; request a new approval"}
+        ) else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/meetings/{meeting_id}/quotation-draft", status_code=201)
+def browser_prepare_meeting_quotation(meeting_id: str, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    if not agent_foundation.rule_enabled("critical_actions_require_approval", default=True):
+        raise HTTPException(status_code=503, detail="Kritik işlemler için onay zorunluluğu devre dışı bırakılamaz.")
+    approval_config = agent_foundation.get_rule_config("approval_ttl_seconds", {"value": 900})
+    approval_ttl = approval_config.get("value", 900) if isinstance(approval_config, dict) else 900
+    if not isinstance(approval_ttl, int) or isinstance(approval_ttl, bool):
+        approval_ttl = 900
+    approval_ttl = max(60, min(86400, approval_ttl))
+    try:
+        run = agent_foundation.create_run(
+            "quotation", "prepare_from_meeting", str(session["subject"]),
+            {"meeting_id": meeting_id}, str(uuid4()),
+        )
+        result = agent_runtime.execute_run(run["id"], str(session["subject"]))
+        preview = result["output"]
+        approval = agent_foundation.request_approval(
+            run["id"], "quotation.create_from_meeting", preview,
+            str(session["subject"]), approval_ttl,
+        )
+        return {"run_id": run["id"], "approval_id": approval["id"], "preview": preview,
+                "approval_status": approval["status"], "expires_at": approval["expires_at"]}
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message in {"unknown agent", "unknown run"} else 409 if (
+            message in {"agent is disabled", "run is not queued", "unsupported agent task"}
+        ) else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/agent-approvals/{approval_id}/execute")
+def browser_execute_approved_action(approval_id: str, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    now = datetime.now(timezone.utc)
+    with db.connect() as connection:
+        approval = connection.execute(
+            """SELECT p.*, r.agent_id, r.id AS run_id
+               FROM agent_approvals p JOIN agent_runs r ON r.id = p.run_id
+               WHERE p.id = ?""", (approval_id,)
+        ).fetchone()
+        if approval is None:
+            raise HTTPException(status_code=404, detail="Onay kaydı bulunamadı")
+        existing = connection.execute(
+            "SELECT quotation_id FROM agent_approval_actions WHERE approval_id = ?",
+            (approval_id,),
+        ).fetchone()
+        if existing is not None:
+            return {"status": "already_executed", "quotation_id": existing["quotation_id"]}
+        if approval["status"] != "approved":
+            raise HTTPException(status_code=409, detail="İşlem için önce onay verilmelidir")
+        if now >= datetime.fromisoformat(approval["expires_at"]):
+            connection.execute("UPDATE agent_approvals SET status = 'expired' WHERE id = ?", (approval_id,))
+            connection.execute(
+                "UPDATE agent_runs SET status = 'cancelled', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+                (now.isoformat(timespec="seconds"), approval["run_id"]),
+            )
+            connection.commit()
+            raise HTTPException(status_code=409, detail="Onay süresi dolmuş")
+        if approval["action_type"] != "quotation.create_from_meeting" or approval["agent_id"] != "quotation":
+            raise HTTPException(status_code=403, detail="Bu işlem türü desteklenmiyor")
+        stored_payload = __import__("json").loads(approval["payload_json"])
+        if stored_payload.get("action") != "quotation.create_from_meeting":
+            raise HTTPException(status_code=422, detail="Onay içeriği geçersiz")
+    try:
+        current_payload = agent_runtime._prepare_quotation_from_meeting(
+            {"meeting_id": stored_payload["meeting_id"]}
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=f"Görüşme değişmiş veya teklif hazırlanamıyor: {exc}") from exc
+    digest = hashlib.sha256(agent_foundation._json(current_payload).encode("utf-8")).hexdigest()
+    if digest != approval["payload_sha256"]:
+        raise HTTPException(status_code=409, detail="Görüşme veya ürün bilgileri değişti; yeni onay talebi oluşturun")
+    quote_lines = [
+        QuoteLine(description=line["description"], quantity=line["quantity"], unit_price=line["unit_price"])
+        for line in current_payload["lines"]
+    ]
+    calculated = calculate_quote(quote_lines, current_payload["currency"])
+    quotation_id = str(uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+    with db.connect() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        already = connection.execute(
+            "SELECT quotation_id FROM agent_approval_actions WHERE approval_id = ?", (approval_id,)
+        ).fetchone()
+        if already:
+            return {"status": "already_executed", "quotation_id": already["quotation_id"]}
+        year = int(created_at[:4])
+        sequence = connection.execute(
+            "SELECT last_number FROM quote_sequences WHERE quote_year = ?", (year,)
+        ).fetchone()
+        next_number = int(sequence["last_number"]) + 1 if sequence else 1
+        connection.execute(
+            """INSERT INTO quote_sequences (quote_year, last_number) VALUES (?, ?)
+               ON CONFLICT(quote_year) DO UPDATE SET last_number = excluded.last_number""",
+            (year, next_number),
+        )
+        quote_number = f"ERS-{year}-{next_number:04d}"
+        connection.execute(
+            """INSERT INTO quotations
+               (id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, 'draft', ?)""",
+            (quotation_id, quote_number, current_payload["company_id"], calculated["currency"],
+             calculated["subtotal"], calculated["tax_rate"], calculated["tax_amount"], calculated["total"], created_at),
+        )
+        for line in calculated["lines"]:
+            connection.execute(
+                """INSERT INTO quotation_lines
+                   (id, quotation_id, description, quantity, unit_price, line_total)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (str(uuid4()), quotation_id, line["description"], line["quantity"], line["unit_price"], line["line_total"]),
+            )
+        connection.execute(
+            """INSERT INTO agent_approval_actions (approval_id, action_type, quotation_id, executed_at)
+               VALUES (?, ?, ?, ?)""",
+            (approval_id, approval["action_type"], quotation_id, created_at),
+        )
+        connection.execute(
+            "UPDATE agent_runs SET status = 'succeeded', finished_at = ? WHERE id = ? AND status = 'pending_approval'",
+            (created_at, approval["run_id"]),
+        )
+        agent_foundation._audit(
+            connection, "approved_quotation_created", actor=str(session["subject"]),
+            agent_id="quotation", run_id=approval["run_id"],
+            details={"approval_id": approval_id, "quotation_id": quotation_id,
+                     "quote_number": quote_number, "line_count": len(quote_lines)},
+        )
+    return {"status": "executed", "quotation_id": quotation_id, "quote_number": quote_number,
+            "company_id": current_payload["company_id"], "line_count": len(quote_lines),
+            "currency": calculated["currency"], "total": calculated["total"]}
+
+
+@app.post("/api/agent-runs/{run_id}/execute")
+def browser_execute_agent_run(run_id: str, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    try:
+        return agent_runtime.execute_run(run_id, str(session["subject"]))
+    except ValueError as exc:
+        message = str(exc)
+        status = 404 if message == "unknown run" else 409 if (
+            message in {"agent is disabled", "run is not queued", "unsupported agent task"}
+        ) else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
 @app.get("/api/companies")
 def browser_list_companies(
     request: Request,
@@ -253,6 +531,9 @@ def browser_get_company(company_id: str, request: Request):
 
 class CompanyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
+    # "sector" remains accepted for older clients; "sectors" is the canonical multi-select field.
+    sector: str | None = Field(default=None, max_length=100)
+    sectors: list[str] = Field(min_length=1, max_length=10)
     authorized_people: list[str] = Field(default_factory=list, max_length=50)
     phone_numbers: list[str] = Field(default_factory=list, max_length=50)
     address: str | None = Field(default=None, max_length=3000)
@@ -270,6 +551,13 @@ class CompanyCreate(BaseModel):
     mersis_number: str | None = Field(default=None, max_length=50)
     notes: str | None = Field(default=None, max_length=5000)
 
+    @model_validator(mode="before")
+    @classmethod
+    def support_legacy_single_sector(cls, values):
+        if isinstance(values, dict) and not values.get("sectors") and values.get("sector"):
+            values = {**values, "sectors": [values["sector"]]}
+        return values
+
     @field_validator("name")
     @classmethod
     def clean_company_name(cls, value: str) -> str:
@@ -278,11 +566,25 @@ class CompanyCreate(BaseModel):
             raise ValueError("Firma unvanı boş olamaz")
         return value
 
+    @field_validator("sector")
+    @classmethod
+    def validate_legacy_company_sector(cls, value: str | None) -> str | None:
+        if value is not None and not is_valid_company_sector(value.strip()):
+            raise ValueError("Geçerli bir firma sektörü seçilmelidir")
+        return value.strip() if value else None
+
+    @field_validator("sectors")
+    @classmethod
+    def validate_company_sectors(cls, values: list[str]) -> list[str]:
+        clean = list(dict.fromkeys(value.strip() for value in values if isinstance(value, str) and value.strip()))
+        if not clean or any(not is_valid_company_sector(value) for value in clean):
+            raise ValueError("En az bir geçerli firma sektörü seçilmelidir")
+        return clean
+
     @field_validator("authorized_people", "phone_numbers")
     @classmethod
     def clean_repeated_values(cls, values: list[str]) -> list[str]:
         return [value.strip() for value in values if value and value.strip()]
-
 
 @app.post("/api/companies", status_code=201)
 def browser_create_company(payload: CompanyCreate, request: Request) -> dict:
@@ -798,6 +1100,11 @@ def browser_generate_template(
     return response
 
 
+@app.get("/agents")
+def agent_management_page():
+    return FileResponse(Path(__file__).resolve().parent.parent / "web" / "agents.html")
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "stage": "prototype", "storage": "sqlite"}
@@ -935,3 +1242,12 @@ def quotation_document(quotation_id: str) -> HTMLResponse:
     response.headers["Content-Disposition"] = 'inline; filename="teklif-taslagi.html"'
     response.headers["Cache-Control"] = "no-store, private"
     return response
+
+
+# OpenAI Responses API assistant routes; tools remain server-allowlisted.
+from app.agent_chat import router as agent_chat_router
+app.include_router(agent_chat_router)
+
+from app.meeting_capture import router as meeting_capture_router
+app.include_router(meeting_capture_router)
+app.include_router(llm_wiki.router)

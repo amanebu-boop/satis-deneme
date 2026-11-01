@@ -11,6 +11,8 @@ from xml.sax.saxutils import escape
 
 from fastapi import HTTPException
 from openpyxl import load_workbook
+from openpyxl.worksheet.pagebreak import Break
+import re
 from pypdf import PdfReader
 
 
@@ -22,7 +24,7 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
         import reportlab
@@ -88,6 +90,8 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         styles.add(ParagraphStyle(name="BodyTR", parent=styles["BodyText"], fontName=regular_font, fontSize=8.5, leading=12, textColor=colors.HexColor("#292A2A")))
         styles.add(ParagraphStyle(name="SmallRight", parent=styles["BodyText"], fontName=regular_font, fontSize=8, leading=11, alignment=TA_RIGHT))
         styles.add(ParagraphStyle(name="SectionTR", parent=styles["Heading2"], fontName=bold_font, fontSize=10, leading=13, textColor=colors.HexColor("#292A2A"), spaceBefore=8, spaceAfter=5))
+        styles.add(ParagraphStyle(name="TemplateRow", parent=styles["BodyText"], fontName=regular_font, fontSize=6.2, leading=7.4, textColor=colors.HexColor("#292A2A"), spaceAfter=0))
+        styles.add(ParagraphStyle(name="TemplateSection", parent=styles["Heading3"], fontName=bold_font, fontSize=7.5, leading=8.5, textColor=colors.HexColor("#292A2A"), spaceBefore=2, spaceAfter=1))
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=16*mm, leftMargin=16*mm, topMargin=13*mm, bottomMargin=15*mm, title=f"{company} {quote_number}")
@@ -99,8 +103,11 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
             try:
                 raw = workbook_image._data()
                 image = RLImage(BytesIO(raw))
-                image._restrictSize(52*mm, 22*mm)
                 anchor_row = getattr(getattr(workbook_image, "anchor", None), "_from", None)
+                if anchor_row and getattr(anchor_row, "row", 0) >= 20:
+                    image._restrictSize(30*mm, 12*mm)
+                else:
+                    image._restrictSize(52*mm, 22*mm)
                 if anchor_row and getattr(anchor_row, "row", 0) >= 20:
                     bottom_images.append(image)
                 else:
@@ -153,11 +160,53 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
         total_table=Table(totals,colWidths=[125*mm,53*mm],hAlign="RIGHT")
         total_table.setStyle(TableStyle([("ALIGN",(1,0),(1,-1),"RIGHT"),("FONTNAME",(0,2),(-1,2),bold_font),("FONTSIZE",(0,0),(-1,-1),9),("LINEABOVE",(0,2),(-1,2),1,colors.HexColor("#C89B35")),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5),("BACKGROUND",(0,2),(-1,2),colors.HexColor("#F6EFDD"))]))
         story.append(Spacer(1,4*mm));story.append(total_table)
+        # The fallback renderer must retain the template's two-page reading order:
+        # sections 1-6 on page one, then section 7 onward on page two. Locate the
+        # section from workbook content instead of hard-coding a row number.
+        section_seven_row = None
+        for row_index in range(1, sheet.max_row + 1):
+            row_values = [
+                str(sheet.cell(row_index, column_index).value or "").strip()
+                for column_index in range(1, sheet.max_column + 1)
+            ]
+            if any(__import__("re").match(r"^7\s*[.)]", value) for value in row_values):
+                section_seven_row = row_index
+                break
+
+        def append_template_rows(first_row: int, last_row: int) -> None:
+            for row_index in range(first_row, last_row + 1):
+                values = []
+                for column_index in range(1, sheet.max_column + 1):
+                    value = sheet.cell(row_index, column_index).value
+                    if value is None or (isinstance(value, str) and value.startswith("=")):
+                        continue
+                    text_value = str(value).strip()
+                    if text_value and text_value not in values:
+                        values.append(text_value)
+                if not values:
+                    continue
+                row_text = " · ".join(values)
+                if __import__("re").match(r"^[1-9]\s*[.)]", row_text):
+                    story.append(Paragraph(escape(row_text), styles["TemplateSection"]))
+                else:
+                    story.append(Paragraph(escape(row_text), styles["TemplateRow"]))
+
+        if section_seven_row is not None:
+            # Include the remainder of sections 1-6 on page one.
+            append_template_rows(49, section_seven_row - 1)
+            story.append(PageBreak())
+            # Page two begins with the actual section 7 heading from the workbook.
+            append_template_rows(section_seven_row, sheet.max_row)
+        else:
+            # Fail visibly rather than silently claiming the required pagination
+            # when the workbook no longer contains the expected section heading.
+            raise ValueError("Excel şablonunda 7. Garanti ve Kabul bölümü bulunamadı.")
+
         if bottom_images:
-            story.append(Spacer(1,10*mm))
+            story.append(Spacer(1, 5*mm))
             for image in bottom_images[:3]:
                 story.append(image)
-        story.append(Spacer(1,8*mm))
+        story.append(Spacer(1,4*mm))
         story.append(Paragraph("Erşen Makina · Bu teklif kayıtlı teklif verileri ve teklif şablonu esas alınarak oluşturulmuştur.", styles["Subtle"]))
         doc.build(story)
         return buffer.getvalue()
@@ -166,36 +215,87 @@ def _reportlab_pdf(excel_content: bytes) -> bytes:
 
 
 def convert_excel_to_pdf(excel_content: bytes) -> bytes:
-    """Prefer exact LibreOffice workbook rendering; use a branded workbook-based fallback otherwise."""
+    """Prefer LibreOffice's exact workbook rendering; otherwise render the workbook's own template artwork and values."""
     converter = shutil.which("libreoffice") or shutil.which("soffice")
-    if not converter:
-        return _reportlab_pdf(excel_content)
-    with tempfile.TemporaryDirectory(prefix="quote-pdf-") as temp_dir:
-        workdir = Path(temp_dir)
-        input_path = workdir / "quotation.xlsx"
-        output_path = workdir / "quotation.pdf"
-        profile_path = workdir / "lo-profile"
-        input_path.write_bytes(excel_content)
-        command = [
-            converter, "--headless", f"-env:UserInstallation={profile_path.as_uri()}",
-            "--convert-to", "pdf", "--outdir", str(workdir), str(input_path),
-        ]
-        try:
-            completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=60)
-        except subprocess.TimeoutExpired as exc:
-            raise HTTPException(status_code=504, detail="Excel şablonunun PDF dönüşümü zaman aşımına uğradı.") from exc
-        except OSError as exc:
-            raise HTTPException(status_code=503, detail="PDF dönüştürücüsü başlatılamadı.") from exc
-        if completed.returncode != 0 or not output_path.is_file():
-            return _reportlab_pdf(excel_content)
-        pdf_content = output_path.read_bytes()
-        if not pdf_content.startswith(b"%PDF-"):
-            return _reportlab_pdf(excel_content)
-        try:
-            reader = PdfReader(BytesIO(pdf_content), strict=True)
-            if reader.is_encrypted or not reader.pages:
-                raise ValueError("PDF has no readable pages")
-            _ = len(reader.pages)
-        except Exception:
-            return _reportlab_pdf(excel_content)
+    if converter:
+        with tempfile.TemporaryDirectory(prefix="quote-pdf-") as temp_dir:
+            workdir = Path(temp_dir)
+            input_path = workdir / "quotation.xlsx"
+            output_path = workdir / "quotation.pdf"
+            profile_path = workdir / "lo-profile"
+            # LibreOffice is the primary renderer on Render. Apply the requested
+            # section boundary to an in-memory copy so the downloaded Excel template
+            # and its original formatting/page setup remain untouched.
+            try:
+                workbook = load_workbook(BytesIO(excel_content), data_only=False)
+                try:
+                    sheet = workbook["Teklif"]
+                    section_seven_row = None
+                    for row_index in range(1, sheet.max_row + 1):
+                        row_values = [
+                            str(sheet.cell(row_index, column_index).value or "").strip()
+                            for column_index in range(1, sheet.max_column + 1)
+                        ]
+                        if any(re.match(r"^7\s*[.)]", value) for value in row_values):
+                            section_seven_row = row_index
+                            break
+                    if section_seven_row is None:
+                        raise ValueError("Excel şablonunda 7. Garanti ve Kabul bölümü bulunamadı.")
+                    # Excel row breaks are placed after the preceding row.
+                    sheet.row_breaks.brk = [
+                        item for item in sheet.row_breaks.brk
+                        if getattr(item, "id", None) != section_seven_row - 1
+                    ]
+                    sheet.row_breaks.append(Break(id=section_seven_row - 1))
+                    sheet.page_setup.paperSize = sheet.PAPERSIZE_A4
+                    sheet.page_setup.orientation = "portrait"
+                    sheet.sheet_properties.pageSetUpPr.fitToPage = True
+                    sheet.page_setup.fitToWidth = 1
+                    # Enlarge only the vertical spacing of page one's existing rows.
+                    # This uses the otherwise empty lower area without zooming/cropping
+                    # the template horizontally or changing its fonts and colors.
+                    for row_index in range(1, section_seven_row):
+                        dimension = sheet.row_dimensions[row_index]
+                        if dimension.height is not None and not dimension.hidden:
+                            dimension.height = dimension.height * 1.25
+                    sheet.page_setup.fitToHeight = 0
+                    prepared = BytesIO()
+                    workbook.save(prepared)
+                    input_path.write_bytes(prepared.getvalue())
+                finally:
+                    workbook.close()
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail="PDF için Excel şablonunda 7. bölüm sayfa sonu hazırlanamadı.",
+                ) from exc
+            command = [
+                converter, "--headless", f"-env:UserInstallation={profile_path.as_uri()}",
+                "--convert-to", "pdf", "--outdir", str(workdir), str(input_path),
+            ]
+            try:
+                completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=60)
+                if completed.returncode == 0 and output_path.is_file():
+                    pdf_content = output_path.read_bytes()
+                    if pdf_content.startswith(b"%PDF-"):
+                        reader = PdfReader(BytesIO(pdf_content), strict=True)
+                        if not reader.is_encrypted and len(reader.pages):
+                            return pdf_content
+            except (subprocess.TimeoutExpired, OSError, Exception):
+                # Use the workbook-backed renderer below if the system converter fails.
+                pass
+    try:
+        # This renderer reads the filled Erşen Makina workbook, including its embedded
+        # logo/signature artwork and customer/quote cells; it does not create a generic report.
+        pdf_content = _reportlab_pdf(excel_content)
+        reader = PdfReader(BytesIO(pdf_content), strict=True)
+        if reader.is_encrypted or not reader.pages:
+            raise ValueError("PDF has no readable pages")
         return pdf_content
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Erşen Makina teklif şablonundan PDF üretilemedi. Excel teklif dosyası indirilebilir.",
+        ) from exc

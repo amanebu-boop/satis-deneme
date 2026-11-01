@@ -2,9 +2,9 @@ name: Quote template validation
 
 on:
   push:
-    branches: [feature/quote-template-file, feature/company-address-meeting-products]
+    branches: [feature/quote-template-file, feature/company-address-meeting-products, feature/agent-runtime-readonly, feature/agent-controls, feature/report-readable-output, feature/agent-workflows-bundle, feature/meeting-to-quotation-approval, feature/agent-ui-template-modal-fix, feature/app-wide-http-dropdowns-pdf-fallback, feature/docker-date-picker-ui]
   pull_request:
-    branches: [main]
+    branches: [main, feature/agent-foundation]
 
 permissions:
   contents: read
@@ -26,3 +26,5 @@ jobs:
         run: python -m pip install -e ".[test]"
       - name: Run automated tests
         run: python -m pytest -q
+      - name: Build Docker image
+        run: docker build --tag satis-deneme-test:ci .

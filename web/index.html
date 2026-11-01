@@ -240,6 +240,32 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 .meeting-list-price{min-height:34px;display:flex;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#f5f6f7;color:var(--muted);font-variant-numeric:tabular-nums}
 .follow-up-company-picker{margin:0;min-width:0}.follow-up-company-picker input{width:100%;min-height:42px;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
 @media(max-width:640px){.meeting-product-row{grid-template-columns:1fr 1fr}.meeting-product-row>div:first-child{grid-column:1/-1}.meeting-product-row .remove-meeting-product{grid-column:2}.meeting-list-price{min-height:36px}}
+@media(max-width:640px){.mobile-nav{grid-template-columns:repeat(7,minmax(0,1fr))}.mobile-nav button{font-size:8px}}
+
+/* Uygulama içi tarih seçiciler */
+.custom-date-field{position:relative;min-width:0}
+.date-picker-display{width:100%;min-height:38px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}
+.date-picker-display:focus-visible{outline:3px solid #dbe5f0;outline-offset:2px}
+.date-picker-panel{position:absolute;z-index:80;top:calc(100% + 6px);left:0;width:min(320px,calc(100vw - 36px));padding:12px;background:#fff;border:1px solid #dce3eb;border-radius:12px;box-shadow:0 12px 32px rgba(23,43,69,.16)}
+.date-picker-panel[hidden]{display:none}
+.date-picker-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.date-picker-head strong{font-size:13px}
+.date-picker-nav{display:flex;gap:5px}
+.date-picker-nav button,.date-picker-day{border:0;background:transparent;color:var(--ink);border-radius:7px;min-width:32px;min-height:32px}
+.date-picker-nav button{background:#f1f4f8;font-size:17px}
+.date-picker-week,.date-picker-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center}
+.date-picker-week span{font-size:10px;color:var(--muted);padding:5px 0}
+.date-picker-day{font-size:12px}
+.date-picker-day:hover{background:#edf2f7}
+.date-picker-day.selected{background:var(--accent);color:#fff;font-weight:700}
+.date-picker-day.today{box-shadow:inset 0 0 0 1px #9aabc0}
+.date-picker-empty{min-height:32px}
+.date-picker-time{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+.date-picker-time label{font-size:11px;color:var(--muted)}
+.date-picker-time input{width:100px;min-height:34px;border:1px solid var(--line);border-radius:7px;padding:5px 7px}
+.date-picker-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:10px}
+.date-picker-actions button{min-height:34px;padding:6px 10px}
+@media(max-width:640px){.date-picker-panel{position:fixed;top:auto;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(340px,calc(100vw - 24px));box-shadow:0 14px 40px rgba(23,43,69,.22)}}
 </style>
 </head>
 <body>
@@ -264,6 +290,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <button data-page="products"><span class="symbol">◇</span>Ürünler ve Fiyatlar</button>
 <button data-page="quotes"><span class="symbol">▧</span>Teklifler</button>
 <button data-page="templates"><span class="symbol">▣</span>Belge Şablonları</button>
+<button type="button" id="agents-link"><span class="symbol">⚙</span>Ajan Yönetimi</button>
 </nav>
 <div class="side-note">Satış çalışma alanı<br>Mobil uyumlu uygulama önizlemesi</div>
 </aside>
@@ -282,6 +309,27 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <button type="button" class="stat stat-link" data-go="quotes" aria-label="Teklifler bölümünü aç"><div class="stat-top">Kayıtlı teklif <span class="stat-icon">▧</span></div><div class="stat-value" id="dashboard-quote-count">—</div><div class="stat-foot">Toplam teklif kaydı</div></button>
 <div class="stat"><div class="stat-top">Teklif toplamı <span class="stat-icon">€</span></div><div class="stat-value" id="dashboard-quote-total">—</div><div class="stat-foot" id="dashboard-quote-foot">Kayıtlı tekliflerin toplamı</div></div>
 </div>
+<div class="panel" id="dashboard-sales-assistant" style="margin-bottom:12px;padding:14px">
+<div class="panel-head" style="margin-bottom:7px"><h2>Satış Asistanı</h2><span class="pill blue">Ana ekran</span></div>
+<p class="footer-note" style="margin:0 0 8px">Firma, ürün, görüşme, teklif ve satış süreçleri hakkında soru sorun. Asistan yalnızca izinli ajan görevlerini çalıştırır; kritik işlemler onay gerektirir.</p>
+<div id="dashboard-assistant-messages" aria-live="polite" style="display:grid;gap:8px;max-height:280px;overflow:auto;margin-bottom:8px"><div class="empty">Satış Asistanı hazır. Nasıl yardımcı olabilirim?</div></div>
+<textarea id="dashboard-assistant-input" rows="2" maxlength="6000" placeholder="Satış süreciyle ilgili sorunuzu yazın…" style="width:100%;min-height:58px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>
+<div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap"><button class="btn primary" id="dashboard-assistant-send" type="button">Gönder</button><button class="btn" id="dashboard-assistant-new" type="button">Yeni sohbet</button><span id="dashboard-assistant-status" class="footer-note" role="status"></span></div>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)">
+<label for="dashboard-wiki-file" class="footer-note">Teknik bilgi belgesi ekle (PDF, DOCX, TXT, MD)</label>
+<input id="dashboard-wiki-file" type="file" accept=".pdf,.docx,.txt,.md" style="max-width:250px">
+<button class="btn" id="dashboard-wiki-upload" type="button">Wiki'ye ekle</button>
+<button class="btn" id="dashboard-wiki-list-toggle" type="button">Yüklenen belgeler</button>
+<span id="dashboard-wiki-status" class="footer-note" role="status"></span>
+</div>
+<div id="dashboard-wiki-documents" hidden style="margin-top:8px"></div>
+</div>
+<div class="panel dashboard-ai-capture" style="margin-bottom:12px;padding:12px">
+<div class="panel-head" style="margin-bottom:7px"><h2>Yapay zekâ ile firma ve görüşme kaydı</h2><span class="pill blue">Hızlı kayıt</span></div>
+<p class="footer-note" style="margin:0 0 8px">Firma ve görüşme bilgilerini yazın. Yapay zekâ firma kaydını ve görüşme kaydını otomatik oluştursun; eksik zorunlu bilgi varsa kaydetmeden önce sorar.</p>
+<textarea id="dashboard-meeting-notes" rows="2" maxlength="15000" placeholder="Görüşmede konuşulanları buraya yazın…" style="width:100%;min-height:58px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>
+<div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap"><button class="btn primary" id="dashboard-prepare-meeting" type="button">Firma ve görüşme kaydı oluştur</button><span id="dashboard-meeting-ai-status" class="footer-note" role="status" aria-live="polite"></span></div>
+</div>
 <div class="columns">
 <div class="panel"><div class="panel-head"><h2>Son görüşmeler</h2><button class="link" data-go="meetings">Tümünü gör →</button></div><div class="list" id="dashboard-recent-meetings"><div class="empty">Görüşmeler yükleniyor…</div></div></div>
 <div class="panel"><div class="panel-head"><h2>Takip listesi</h2><span class="pill amber" id="dashboard-follow-up-count">Yükleniyor</span></div><div class="list" id="dashboard-follow-ups"><div class="empty">Takip görevleri yükleniyor…</div></div></div>
@@ -291,7 +339,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div class="panel-head"><h2>Firma kaydı</h2><span class="pill blue">Kalıcı kayıt</span></div>
 <form id="company-form" class="quote-form" style="margin:16px 0">
 <input id="company-id" type="hidden">
-<div><label for="company-name">Firma unvanı *</label><input id="company-name" maxlength="200" required placeholder=""></div>
+<div><label for="company-name">Firma unvanı *</label><input id="company-name" maxlength="200" required placeholder=""></div><div><label for="company-sector">Sektör *</label><select id="company-sector" multiple required aria-label="Bir veya daha fazla sektör seçin"><option value="Çelik Eşya">Çelik Eşya</option><option value="Mobilya">Mobilya</option><option value="Baza">Baza</option><option value="Kanepe ve Koltuk">Kanepe ve Koltuk</option><option value="Bazalı Kanepe">Bazalı Kanepe</option><option value="Hastane Yatağı Üreticileri">Hastane Yatağı Üreticileri</option><option value="Ütü Masası ve Kurutmalık Üreticileri">Ütü Masası ve Kurutmalık Üreticileri</option><option value="Otomotiv">Otomotiv</option><option value="Enjeksiyon Plastik Kalıpları">Enjeksiyon Plastik Kalıpları</option><option value="Sac Kalıpları">Sac Kalıpları</option></select></div>
 <div><label>Yetkili kişi</label><div id="company-people" class="repeat-list"><div class="repeat-row"><input class="company-person" maxlength="200" placeholder=""><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div></div></div>
 <div><label>Telefon numarası</label><div id="company-phones" class="repeat-list"><div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" inputmode="tel" autocomplete="tel" placeholder=""><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div></div></div>
 <div class="address-grid">
@@ -321,9 +369,9 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 </div>
 <div id="company-rows" class="company-list"><div class="empty">Firmalar yükleniyor…</div></div>
 </div></section>
-<section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div class="location-picker"><label for="meeting-company-search">Firma seçimi</label><input id="meeting-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="meeting-company-results" class="autocomplete-results"></div><select id="meeting-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><input id="meeting-date" type="datetime-local" lang="tr" step="60" required></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder=""></div></div><div><label for="meeting-notes">Görüşme notları (raporda gösterilmez)</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea></div>
+<section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div class="location-picker"><label for="meeting-company-search">Firma seçimi</label><input id="meeting-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="meeting-company-results" class="autocomplete-results"></div><select id="meeting-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><div class="custom-date-field" data-date-picker="datetime"><input id="meeting-date" type="datetime-local" lang="tr" step="60" hidden><input id="meeting-date-display" class="date-picker-display" type="text" readonly required placeholder="Tarih ve saat seçin" aria-haspopup="dialog" aria-expanded="false" aria-controls="meeting-date-calendar"></div></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder=""></div></div><div><label for="meeting-notes">Görüşme notları</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea><p id="meeting-ai-status" class="footer-note" role="status" aria-live="polite">Ana ekrandaki yapay zekâ görüşme yardımcısı taslağı bu forma aktarır. Kaydetmeden önce kontrol edin.</p></div>
 <div><div class="panel-head"><h3>Görüşmede konuşulan ürünler</h3><button class="btn" id="add-meeting-product" type="button">＋ Ürün ekle</button></div><div id="meeting-product-lines" class="meeting-product-lines"></div><p class="footer-note">Katalogdan seçin; miktar ve fiyatı kontrol edin. Kalıp kullanılan makinelerde 1 takım kalıp seti makina fiyatına dahildir; ekstra set bedelini görüşmede siz belirlersiniz.</p></div>
-<p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><div class="location-picker follow-up-company-picker"><input id="follow-up-company-search" type="search" placeholder="" autocomplete="off" aria-label="Firma seç" aria-expanded="false" required><div id="follow-up-company-results" class="autocomplete-results"></div><select id="follow-up-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="follow-up-date">Takip tarihi</label><input id="follow-up-date" type="date" required></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder=""></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
+<p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><div class="location-picker follow-up-company-picker"><input id="follow-up-company-search" type="search" placeholder="" autocomplete="off" aria-label="Firma seç" aria-expanded="false" required><div id="follow-up-company-results" class="autocomplete-results"></div><select id="follow-up-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="follow-up-date">Takip tarihi</label><div class="custom-date-field" data-date-picker="date"><input id="follow-up-date" type="date" hidden><input id="follow-up-date-display" class="date-picker-display" type="text" readonly required placeholder="Tarih seçin" aria-haspopup="dialog" aria-expanded="false" aria-controls="follow-up-date-calendar"></div></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder=""></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
 <section class="page" id="page-products">
 <div class="panel">
   <div class="panel-head"><h2>Ürün kataloğu</h2><span class="pill blue">Kalıcı kayıt</span></div>
@@ -401,7 +449,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 </main>
 </div>
 <nav class="mobile-nav" aria-label="Mobil menü">
-<button class="active" data-page="dashboard"><span class="symbol">⌂</span>Özet</button><button data-page="companies"><span class="symbol">▤</span>Firmalar</button><button data-page="meetings"><span class="symbol">◷</span>Görüşmeler</button><button data-page="products"><span class="symbol">◇</span>Ürünler</button><button data-page="quotes"><span class="symbol">▧</span>Teklifler</button><button data-page="templates"><span class="symbol">▣</span>Belgeler</button>
+<button class="active" data-page="dashboard"><span class="symbol">⌂</span>Özet</button><button data-page="companies"><span class="symbol">▤</span>Firmalar</button><button data-page="meetings"><span class="symbol">◷</span>Görüşmeler</button><button data-page="products"><span class="symbol">◇</span>Ürünler</button><button data-page="quotes"><span class="symbol">▧</span>Teklifler</button><button data-page="templates"><span class="symbol">▣</span>Belgeler</button><button type="button" id="agents-mobile-link"><span class="symbol">⚙</span>Ajanlar</button>
 </nav>
 <dialog id="reports-dialog" class="profile-dialog"><div class="panel-head"><h2>Görüşme raporu</h2><button type="button" class="btn" id="reports-close">Kapat</button></div><div class="panel"><div class="panel-head"><h2>Görüşme raporu</h2><span class="pill">Notlar hariç</span></div><form id="meeting-report-form" class="quote-form"><div class="quote-fields"><div><label for="report-from">Başlangıç tarihi</label><input id="report-from" type="date"></div><div><label for="report-to">Bitiş tarihi</label><input id="report-to" type="date"></div><div><label for="report-type">Görüşme şekli</label><select id="report-type"><option value="all">Tümü</option><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div></div><p class="footer-note">Raporda firma, tarih, görüşme şekli ve konu görünür. Görüşme notları dahil edilmez.</p><button class="btn" type="submit">Raporu aç / PDF kaydet</button></form></div></dialog>
 <dialog id="profile-dialog" class="profile-dialog">
@@ -424,7 +472,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 const titles={dashboard:["Genel Bakış","Günaydın, satış ekibi","İşlerin, görüşmelerin ve tekliflerin tek yerde."],companies:["Firmalar","Firma portföyü","Firmaları, ilgili kişileri ve son temasları takip et."],meetings:["Görüşmeler","Görüşme geçmişi","Notları ve sonraki adımları tek yerde tut."],products:["Ürünler ve Fiyatlar","Ürün kataloğu","Fiyatları ve para birimlerini gözden geçir."],quotes:["Teklifler","Teklif çalışma alanı","Taslakları incele; hesapları API doğrular."],templates:["Belgeler","Belge şablonları","Word, Excel ve doldurulabilir PDF şablonlarından kopya oluştur."]};
 function updateIstanbulGreeting(){const now=new Date(),parts=new Intl.DateTimeFormat("tr-TR",{timeZone:"Europe/Istanbul",hour:"2-digit",minute:"2-digit",hourCycle:"h23",weekday:"long",day:"numeric",month:"long"}).formatToParts(now);const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));const hour=Number(p.hour);const greeting=hour>=5&&hour<11?"Günaydın":hour>=11&&hour<18?"İyi günler":hour>=18&&hour<22?"İyi akşamlar":"İyi geceler";const title=document.getElementById("page-title");if(title&&document.querySelector("#page-dashboard.active"))title.textContent=greeting+", satış ekibi";const eyebrow=document.querySelector(".welcome .eyebrow");if(eyebrow)eyebrow.textContent=p.weekday+" · "+p.day+" "+p.month+" · İstanbul";}
 function go(page){document.querySelectorAll(".page").forEach(el=>el.classList.toggle("active",el.id==="page-"+page));document.querySelectorAll("[data-page]").forEach(el=>el.classList.toggle("active",el.dataset.page===page));document.getElementById("crumb-current").textContent=titles[page][0];document.getElementById("page-title").textContent=page==="dashboard"?document.getElementById("page-title").textContent:titles[page][1];document.getElementById("page-subtitle").textContent=titles[page][2];if(page==="dashboard")updateIstanbulGreeting();window.scrollTo({top:0,behavior:"smooth"});}
-document.querySelectorAll("[data-page]").forEach(el=>el.addEventListener("click",()=>go(el.dataset.page)));document.getElementById("profile-reports-button").addEventListener("click",()=>{profileMenu.hidden=true;profileMenuButton.setAttribute("aria-expanded","false");document.getElementById("reports-dialog").showModal();});
+document.querySelectorAll("[data-page]").forEach(el=>el.addEventListener("click",()=>go(el.dataset.page)));document.getElementById("agents-link").addEventListener("click",()=>window.location.assign("/agents"));document.getElementById("agents-mobile-link").addEventListener("click",()=>window.location.assign("/agents"));document.getElementById("profile-reports-button").addEventListener("click",()=>{profileMenu.hidden=true;profileMenuButton.setAttribute("aria-expanded","false");document.getElementById("reports-dialog").showModal();});
 document.getElementById("reports-close").addEventListener("click",()=>document.getElementById("reports-dialog").close());
 document.querySelectorAll("[data-meeting-tab]").forEach(button=>button.addEventListener("click",()=>{const tab=button.dataset.meetingTab;document.querySelectorAll("[data-meeting-tab]").forEach(b=>{const active=b===button;b.classList.toggle("active",active);b.setAttribute("aria-selected",String(active));});document.getElementById("meeting-create-tab").hidden=tab!=="create";document.getElementById("meeting-history-tab").hidden=tab!=="history";if(tab==="create"){loadMeetingCompanies();loadFollowUpCompanies();loadFollowUps();}else{loadMeetings();}}));
 document.querySelectorAll("[data-go]").forEach(el=>el.addEventListener("click",()=>go(el.dataset.go)));
@@ -611,7 +659,7 @@ function renderCompanyList(){
   const query=normalizeSearch(document.getElementById("company-search").value);
   const city=document.getElementById("company-filter-city").value,district=document.getElementById("company-filter-district").value;
   const filtered=allCompanies.filter(c=>{
-    const searchable=[c.name,c.city,c.district,c.neighborhood,c.street,c.building_number,c.postal_code,c.address,c.address_extra,c.website,c.email,c.tax_number,c.tax_office,c.mersis_number,...(c.authorized_people||[]),...(c.phone_numbers||[])].map(normalizeSearch);
+    const searchable=[c.name,c.sector,c.city,c.district,c.neighborhood,c.street,c.building_number,c.postal_code,c.address,c.address_extra,c.website,c.email,c.tax_number,c.tax_office,c.mersis_number,...(c.authorized_people||[]),...(c.phone_numbers||[])].map(normalizeSearch);
     return (!city||String(c.city||"")===city)&&(!district||String(c.district||"")===district)&&(!query||searchable.some(value=>value.includes(query)));
   });
   list.replaceChildren();
@@ -627,7 +675,7 @@ function renderCompanyList(){
     const records=document.createElement("div");records.className="company-city-records";
     for(const company of companies){
       const card=document.createElement("article");card.className="company-card";
-      const title=document.createElement("strong");title.className="company-card-title";title.textContent=company.name||"Firma adı yok";card.append(title);
+      const title=document.createElement("strong");title.className="company-card-title";title.textContent=company.name||"Firma adı yok";card.append(title);const sector=document.createElement("div");sector.className="company-card-line";sector.textContent="Sektör: "+((company.sectors||((company.sector||"").split(", ").filter(Boolean))).join(", ")||"Sektör bilgisi eksik");card.append(sector);
       const contacts=document.createElement("div");contacts.className="company-card-line";
       const people=(company.authorized_people||[]).filter(Boolean).join(", "),phones=(company.phone_numbers||[]).filter(Boolean);contacts.textContent=people;
       phones.forEach(phone=>{if(contacts.childNodes.length)contacts.append(document.createTextNode(" · "));const link=document.createElement("a");link.href="tel:"+phone.replace(/[^+\d]/g,"");link.className="company-card-link";link.textContent=formatPhoneDisplay(phone);contacts.append(link);});
@@ -701,7 +749,8 @@ function fillCompanyForm(company){
   document.getElementById("company-name").value=company.name||"";
   fillRepeat("company-people",company.authorized_people||[],"company-person","Yetkili kişinin adı");
   fillRepeat("company-phones",company.phone_numbers||[],"company-phone","Telefon numarası","tel");
-  setCompanyLocation(company.city||"",company.district||"");if(company.city)loadDistrictsForCity(company.city,company.district||"");for(const [id,key] of [["company-neighborhood","neighborhood"],["company-street","street"],["company-building-number","building_number"],["company-postal-code","postal_code"],["company-address-extra","address_extra"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
+  setCompanyLocation(company.city||"",company.district||"");if(company.city)loadDistrictsForCity(company.city,company.district||"");Array.from(document.getElementById("company-sector").options).forEach(option=>option.selected=(company.sectors||((company.sector||"").split(", ").filter(Boolean))).includes(option.value));
+  for(const [id,key] of [["company-neighborhood","neighborhood"],["company-street","street"],["company-building-number","building_number"],["company-postal-code","postal_code"],["company-address-extra","address_extra"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
   if(!company.city&&!company.district&&!company.neighborhood&&!company.street&&!company.building_number&&!company.postal_code&&!company.address_extra)document.getElementById("company-address-extra").value=company.address||"";
   document.getElementById("save-company").textContent="Değişiklikleri kaydet";document.getElementById("cancel-company-edit").hidden=false;
   document.getElementById("company-message").textContent="Firma düzenleniyor.";
@@ -739,6 +788,7 @@ document.getElementById("company-form").addEventListener("submit",async event=>{
     if(!csrfToken)await readCsrf();
     const payload={
       name:normalizeTurkishName(document.getElementById("company-name").value),
+      sectors:Array.from(document.getElementById("company-sector").selectedOptions).map(option=>option.value),
       authorized_people:repeatedValues(".company-person").map(normalizeTurkishName),phone_numbers:repeatedValues(".company-phone").map(normalizePhoneForStorage),
       city:document.getElementById("company-city").value.trim()||null,
       district:document.getElementById("company-district").value.trim()||null,
@@ -756,6 +806,7 @@ document.getElementById("company-form").addEventListener("submit",async event=>{
       notes:document.getElementById("company-notes").value.trim()||null
     };
     if(!payload.name)throw new Error("Firma unvanı gerekli.");
+    if(!payload.sector)throw new Error("Firma sektörü seçilmelidir.");
     const id=document.getElementById("company-id").value;
     const response=await fetch(id?"/api/companies/"+encodeURIComponent(id):"/api/companies",{method:id?"PUT":"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
     if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
@@ -809,7 +860,7 @@ function addMeetingProductRow(prefill=null,targetId="meeting-product-lines"){
  }
  search.addEventListener("input",renderResults);search.addEventListener("focus",renderResults);
  productWrap.append(productLabel,search,results,productSelect);
- const quantityWrap=document.createElement("div"),quantityLabel=document.createElement("label");quantityLabel.textContent="Miktar";const quantity=document.createElement("input");quantity.className="meeting-product-quantity";quantity.type="number";quantity.min="1";quantity.max="999999";quantity.step="1";quantity.value=prefill?.quantity||"1";quantity.required=true;quantity.inputMode="numeric";quantityLabel.append(quantity);quantityWrap.append(quantityLabel);
+ const quantityWrap=document.createElement("div"),quantityLabel=document.createElement("label");quantityLabel.textContent="Miktar";const quantity=document.createElement("input");quantity.className="meeting-product-quantity";quantity.type="number";quantity.min="1";quantity.max="999999";quantity.step="1";quantity.value=prefill?.quantity===0?"":String(prefill?.quantity??1);quantity.required=true;quantity.inputMode="numeric";quantityLabel.append(quantity);quantityWrap.append(quantityLabel);
  const priceWrap=document.createElement("div"),listLabel=document.createElement("label");listLabel.textContent="Liste fiyatı";const listValue=document.createElement("div");listValue.className="meeting-list-price";const selectedProduct=products.find(p=>p.id===prefill?.product_id);listValue.textContent=selectedProduct?.unit_price==null?"—":formatMoney(selectedProduct.unit_price,selectedProduct.currency);priceWrap.append(listLabel,listValue);const negotiatedWrap=document.createElement("div"),priceLabel=document.createElement("label");priceLabel.textContent="Pazarlıklı birim fiyat";const price=document.createElement("input");price.className="meeting-product-price";price.type="number";price.min="0";price.max="99999999";price.step="1";price.value=prefill?.unit_price==null||String(prefill?.unit_price)===""?(selectedProduct?.unit_price==null?"":String(Number(selectedProduct.unit_price))):String(prefill.unit_price);price.placeholder="";price.inputMode="numeric";priceLabel.append(price);negotiatedWrap.append(priceLabel);
  const remove=document.createElement("button");remove.type="button";remove.className="btn remove-meeting-product";remove.textContent="−";remove.setAttribute("aria-label","Ürünü kaldır");remove.addEventListener("click",()=>row.remove());
  row.append(productWrap,quantityWrap,priceWrap,negotiatedWrap,remove);container.append(row);
@@ -960,6 +1011,91 @@ document.getElementById("meeting-report-form").addEventListener("submit",e=>{
  e.preventDefault();const params=new URLSearchParams();const from=document.getElementById("report-from").value,to=document.getElementById("report-to").value,type=document.getElementById("report-type").value;
  if(from)params.set("date_from",from);if(to)params.set("date_to",to);if(type)params.set("meeting_type",type);
  window.open("/api/meeting-report?"+params.toString(),"_blank","noopener");
+});
+
+let dashboardAssistantPreviousResponseId=null;
+const dashboardAssistantMessages=document.getElementById("dashboard-assistant-messages");
+function addDashboardAssistantMessage(role,message){
+ const item=document.createElement("div");item.style.cssText="padding:9px 11px;border:1px solid var(--line);border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere";
+ item.style.background=role==="assistant"?"var(--panel)":"var(--surface,transparent)";
+ const label=document.createElement("strong");label.textContent=role==="assistant"?"Satış Asistanı":"Siz";label.style.display="block";label.style.marginBottom="4px";
+ const body=document.createElement("div");body.textContent=message;item.append(label,body);dashboardAssistantMessages.append(item);dashboardAssistantMessages.scrollTop=dashboardAssistantMessages.scrollHeight;
+}
+async function sendDashboardAssistantMessage(){
+ const input=document.getElementById("dashboard-assistant-input"),button=document.getElementById("dashboard-assistant-send"),status=document.getElementById("dashboard-assistant-status");
+ const message=input.value.trim();if(!message)return;
+ button.disabled=true;status.textContent="Yanıt hazırlanıyor…";addDashboardAssistantMessage("user",message);input.value="";
+ try{
+  if(!csrfToken)await readCsrf();
+  const response=await fetch("/api/assistant/chat",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({message,previous_response_id:dashboardAssistantPreviousResponseId})});
+  const result=await response.json().catch(()=>({}));
+  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
+  if(response.status===409){dashboardAssistantPreviousResponseId=null;throw new Error("Sohbet oturumu yenilendi. Mesajınızı tekrar gönderin.");}
+  if(!response.ok)throw new Error(result.detail||"Asistan yanıt veremedi.");
+  dashboardAssistantPreviousResponseId=result.response_id||null;addDashboardAssistantMessage("assistant",result.message||"Yanıt alınamadı.");status.textContent="";
+ }catch(error){status.textContent=error.message||"Asistan isteği tamamlanamadı.";}
+ finally{button.disabled=false;input.focus();}
+}
+document.getElementById("dashboard-assistant-send")?.addEventListener("click",sendDashboardAssistantMessage);
+document.getElementById("dashboard-assistant-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendDashboardAssistantMessage();}});
+document.getElementById("dashboard-assistant-new")?.addEventListener("click",()=>{dashboardAssistantPreviousResponseId=null;dashboardAssistantMessages.replaceChildren();const empty=document.createElement("div");empty.className="empty";empty.textContent="Yeni sohbet başladı.";dashboardAssistantMessages.append(empty);document.getElementById("dashboard-assistant-status").textContent="";});
+async function loadDashboardWikiDocuments(){
+ const list=document.getElementById("dashboard-wiki-documents");if(!list)return;
+ list.replaceChildren();const loading=document.createElement("div");loading.className="empty";loading.textContent="Bilgi belgeleri yükleniyor…";list.append(loading);
+ try{
+  const response=await fetch("/api/wiki/documents",{credentials:"same-origin",cache:"no-store"});
+  if(response.status===401){showLogin();return;}if(!response.ok)throw new Error("Bilgi belgeleri yüklenemedi.");
+  const docs=await response.json();list.replaceChildren();
+  if(!docs.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="Henüz Wiki belgesi eklenmemiş.";list.append(empty);return;}
+  for(const doc of docs){
+   const row=document.createElement("div");row.className="list-item";row.style.display="flex";row.style.alignItems="center";row.style.justifyContent="space-between";row.style.gap="8px";
+   const title=document.createElement("span");title.textContent=doc.title;const remove=document.createElement("button");remove.type="button";remove.className="btn";remove.textContent="Sil";
+   remove.addEventListener("click",async()=>{if(!window.confirm("Bu bilgi belgesini Wiki indeksinden silmek istiyor musunuz?"))return;remove.disabled=true;
+    try{if(!csrfToken)await readCsrf();const result=await fetch("/api/wiki/documents/"+encodeURIComponent(doc.source_id),{method:"DELETE",credentials:"same-origin",headers:{"X-CSRF-Token":csrfToken}});const body=await result.json().catch(()=>({}));if(!result.ok)throw new Error(body.detail||"Belge silinemedi.");await loadDashboardWikiDocuments();}
+    catch(error){document.getElementById("dashboard-wiki-status").textContent=error.message||"Belge silinemedi.";}finally{remove.disabled=false;}
+   });row.append(title,remove);list.append(row);
+  }
+ }catch(error){list.textContent=error.message||"Bilgi belgeleri yüklenemedi.";}
+}
+document.getElementById("dashboard-wiki-list-toggle")?.addEventListener("click",async()=>{const list=document.getElementById("dashboard-wiki-documents");list.hidden=!list.hidden;if(!list.hidden)await loadDashboardWikiDocuments();});
+document.getElementById("dashboard-wiki-upload")?.addEventListener("click",async()=>{
+ const fileInput=document.getElementById("dashboard-wiki-file"),status=document.getElementById("dashboard-wiki-status"),button=document.getElementById("dashboard-wiki-upload");
+ const file=fileInput.files?.[0];if(!file){status.textContent="Önce bir belge seçin.";return;}
+ button.disabled=true;status.textContent="Belge okunuyor ve Wiki indeksine ekleniyor…";
+ try{
+  if(!csrfToken)await readCsrf();
+  const body=new FormData();body.append("file",file);
+  const response=await fetch("/api/wiki/documents",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"X-CSRF-Token":csrfToken},body});
+  const result=await response.json().catch(()=>({}));
+  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
+  if(!response.ok)throw new Error(result.detail||"Belge Wiki'ye eklenemedi.");
+  status.textContent=result.title+" eklendi ("+Number(result.characters_indexed||0).toLocaleString("tr-TR")+" karakter, "+Number(result.chunks_indexed||0)+" bölüm)."+(result.truncated?" İlk 200.000 karakter indekslendi; belgenin kalanı alınmadı.":"");
+  fileInput.value="";if(!document.getElementById("dashboard-wiki-documents").hidden)await loadDashboardWikiDocuments();
+ }catch(error){status.textContent=error.message||"Belge yüklenemedi.";}
+ finally{button.disabled=false;}
+});
+document.getElementById("dashboard-prepare-meeting")?.addEventListener("click",async()=>{
+ const button=document.getElementById("dashboard-prepare-meeting"),status=document.getElementById("dashboard-meeting-ai-status");
+ const notesText=document.getElementById("dashboard-meeting-notes").value.trim();
+ if(notesText.length<10){status.textContent="En az 10 karakterlik görüşme metni yazın.";return;}
+ button.disabled=true;status.textContent="Firma ve ürün kayıtları kontrol ediliyor; kayıt hazırlanıyor…";
+ try{
+  if(!csrfToken)await readCsrf();
+  const response=await fetch("/api/meetings/capture",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({notes_text:notesText})});
+  const result=await response.json().catch(()=>({}));
+  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
+  if(!response.ok)throw new Error(result.detail||"Firma ve görüşme kaydı oluşturulamadı.");
+  if(!result.created){
+   status.textContent="Kayıt oluşturulmadı. "+(result.questions||["Metindeki eksik bilgileri tamamlayıp yeniden deneyin."]).join(" · ");
+   if(result.warnings?.length)status.textContent+=" Uyarı: "+result.warnings.join(" · ");
+   return;
+  }
+  await Promise.all([loadCompanies(),loadMeetings()]);
+  document.getElementById("dashboard-meeting-notes").value="";
+  status.textContent=(result.company.created?"Yeni firma kaydı oluşturuldu: ":"Mevcut firma ile görüşme kaydedildi: ")+result.company.name+" · "+result.company.sector+" · Görüşme kaydı oluşturuldu.";
+  if(result.warnings?.length)status.textContent+=" Uyarı: "+result.warnings.join(" · ");
+ }catch(error){status.textContent=error.message||"Firma ve görüşme kaydı oluşturulamadı.";}
+ finally{button.disabled=false;}
 });
 document.getElementById("meeting-form").addEventListener("submit",async event=>{
   event.preventDefault();const message=document.getElementById("meeting-message");const button=document.getElementById("save-meeting");button.disabled=true;message.textContent="Görüşme kaydediliyor…";
@@ -1347,6 +1483,59 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
  document.addEventListener("keydown",event=>{if(event.key==="Escape")document.querySelectorAll(".html-select.open").forEach(w=>{w.classList.remove("open");w.querySelector(".html-select-trigger")?.setAttribute("aria-expanded","false");});});
 })();
 
+/* Tarih alanları için uygulama içi takvim: gerçek form değerleri mevcut inputlarda tutulur. */
+(function(){
+ const configs=[
+  {id:"meeting-date",display:"meeting-date-display",mode:"datetime"},
+  {id:"follow-up-date",display:"follow-up-date-display",mode:"date"}
+ ];
+ const pad=n=>String(n).padStart(2,"0");
+ const parse=value=>{if(!value)return null;const [d,t="00:00"]=value.split("T");const [y,m,day]=d.split("-").map(Number);const [h,min]=t.split(":").map(Number);return new Date(y,m-1,day,h||0,min||0);};
+ const isoDate=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+ const monthNames=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+ configs.forEach(config=>{
+  const field=document.getElementById(config.id),display=document.getElementById(config.display);
+  if(!field||!display)return;
+  field.required=false;
+  const wrap=display.closest(".custom-date-field");
+  const panel=document.createElement("div");panel.className="date-picker-panel";panel.id=config.id+"-calendar";panel.hidden=true;panel.setAttribute("role","dialog");panel.setAttribute("aria-label",config.mode==="date"?"Takip tarihi seç":"Görüşme tarihi ve saati seç");
+  panel.innerHTML='<div class="date-picker-head"><strong class="date-picker-title"></strong><div class="date-picker-nav"><button type="button" data-month="-1" aria-label="Önceki ay">‹</button><button type="button" data-month="1" aria-label="Sonraki ay">›</button></div></div><div class="date-picker-week"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div><div class="date-picker-grid"></div><div class="date-picker-time" '+(config.mode==="date"?'hidden':'')+'><label for="'+config.id+'-time">Saat</label><input id="'+config.id+'-time" type="time" step="60"></div><div class="date-picker-actions"><button type="button" class="btn" data-cancel>Vazgeç</button><button type="button" class="btn primary" data-apply>Uygula</button></div>';
+  wrap.append(panel);
+  // Takvim içindeki dokunma/tıklamalar dışarı tıklama olarak değerlendirilmemeli.
+  panel.addEventListener("click",event=>event.stopPropagation());
+  let shown=new Date(),selected=parse(field.value)||new Date();
+  const time=panel.querySelector("input[type=time]");
+  const render=()=>{
+   panel.querySelector(".date-picker-title").textContent=monthNames[shown.getMonth()]+" "+shown.getFullYear();
+   const grid=panel.querySelector(".date-picker-grid");grid.replaceChildren();
+   const first=new Date(shown.getFullYear(),shown.getMonth(),1);const offset=(first.getDay()+6)%7;const days=new Date(shown.getFullYear(),shown.getMonth()+1,0).getDate();
+   for(let i=0;i<offset;i++){const blank=document.createElement("span");blank.className="date-picker-empty";grid.append(blank);}
+   for(let day=1;day<=days;day++){const date=new Date(shown.getFullYear(),shown.getMonth(),day);const button=document.createElement("button");button.type="button";button.className="date-picker-day";button.textContent=day;
+    if(isoDate(date)===isoDate(selected))button.classList.add("selected");if(isoDate(date)===isoDate(new Date()))button.classList.add("today");
+    button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();selected=new Date(date.getFullYear(),date.getMonth(),date.getDate());render();});grid.append(button);}
+  };
+  const updateDisplay=()=>{
+   const value=parse(field.value);
+   display.value=value?new Intl.DateTimeFormat("tr-TR",config.mode==="date"?{day:"2-digit",month:"long",year:"numeric"}:{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(value):"";
+  };
+  const close=()=>{panel.hidden=true;display.setAttribute("aria-expanded","false");};
+  display.addEventListener("click",()=>{
+   selected=parse(field.value)||new Date();shown=new Date(selected.getFullYear(),selected.getMonth(),1);
+   if(time)time.value=pad(selected.getHours())+":"+pad(selected.getMinutes());
+   render();panel.hidden=false;display.setAttribute("aria-expanded","true");
+  });
+  panel.querySelectorAll("[data-month]").forEach(button=>button.addEventListener("click",()=>{shown.setMonth(shown.getMonth()+Number(button.dataset.month));render();}));
+  panel.querySelector("[data-cancel]").addEventListener("click",close);
+  panel.querySelector("[data-apply]").addEventListener("click",()=>{
+   if(config.mode==="datetime"){const [h,m]=(time.value||"09:00").split(":").map(Number);selected.setHours(h,m,0,0);field.value=isoDate(selected)+"T"+pad(h)+":"+pad(m);}
+   else field.value=isoDate(selected);
+   field.dispatchEvent(new Event("input",{bubbles:true}));field.dispatchEvent(new Event("change",{bubbles:true}));updateDisplay();close();
+  });
+  updateDisplay();
+ });
+ document.addEventListener("click",event=>{configs.forEach(c=>{const display=document.getElementById(c.display),panel=document.getElementById(c.id+"-calendar");if(panel&&!panel.hidden&&!panel.contains(event.target)&&!display.contains(event.target)){panel.hidden=true;display.setAttribute("aria-expanded","false");}});});
+ document.addEventListener("keydown",event=>{if(event.key==="Escape")configs.forEach(c=>{const panel=document.getElementById(c.id+"-calendar");if(panel&&!panel.hidden){panel.hidden=true;document.getElementById(c.display).setAttribute("aria-expanded","false");}});});
+})();
 </script>
 </body>
 </html>

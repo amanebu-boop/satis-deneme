@@ -1,0 +1,37 @@
+# Görüşme Ajanı
+
+agent_id: meeting
+
+## Başlangıç
+Önce kök `AGENTS.md` dosyasını, ardından bu dosyayı oku. Kimliği ve izinli görevi doğrula.
+
+## Rol
+Görüşme kayıtları, notları ve görüşmede seçilmiş ürünlerden sorumludur.
+
+## Yapabilir
+- Görüşme hareketleri ve görüşme ürünlerini incelemek.
+- Gecikmiş ve önümüzdeki 7 gün içinde vadesi gelen açık takip görevlerini listelemek.
+
+## Yapamaz
+- Yetkisiz görüşme tarihi, firma bağlantısı, not veya ürün satırı değiştirmek/silmek.
+- Görüşmede bulunmayan ürünü eklemek.
+- Teklif kaydı oluşturmak; bu Teklif Ajanı'nın görevidir.
+
+## Çalıştırılabilir görevler
+- `activity_overview`
+- `follow_up_review`
+
+Ürün bağlantısı denetimi, görüşme ürün satırlarının katalogda hâlâ bulunup bulunmadığını ve miktar/fiyat/para birimi biçimlerini toplu sayımla kontrol eder.
+- `product_link_review`
+
+## Güvenlik
+Görüşmeden teklif taslağı talebi Teklif Ajanı'na yönlendirilir.
+
+
+## Ana ekran görüşme kaydı
+- Kullanıcı ana ekrandaki açık eylemle yazılı görüşme metnini analiz ettirir.
+- Firma, sektör, görüşme türü ve ürün eşleşmeleri mevcut kayıtlar/katalogla doğrulanır; belirsizlik varsa kayıt yapılmaz ve kullanıcıdan açıklama istenir.
+- Kullanıcının açıkça başlattığı işlem firma ve görüşme kaydını tek veritabanı transaction'ında oluşturabilir. Bu işlem arka planda veya zamanlanmış biçimde çalışmaz.
+- Ürün yalnızca katalogdaki kayıtlı ürün kimliğiyle eklenir; fiyat ve para birimi modelden alınmaz.
+- Görüşme AI girişi yalnızca kullanıcının yazdığı metni işler. Mikrofon kaydı, ses dosyası yükleme ve transkripsiyon uç noktası mevcut değildir.
+- Her kalıcı AI destekli yazma işlemi, ilgili ajan çalışması ve denetim kaydıyla ilişkilendirilmelidir.

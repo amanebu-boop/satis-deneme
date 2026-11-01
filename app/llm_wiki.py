@@ -33,7 +33,7 @@ def _redact_meeting_contacts(value: str | None) -> str:
     text = value or ""
     text = re.sub(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", "[e-posta gizlendi]", text)
     # Mask Turkish phone-number shapes while leaving ordinary short numeric values intact.
-    phone_pattern = r"(?<!\w)(?:\+?90[ .-]?)?0?\\(?[2-5]\d{2}\\)?[ .-]?\d{3}[ .-]?\d{2}[ .-]?\d{2}(?!\w)"
+    phone_pattern = r"(?<!\w)(?:\+?90[ .-]?)?0?\(?[2-5]\d{2}\)?[ .-]?\d{3}[ .-]?\d{2}[ .-]?\d{2}(?!\w)"
     return re.sub(phone_pattern, "[telefon gizlendi]", text)
 
 
@@ -142,43 +142,48 @@ def refresh_wiki_index() -> None:
         _upsert("meeting", str(item["id"]), title, json.dumps(content, ensure_ascii=False))
 
     with db.connect() as connection:
-        quotation_rows = connection.execute(
+        quotation_rows = [dict(row) for row in connection.execute(
             """SELECT q.id, q.quote_number, q.currency, q.subtotal, q.tax_rate,
                       q.tax_amount, q.total, q.status, q.created_at, c.name AS company_name
                FROM quotations q LEFT JOIN companies c ON c.id = q.company_id
                ORDER BY q.created_at DESC, q.id DESC"""
-        ).fetchall()
-        for quote in quotation_rows:
-            line_rows = connection.execute(
+        ).fetchall()]
+        quote_lines = {
+            str(quote["id"]): [dict(row) for row in connection.execute(
                 """SELECT description, quantity, unit_price, line_total
                    FROM quotation_lines WHERE quotation_id=? ORDER BY rowid""",
                 (quote["id"],),
-            ).fetchall()
-            content = {
-                "quote_number": quote["quote_number"], "company": quote["company_name"],
-                "currency": quote["currency"], "subtotal": quote["subtotal"],
-                "tax_rate": quote["tax_rate"], "tax_amount": quote["tax_amount"],
-                "total": quote["total"], "status": quote["status"],
-                "created_at": quote["created_at"], "lines": [dict(row) for row in line_rows],
-            }
-            active_ids["quotation"].add(str(quote["id"]))
-            title = f"Teklif · {quote['quote_number'] or quote['id']} · {quote['company_name'] or 'Firma'}"
-            _upsert("quotation", str(quote["id"]), title, json.dumps(content, ensure_ascii=False))
-
-        follow_up_rows = connection.execute(
+            ).fetchall()]
+            for quote in quotation_rows
+        }
+        follow_up_rows = [dict(row) for row in connection.execute(
             """SELECT t.id, t.title, t.due_date, t.status, c.name AS company_name
                FROM follow_up_tasks t JOIN companies c ON c.id=t.company_id
                ORDER BY t.due_date, t.id"""
-        ).fetchall()
-        for task in follow_up_rows:
-            content = {
-                "company": task["company_name"], "task": task["title"],
-                "due_date": task["due_date"], "status": task["status"],
-            }
-            active_ids["follow_up"].add(str(task["id"]))
-            _upsert("follow_up", str(task["id"]),
-                    f"Takip · {task['company_name']} · {task['title']}",
-                    json.dumps(content, ensure_ascii=False))
+        ).fetchall()]
+
+    # Close the read connection before _upsert opens write connections.
+    for quote in quotation_rows:
+        content = {
+            "quote_number": quote["quote_number"], "company": quote["company_name"],
+            "currency": quote["currency"], "subtotal": quote["subtotal"],
+            "tax_rate": quote["tax_rate"], "tax_amount": quote["tax_amount"],
+            "total": quote["total"], "status": quote["status"],
+            "created_at": quote["created_at"], "lines": quote_lines[str(quote["id"])],
+        }
+        active_ids["quotation"].add(str(quote["id"]))
+        title = f"Teklif · {quote['quote_number'] or quote['id']} · {quote['company_name'] or 'Firma'}"
+        _upsert("quotation", str(quote["id"]), title, json.dumps(content, ensure_ascii=False))
+
+    for task in follow_up_rows:
+        content = {
+            "company": task["company_name"], "task": task["title"],
+            "due_date": task["due_date"], "status": task["status"],
+        }
+        active_ids["follow_up"].add(str(task["id"]))
+        _upsert("follow_up", str(task["id"]),
+                f"Takip · {task['company_name']} · {task['title']}",
+                json.dumps(content, ensure_ascii=False))
 
     # Deleted catalog/customer records must not remain searchable in the Wiki.
     with db.connect() as connection:

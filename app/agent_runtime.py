@@ -368,7 +368,7 @@ def _meeting_product_link_review(input_data: dict[str, Any]) -> dict[str, Any]:
         SUM(CASE WHEN trim(COALESCE(mp.name,''))='' THEN 1 ELSE 0 END) AS missing_product_name,
         SUM(CASE WHEN trim(COALESCE(mp.quantity,''))='' OR mp.quantity GLOB '*[^0-9]*' OR CAST(mp.quantity AS INTEGER)<1 THEN 1 ELSE 0 END) AS invalid_quantity,
         SUM(CASE WHEN trim(COALESCE(mp.unit_price,''))='' OR mp.unit_price GLOB '*[^0-9]*' OR CAST(mp.unit_price AS INTEGER)<0 THEN 1 ELSE 0 END) AS invalid_unit_price,
-        SUM(CASE WHEN length(trim(COALESCE(mp.currency,'')))!=3 THEN 1 ELSE 0 END) AS invalid_currency
+        SUM(CASE WHEN length(trim(COALESCE(mp.currency,'')))!=3 OR (p.currency IS NOT NULL AND trim(p.currency)!=trim(mp.currency)) THEN 1 ELSE 0 END) AS invalid_currency
         FROM meeting_products mp LEFT JOIN products p ON p.id=mp.product_id"""
     with db.connect() as connection:
         row = connection.execute(sql).fetchone()

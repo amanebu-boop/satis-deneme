@@ -1,5 +1,3 @@
-from fastapi.testclient import TestClient
-
 from app.main import app
 from app.meeting_audio import prepare_meeting_draft
 
@@ -76,3 +74,7 @@ def test_prepare_meeting_draft_rejects_unknown_company_id():
     draft, _ = prepare_meeting_draft(client, "gpt-5.5", "Bir firma ile görüşme yapıldı.", [], [])
     assert draft["company_id"] is None
     assert any("Firma eşleşmesi doğrulanamadı" in item for item in draft["questions"])
+
+
+def test_audio_transcription_endpoint_is_not_registered():
+    assert not any(getattr(route, "path", None) == "/api/meetings/transcribe" for route in app.routes)

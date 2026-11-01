@@ -149,14 +149,14 @@ def test_sales_coordinator_requires_sales_profile_before_running(monkeypatch):
     ])
     invoked = []
 
-    def fake_coordinator(input_data, actor, execute_task):
-        invoked.append((input_data, actor))
+    def fake_safe_task(agent_id, task_type, input_data, actor, parent_run_id=None):
+        invoked.append((agent_id, task_type, input_data, actor))
         return {"workflow": "sales_coordinate", "completed": 1, "failed": 0}
 
-    monkeypatch.setattr(agent_chat, "run_sales_coordination", fake_coordinator)
+    monkeypatch.setattr(agent_chat, "_run_safe_task", fake_safe_task)
     result = agent_chat.run_assistant_turn(client, "gpt-test", "Satış özetini hazırla", "tester")
 
-    assert invoked == [({"tasks": ["sales_overview"]}, "tester")]
+    assert invoked == [("sales", "sales_coordinate", {"tasks": ["sales_overview"]}, "tester")]
     assert result["message"] == "Satış özeti hazır."
     assert [item["name"] for item in result["tool_results"]] == [
         "read_agent_profile", "run_agent_task"

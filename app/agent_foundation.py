@@ -134,13 +134,15 @@ def init_agent_foundation() -> None:
             """
         )
         now = _now()
+        seeded_agents = 0
         for agent_id, name, description in AGENT_DEFINITIONS:
-            connection.execute(
+            cursor = connection.execute(
                 """INSERT OR IGNORE INTO agents
                    (id, name, description, enabled, created_at, updated_at)
                    VALUES (?, ?, ?, 0, ?, ?)""",
                 (agent_id, name, description, now, now),
             )
+            seeded_agents += max(0, cursor.rowcount)
         connection.execute(
             "UPDATE agents SET description = ? WHERE id = 'sales'",
             ("Satış sürecini koordine eder ve gerekli işlem ajanlarını yönlendirir.",),
@@ -158,7 +160,8 @@ def init_agent_foundation() -> None:
                WHERE rule_key = 'external_ai_enabled' AND config_json = ?""",
             (_json({"enabled": True}), now, _json({"enabled": False})),
         )
-        _audit(connection, "agent_foundation_initialized", details={"agents_seeded": len(AGENT_DEFINITIONS)})
+        if seeded_agents:
+            _audit(connection, "agent_foundation_initialized", details={"agents_seeded": seeded_agents})
 
 
 def get_rule_config(rule_key: str, default: Any = None) -> Any:

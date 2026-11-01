@@ -41,3 +41,9 @@ Satış sürecinin koordinatörüdür; kullanıcının isteğini sınıflandır�
 
 ## Bağımlılıklar
 Firma, Ürün, Görüşme, Teklif ve Raporlama ajanları. Satış Ajanı etkinleştirildiğinde bu bağımlılıklar uygulama tarafından otomatik etkinleştirilir. Depo Ajanı bu koordinasyonun parçası değildir.
+
+
+## LLM Wiki
+- Makine, opsiyon, teknik doküman, satış kuralı ve geçmiş görüşme sorularında önce yerel LLM Wiki aramasını kullan.
+- Wiki sonuçlarında bulunmayan teknik özellik, fiyat, teslimat veya ticari koşulu üretme; kaynağın eksik olduğunu açıkça belirt.
+- Firma ve görüşme geçmişi sonuçlarında yalnızca gerekli iş bağlamını kullan; iletişim ve vergi bilgileri Wiki indeksine alınmaz.

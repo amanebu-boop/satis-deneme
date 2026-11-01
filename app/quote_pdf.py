@@ -11,6 +11,8 @@ from xml.sax.saxutils import escape
 
 from fastapi import HTTPException
 from openpyxl import load_workbook
+from openpyxl.worksheet.pagebreak import Break
+import re
 from pypdf import PdfReader
 
 
@@ -221,7 +223,45 @@ def convert_excel_to_pdf(excel_content: bytes) -> bytes:
             input_path = workdir / "quotation.xlsx"
             output_path = workdir / "quotation.pdf"
             profile_path = workdir / "lo-profile"
-            input_path.write_bytes(excel_content)
+            # LibreOffice is the primary renderer on Render. Apply the requested
+            # section boundary to an in-memory copy so the downloaded Excel template
+            # and its original formatting/page setup remain untouched.
+            try:
+                workbook = load_workbook(BytesIO(excel_content), data_only=False)
+                try:
+                    sheet = workbook["Teklif"]
+                    section_seven_row = None
+                    for row_index in range(1, sheet.max_row + 1):
+                        row_values = [
+                            str(sheet.cell(row_index, column_index).value or "").strip()
+                            for column_index in range(1, sheet.max_column + 1)
+                        ]
+                        if any(re.match(r"^7\\s*[.)]", value) for value in row_values):
+                            section_seven_row = row_index
+                            break
+                    if section_seven_row is None:
+                        raise ValueError("Excel şablonunda 7. Garanti ve Kabul bölümü bulunamadı.")
+                    # Excel row breaks are placed after the preceding row.
+                    sheet.row_breaks.brk = [
+                        item for item in sheet.row_breaks.brk
+                        if getattr(item, "id", None) != section_seven_row - 1
+                    ]
+                    sheet.row_breaks.append(Break(id=section_seven_row - 1))
+                    sheet.page_setup.paperSize = sheet.PAPERSIZE_A4
+                    sheet.page_setup.orientation = "portrait"
+                    sheet.sheet_properties.pageSetUpPr.fitToPage = True
+                    sheet.page_setup.fitToWidth = 1
+                    sheet.page_setup.fitToHeight = 0
+                    prepared = BytesIO()
+                    workbook.save(prepared)
+                    input_path.write_bytes(prepared.getvalue())
+                finally:
+                    workbook.close()
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail="PDF için Excel şablonunda 7. bölüm sayfa sonu hazırlanamadı.",
+                ) from exc
             command = [
                 converter, "--headless", f"-env:UserInstallation={profile_path.as_uri()}",
                 "--convert-to", "pdf", "--outdir", str(workdir), str(input_path),

@@ -197,3 +197,13 @@ Her görevde:
 - OpenAI API kullanımı ChatGPT aboneliğinden ayrıdır ve API hesabında ayrıca ücretlendirilir.
 - Testler bu aşamada henüz çalıştırılmadı; başarı iddiası yoktur. Render dağıtımı ve GitHub Actions test sonucu ayrıca doğrulanmalıdır.
 - Çalışma dalı `feature/agent-foundation`; `main` ve canlı Render servisine dokunulmadı.
+
+
+### Entegrasyon doğrulaması — 2026-11-01
+
+- GitHub Actions, commit `606fa28b84b9ebcec16b9d38ca3ce8dc2afa9f56` üzerinde `python -m pytest -q` komutunu başarıyla tamamladı: **60 passed, 1 skipped, 1 warning**. Python test workflow'u başarılıdır.
+- Önceki denemede bir mevcut testin beklediği hata metniyle uyumsuzluk görüldü; mesaj düzeltildi. Sonraki test koşumu başarılıdır.
+- Render test servisi `srv-dbhssmd9el5s738cnr9g`, commit `606fa28b84b9ebcec16b9d38ca3ce8dc2afa9f56` için yeni sürümü başlattı. Render kayıtlarında `Application startup complete`, `Uvicorn running`, `Your service is live` ve `GET /` için `200 OK` görüldü.
+- OpenAI anahtarı tanımlı olmadığı için gerçek OpenAI API isteği henüz denenmedi. Bu beklenen yapılandırma adımıdır; API anahtarı olmadan sohbet uç noktası güvenli biçimde `503` döndürür.
+- Son kullanıcı arayüzü: `/assistant`; ajan yönetimi ekranından bağlantı: `/agents`.
+- `main` ve canlı Render servisine hiçbir değişiklik gönderilmedi.

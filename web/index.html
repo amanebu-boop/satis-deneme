@@ -315,6 +315,12 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div id="dashboard-assistant-messages" aria-live="polite" style="display:grid;gap:8px;max-height:280px;overflow:auto;margin-bottom:8px"><div class="empty">Satış Asistanı hazır. Nasıl yardımcı olabilirim?</div></div>
 <textarea id="dashboard-assistant-input" rows="2" maxlength="6000" placeholder="Satış süreciyle ilgili sorunuzu yazın…" style="width:100%;min-height:58px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>
 <div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap"><button class="btn primary" id="dashboard-assistant-send" type="button">Gönder</button><button class="btn" id="dashboard-assistant-new" type="button">Yeni sohbet</button><span id="dashboard-assistant-status" class="footer-note" role="status"></span></div>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)">
+<label for="dashboard-wiki-file" class="footer-note">Teknik bilgi belgesi ekle (PDF, DOCX, TXT, MD)</label>
+<input id="dashboard-wiki-file" type="file" accept=".pdf,.docx,.txt,.md" style="max-width:250px">
+<button class="btn" id="dashboard-wiki-upload" type="button">Wiki'ye ekle</button>
+<span id="dashboard-wiki-status" class="footer-note" role="status"></span>
+</div>
 </div>
 <div class="panel dashboard-ai-capture" style="margin-bottom:12px;padding:12px">
 <div class="panel-head" style="margin-bottom:7px"><h2>Yapay zekâ ile firma ve görüşme kaydı</h2><span class="pill blue">Hızlı kayıt</span></div>
@@ -1031,6 +1037,22 @@ async function sendDashboardAssistantMessage(){
 document.getElementById("dashboard-assistant-send")?.addEventListener("click",sendDashboardAssistantMessage);
 document.getElementById("dashboard-assistant-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendDashboardAssistantMessage();}});
 document.getElementById("dashboard-assistant-new")?.addEventListener("click",()=>{dashboardAssistantPreviousResponseId=null;dashboardAssistantMessages.replaceChildren();const empty=document.createElement("div");empty.className="empty";empty.textContent="Yeni sohbet başladı.";dashboardAssistantMessages.append(empty);document.getElementById("dashboard-assistant-status").textContent="";});
+document.getElementById("dashboard-wiki-upload")?.addEventListener("click",async()=>{
+ const fileInput=document.getElementById("dashboard-wiki-file"),status=document.getElementById("dashboard-wiki-status"),button=document.getElementById("dashboard-wiki-upload");
+ const file=fileInput.files?.[0];if(!file){status.textContent="Önce bir belge seçin.";return;}
+ button.disabled=true;status.textContent="Belge okunuyor ve Wiki indeksine ekleniyor…";
+ try{
+  if(!csrfToken)await readCsrf();
+  const body=new FormData();body.append("file",file);
+  const response=await fetch("/api/wiki/documents",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"X-CSRF-Token":csrfToken},body});
+  const result=await response.json().catch(()=>({}));
+  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
+  if(!response.ok)throw new Error(result.detail||"Belge Wiki'ye eklenemedi.");
+  status.textContent=result.title+" eklendi ("+Number(result.characters_indexed||0).toLocaleString("tr-TR")+" karakter).";
+  fileInput.value="";
+ }catch(error){status.textContent=error.message||"Belge yüklenemedi.";}
+ finally{button.disabled=false;}
+});
 document.getElementById("dashboard-prepare-meeting")?.addEventListener("click",async()=>{
  const button=document.getElementById("dashboard-prepare-meeting"),status=document.getElementById("dashboard-meeting-ai-status");
  const transcript=document.getElementById("dashboard-meeting-transcript").value.trim();

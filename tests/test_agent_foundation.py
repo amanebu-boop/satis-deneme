@@ -182,3 +182,17 @@ def test_disabling_coordinator_does_not_disable_shared_dependencies(isolated_dat
     assert states["sales"] is False
     assert states["company"] is True
     assert states["quotation"] is True
+
+
+def test_external_workflow_is_recorded_with_audit_event(isolated_database):
+    from app import db
+    run_id = agents.record_external_run(
+        "meeting", "capture_from_text", "test-user",
+        {"transcript_sha256": "abc123"},
+        {"company_id": "company-1", "meeting_id": "meeting-1", "product_line_count": 1},
+    )
+    run = next(item for item in agents.list_runs() if item["id"] == run_id)
+    assert run["status"] == "succeeded"
+    assert run["task_type"] == "capture_from_text"
+    event = next(item for item in agents.list_audit_logs() if item.get("run_id") == run_id)
+    assert event["event_type"] == "external_run_succeeded"

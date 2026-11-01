@@ -46,7 +46,7 @@ def _check_meeting_ai_rate_limit(session_token: str) -> None:
 
 
 class MeetingCaptureRequest(BaseModel):
-    transcript: str = Field(min_length=10, max_length=15000)
+    notes_text: str = Field(min_length=10, max_length=15000)
 
 
 MEETING_CAPTURE_SCHEMA = {
@@ -115,17 +115,17 @@ def _normalized_company_name(value: str | None) -> str:
     return " ".join((value or "").casefold().split())
 
 
-def _candidate_score(item: dict[str, Any], transcript_tokens: set[str], fields: tuple[str, ...]) -> int:
+def _candidate_score(item: dict[str, Any], notes_text_tokens: set[str], fields: tuple[str, ...]) -> int:
     values = " ".join(str(item.get(field) or "") for field in fields).casefold()
     tokens = {token for token in __import__("re").findall(r"[\w-]+", values, flags=__import__("re").UNICODE) if len(token) > 1}
-    return len(tokens & transcript_tokens)
+    return len(tokens & notes_text_tokens)
 
 
 def _relevant_candidates(
-    items: list[dict[str, Any]], transcript: str, fields: tuple[str, ...], limit: int
+    items: list[dict[str, Any]], notes_text: str, fields: tuple[str, ...], limit: int
 ) -> list[dict[str, Any]]:
     import re
-    query_tokens = {token for token in re.findall(r"[\w-]+", transcript.casefold(), flags=re.UNICODE) if len(token) > 1}
+    query_tokens = {token for token in re.findall(r"[\w-]+", notes_text.casefold(), flags=re.UNICODE) if len(token) > 1}
     ranked = [(score, index, item) for index, item in enumerate(items)
               if (score := _candidate_score(item, query_tokens, fields)) > 0]
     ranked.sort(key=lambda entry: (-entry[0], entry[1]))
@@ -135,14 +135,14 @@ def _relevant_candidates(
 def extract_meeting_capture(
     client: Any,
     model: str,
-    transcript: str,
+    notes_text: str,
     companies: list[dict[str, Any]],
     products: list[dict[str, Any]],
 ) -> tuple[dict[str, Any], Any]:
-    # Send only transcript-relevant candidates to the model. Full records remain
+    # Send only notes_text-relevant candidates to the model. Full records remain
     # server-side for validating any IDs returned by the model.
-    company_candidates = _relevant_candidates(companies, transcript, ("name", "city", "district"), 12)
-    product_candidates = _relevant_candidates(products, transcript, ("sku", "name", "description"), 20)
+    company_candidates = _relevant_candidates(companies, notes_text, ("name", "city", "district"), 12)
+    product_candidates = _relevant_candidates(products, notes_text, ("sku", "name", "description"), 20)
     # Keep directly related parent/child options so a matched machine retains its options.
     selected_ids = {str(item["id"]) for item in product_candidates}
     for item in products:
@@ -175,7 +175,7 @@ def extract_meeting_capture(
             "Fiyat, indirim, para birimi, teslimat tarihi veya ticari taahhüt üretme. Sistem bu metni kullanarak firma ve görüşme kaydını oluşturacak; eksik zorunlu bilgiyi null/unknown bırak."
         ),
         input=json.dumps({
-            "transcript": transcript,
+            "notes_text": notes_text,
             "allowed_company_sectors": COMPANY_SECTORS,
             "existing_companies": company_context,
             "product_catalog": product_context,
@@ -223,7 +223,7 @@ def extract_meeting_capture(
     if meeting_type not in {"phone", "visit"}:
         questions.append("Görüşme türü belirsiz. Telefon görüşmesi mi, yüz yüze ziyaret mi olduğunu belirtin.")
     topic = str(meeting_data.get("topic") or "").strip()[:200] or "Genel görüşme"
-    notes = str(meeting_data.get("notes") or "").strip()[:10000] or transcript.strip()[:10000]
+    notes = str(meeting_data.get("notes") or "").strip()[:10000] or notes_text.strip()[:10000]
     clean_lines: list[dict[str, Any]] = []
     warnings: list[str] = []
     for line in meeting_data.get("product_lines", []):
@@ -312,7 +312,7 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
         model = os.environ.get("OPENAI_MODEL", "gpt-5.5")
         companies = db.list_companies()
         products = db.list_products()
-        extracted, ai_response = extract_meeting_capture(client, model, payload.transcript.strip(), companies, products)
+        extracted, ai_response = extract_meeting_capture(client, model, payload.notes_text.strip(), companies, products)
         # Meter the paid model response before any company/meeting write.
         try:
             session_hash = hashlib.sha256(request.cookies.get("sales_session", "").encode("utf-8")).hexdigest()
@@ -338,7 +338,7 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
         try:
             agent_foundation.record_external_run(
                 "meeting", "capture_from_text", str(session["subject"]),
-                {"transcript_sha256": hashlib.sha256(payload.transcript.strip().encode("utf-8")).hexdigest()},
+                {"notes_text_sha256": hashlib.sha256(payload.notes_text.strip().encode("utf-8")).hexdigest()},
                 {"company_id": saved["company"]["id"], "meeting_id": saved["meeting"]["id"],
                  "product_line_count": len(saved["meeting"].get("product_lines", []))},
             )

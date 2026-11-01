@@ -199,8 +199,8 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
     if _should_search_wiki(message):
         knowledge = llm_wiki.search_wiki(message, limit=3)
         compact_results = [
-            {"source_type": item["source_type"], "title": item["title"],
-             "content": item["content"][:900]}
+            {"source_type": item.get("source_type", "unknown"), "title": item.get("title", ""),
+             "content": str(item.get("content", ""))[:900]}
             for item in knowledge.get("results", [])
         ]
         if compact_results:

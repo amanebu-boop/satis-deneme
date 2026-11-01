@@ -195,9 +195,11 @@ def prepare_meeting_draft(client: Any, model: str, transcript: str,
         if product is None:
             parsed["unmatched_products"].append(line.get("mention") or "Katalogda eşleşmeyen ürün")
             continue
-        if not isinstance(quantity, int) or quantity < 1 or quantity > 999999:
+        if type(quantity) is not int or quantity < 0 or quantity > 999999:
             parsed["questions"].append(f"{product['name']} için miktarı belirtin.")
-            continue
+            quantity = 0
+        if quantity == 0:
+            parsed["questions"].append(f"{product['name']} için miktarı belirtin.")
         clean_lines.append({
             "product_id": product["id"], "sku": product["sku"], "name": product["name"],
             "product_type": product.get("product_type", "machine"),
@@ -206,6 +208,10 @@ def prepare_meeting_draft(client: Any, model: str, transcript: str,
         })
     parsed["product_lines"] = clean_lines
     parsed["meeting_type"] = parsed["meeting_type"] if parsed["meeting_type"] in {"phone", "visit"} else None
+    if parsed["meeting_type"] is None:
+        parsed["questions"].append("Görüşme türünü (telefon veya ziyaret) seçin.")
+    if parsed.get("company_id") is None:
+        parsed["questions"].append("Firma eşleşmedi; doğru firmayı listeden seçin.")
     parsed["topic"] = str(parsed.get("topic") or "Genel görüşme")[:200]
     parsed["notes"] = str(parsed.get("notes") or transcript)[:10000]
     return parsed, response

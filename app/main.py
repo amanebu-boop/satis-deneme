@@ -545,7 +545,7 @@ class CompanyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     # "sector" remains accepted for older clients; "sectors" is the canonical multi-select field.
     sector: str | None = Field(default=None, max_length=100)
-    sectors: list[str] = Field(default_factory=list, min_length=1, max_length=10)
+    sectors: list[str] = Field(min_length=1, max_length=10)
     authorized_people: list[str] = Field(default_factory=list, max_length=50)
     phone_numbers: list[str] = Field(default_factory=list, max_length=50)
     address: str | None = Field(default=None, max_length=3000)

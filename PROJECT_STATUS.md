@@ -345,3 +345,26 @@ Her görevde:
 - `agents/meeting.md`, `agents/sales.md`, `AGENT_ARCHITECTURE.md` ve `docs/knowledge/README.md` uygulamadaki güncel akışa göre güncellendi.
 - Yeni testler: Wiki araması, silinmiş kayıt temizliği, belge yükleme/listeleme/silme, asistan Wiki aracı, ayrı asistan rotasının kaldırılması, aynı turda profil+görev engeli, harici iş akışı denetimi, günlük harcama sınırı ve kapalı Denetim Ajanı ön kontrolü.
 - Bu kayıt eklenirken CI sonuçları ve son Render test dağıtımı henüz doğrulanmamıştır. Gerçek OpenAI uçtan uca çağrısı yapılmış sayılmaz. `main` ve canlı production Render servisine değişiklik gönderilmemiştir.
+
+
+## 2026-11-01 — Son doğrulama ve ajan görev kapsamı
+
+- Ajan görevleri salt-okunur kapsamda genişletildi:
+  - Firma: eksik sektör/şehir/adres/telefon ve yinelenen firma adı grupları.
+  - Ürün: açıklama, tam sayı fiyat, para birimi ve opsiyonun ana makine bağlantısı.
+  - Görüşme: gecikmiş ve 7 gün içinde vadesi gelen açık takip görevleri.
+  - Raporlama: zorunlu `YYYY-MM-DD` başlangıç/bitiş tarihleriyle görüşme/teklif sayıları ve para birimine göre ayrı teklif toplamları; para birimleri birbirine çevrilmez.
+  - Denetim: başarısız/engellenmiş görevler, reddedilen/süresi dolan onaylar ve süresi geçmiş bekleyen onaylar; aktör bilgisi rapora çıkarılmaz.
+- Ajan Yönetimi ekranında Firma, Ürün, Görüşme ve Denetim ajanlarının yeni kontrol görevleri açıldı; rapor sonuçları için alan etiketleri eklendi.
+- Genel, ayrı onay oluşturma API'si kullanılmadığı için kaldırıldı; gerçek teklif onay akışının review/execute uç noktaları korunmuştur.
+- Teklif önizlemesindeki eski “İndirim: yok” satırı da kaldırıldı. Ana ekran ve Ajan Yönetimi HTML dosyalarında indirim/discount metni kalmadığı statik taramayla kontrol edildi.
+- Görüşme AI aday filtresi için test eklendi; modele yalnızca transkriptle ilişkili firma/ürün adayları gider.
+- LLM Wiki, aynı dosya adıyla yeni belge yüklendiğinde eski indeks sürümünü değiştirir; belge listesi ve silme işlemi ana ekrandan yapılır. PDF 100 sayfa, dosya 8 MB, çıkarılan metin 200.000 karakter sınırındadır; kesilme kullanıcıya bildirilir.
+- Wiki ürün kayıtlarında ana makineye bağlı opsiyonların adları ve fiyatları da görünür. Teklif geçmişi, teklif satırları ve takip görevleri de indekslenir. Görüşme notlarında e-posta, telefon ve 10–11 haneli vergi/kimlik numarası biçimleri maskelenir.
+- Son Python CI, commit `089d080b60e26d9d2ed33abc96ad71164ae1e7bd`: **131 passed, 1 skipped, 1 warning**.
+- LibreOffice/teklif şablonu doğrulama ve Docker image build: **başarılı**.
+- Render test servisi `satis-deneme-test`, commit `089d080b60e26d9d2ed33abc96ad71164ae1e7bd` için **live**. Uygulama başlangıcı tamamlandı ve ana sayfa `GET /` 200 OK verdi.
+- Test servisi `feature/agent-foundation` dalını izler. `main` ve production Render servisine hiçbir değişiklik gönderilmedi; PR #11 taslak/açık bırakıldı.
+- Gerçek OpenAI API çağrısı bu doğrulamada yapılmadı ve API anahtarının mevcut varlığı yeniden kontrol edilmedi. Wiki teknik belgeleri kullanıcı ana ekrandaki alandan yüklediğinde indekslenir. Mevcut Wiki araması yerel sözcük eşleştirmesidir; vektör embedding veya OCR içermez.
+- `OPENAI_DAILY_BUDGET_USD` günlük maliyet freni isteğe bağlıdır; Render Environment'a pozitif bir USD tutarı girilene kadar uygulama içi günlük bütçe sınırı etkin değildir.
+- Depo Ajanı, uygulamada stok kartı/hareket/bakiye veri modeli bulunmadığı için kapalı ve çalıştırılabilir görev olmadan bırakıldı. Bu veriler olmadan stok sonucu üretmek güvenilir olmayacaktır.

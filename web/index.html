@@ -310,10 +310,10 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div class="stat"><div class="stat-top">Teklif toplamı <span class="stat-icon">€</span></div><div class="stat-value" id="dashboard-quote-total">—</div><div class="stat-foot" id="dashboard-quote-foot">Kayıtlı tekliflerin toplamı</div></div>
 </div>
 <div class="panel dashboard-ai-capture" style="margin-bottom:12px;padding:12px">
-<div class="panel-head" style="margin-bottom:7px"><h2>Yapay zekâ ile görüşme taslağı</h2><span class="pill blue">Hızlı giriş</span></div>
-<p class="footer-note" style="margin:0 0 8px">Görüşme notlarını yazın; yapay zekâ firma ve ürün kataloğuyla eşleştirerek görüşme formunu hazırlasın.</p>
+<div class="panel-head" style="margin-bottom:7px"><h2>Yapay zekâ ile firma ve görüşme kaydı</h2><span class="pill blue">Hızlı kayıt</span></div>
+<p class="footer-note" style="margin:0 0 8px">Firma ve görüşme bilgilerini yazın. Yapay zekâ firma kaydını ve görüşme kaydını otomatik oluştursun; eksik zorunlu bilgi varsa kaydetmeden önce sorar.</p>
 <textarea id="dashboard-meeting-transcript" rows="2" maxlength="15000" placeholder="Görüşmede konuşulanları buraya yazın…" style="width:100%;min-height:58px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>
-<div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap"><button class="btn primary" id="dashboard-prepare-meeting" type="button">Taslak hazırla</button><span id="dashboard-meeting-ai-status" class="footer-note" role="status" aria-live="polite"></span></div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap"><button class="btn primary" id="dashboard-prepare-meeting" type="button">Firma ve görüşme kaydı oluştur</button><span id="dashboard-meeting-ai-status" class="footer-note" role="status" aria-live="polite"></span></div>
 </div>
 <div class="columns">
 <div class="panel"><div class="panel-head"><h2>Son görüşmeler</h2><button class="link" data-go="meetings">Tümünü gör →</button></div><div class="list" id="dashboard-recent-meetings"><div class="empty">Görüşmeler yükleniyor…</div></div></div>
@@ -324,7 +324,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div class="panel-head"><h2>Firma kaydı</h2><span class="pill blue">Kalıcı kayıt</span></div>
 <form id="company-form" class="quote-form" style="margin:16px 0">
 <input id="company-id" type="hidden">
-<div><label for="company-name">Firma unvanı *</label><input id="company-name" maxlength="200" required placeholder=""></div>
+<div><label for="company-name">Firma unvanı *</label><input id="company-name" maxlength="200" required placeholder=""></div><div><label for="company-sector">Sektör *</label><select id="company-sector" required><option value="">Sektör seçin</option><option value="Çelik Eşya">Çelik Eşya</option><option value="Mobilya">Mobilya</option><option value="Baza">Baza</option><option value="Kanepe ve Koltuk">Kanepe ve Koltuk</option><option value="Bazalı Kanepe">Bazalı Kanepe</option><option value="Hastane Yatağı Üreticileri">Hastane Yatağı Üreticileri</option><option value="Ütü Masası ve Kurutmalık Üreticileri">Ütü Masası ve Kurutmalık Üreticileri</option><option value="Otomotiv">Otomotiv</option><option value="Enjeksiyon Plastik Kalıpları">Enjeksiyon Plastik Kalıpları</option><option value="Sac Kalıpları">Sac Kalıpları</option></select></div>
 <div><label>Yetkili kişi</label><div id="company-people" class="repeat-list"><div class="repeat-row"><input class="company-person" maxlength="200" placeholder=""><button class="btn repeat-add" type="button" data-repeat="company-people" aria-label="Yetkili kişi ekle">＋</button></div></div></div>
 <div><label>Telefon numarası</label><div id="company-phones" class="repeat-list"><div class="repeat-row"><input class="company-phone" type="tel" maxlength="50" inputmode="tel" autocomplete="tel" placeholder=""><button class="btn repeat-add" type="button" data-repeat="company-phones" aria-label="Telefon numarası ekle">＋</button></div></div></div>
 <div class="address-grid">
@@ -644,7 +644,7 @@ function renderCompanyList(){
   const query=normalizeSearch(document.getElementById("company-search").value);
   const city=document.getElementById("company-filter-city").value,district=document.getElementById("company-filter-district").value;
   const filtered=allCompanies.filter(c=>{
-    const searchable=[c.name,c.city,c.district,c.neighborhood,c.street,c.building_number,c.postal_code,c.address,c.address_extra,c.website,c.email,c.tax_number,c.tax_office,c.mersis_number,...(c.authorized_people||[]),...(c.phone_numbers||[])].map(normalizeSearch);
+    const searchable=[c.name,c.sector,c.city,c.district,c.neighborhood,c.street,c.building_number,c.postal_code,c.address,c.address_extra,c.website,c.email,c.tax_number,c.tax_office,c.mersis_number,...(c.authorized_people||[]),...(c.phone_numbers||[])].map(normalizeSearch);
     return (!city||String(c.city||"")===city)&&(!district||String(c.district||"")===district)&&(!query||searchable.some(value=>value.includes(query)));
   });
   list.replaceChildren();
@@ -660,7 +660,7 @@ function renderCompanyList(){
     const records=document.createElement("div");records.className="company-city-records";
     for(const company of companies){
       const card=document.createElement("article");card.className="company-card";
-      const title=document.createElement("strong");title.className="company-card-title";title.textContent=company.name||"Firma adı yok";card.append(title);
+      const title=document.createElement("strong");title.className="company-card-title";title.textContent=company.name||"Firma adı yok";card.append(title);const sector=document.createElement("div");sector.className="company-card-line";sector.textContent="Sektör: "+(company.sector||"Sektör bilgisi eksik");card.append(sector);
       const contacts=document.createElement("div");contacts.className="company-card-line";
       const people=(company.authorized_people||[]).filter(Boolean).join(", "),phones=(company.phone_numbers||[]).filter(Boolean);contacts.textContent=people;
       phones.forEach(phone=>{if(contacts.childNodes.length)contacts.append(document.createTextNode(" · "));const link=document.createElement("a");link.href="tel:"+phone.replace(/[^+\d]/g,"");link.className="company-card-link";link.textContent=formatPhoneDisplay(phone);contacts.append(link);});
@@ -734,7 +734,8 @@ function fillCompanyForm(company){
   document.getElementById("company-name").value=company.name||"";
   fillRepeat("company-people",company.authorized_people||[],"company-person","Yetkili kişinin adı");
   fillRepeat("company-phones",company.phone_numbers||[],"company-phone","Telefon numarası","tel");
-  setCompanyLocation(company.city||"",company.district||"");if(company.city)loadDistrictsForCity(company.city,company.district||"");for(const [id,key] of [["company-neighborhood","neighborhood"],["company-street","street"],["company-building-number","building_number"],["company-postal-code","postal_code"],["company-address-extra","address_extra"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
+  setCompanyLocation(company.city||"",company.district||"");if(company.city)loadDistrictsForCity(company.city,company.district||"");document.getElementById("company-sector").value=company.sector||"";
+  for(const [id,key] of [["company-neighborhood","neighborhood"],["company-street","street"],["company-building-number","building_number"],["company-postal-code","postal_code"],["company-address-extra","address_extra"],["company-website","website"],["company-email","email"],["company-tax-office","tax_office"],["company-tax-number","tax_number"],["company-mersis","mersis_number"],["company-notes","notes"]])document.getElementById(id).value=company[key]||"";
   if(!company.city&&!company.district&&!company.neighborhood&&!company.street&&!company.building_number&&!company.postal_code&&!company.address_extra)document.getElementById("company-address-extra").value=company.address||"";
   document.getElementById("save-company").textContent="Değişiklikleri kaydet";document.getElementById("cancel-company-edit").hidden=false;
   document.getElementById("company-message").textContent="Firma düzenleniyor.";
@@ -772,6 +773,7 @@ document.getElementById("company-form").addEventListener("submit",async event=>{
     if(!csrfToken)await readCsrf();
     const payload={
       name:normalizeTurkishName(document.getElementById("company-name").value),
+      sector:document.getElementById("company-sector").value,
       authorized_people:repeatedValues(".company-person").map(normalizeTurkishName),phone_numbers:repeatedValues(".company-phone").map(normalizePhoneForStorage),
       city:document.getElementById("company-city").value.trim()||null,
       district:document.getElementById("company-district").value.trim()||null,
@@ -789,6 +791,7 @@ document.getElementById("company-form").addEventListener("submit",async event=>{
       notes:document.getElementById("company-notes").value.trim()||null
     };
     if(!payload.name)throw new Error("Firma unvanı gerekli.");
+    if(!payload.sector)throw new Error("Firma sektörü seçilmelidir.");
     const id=document.getElementById("company-id").value;
     const response=await fetch(id?"/api/companies/"+encodeURIComponent(id):"/api/companies",{method:id?"PUT":"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
     if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
@@ -995,50 +998,27 @@ document.getElementById("meeting-report-form").addEventListener("submit",e=>{
  window.open("/api/meeting-report?"+params.toString(),"_blank","noopener");
 });
 
-async function prepareMeetingDraftFromText(transcript,status){
- if(transcript.length<10){status.textContent="En az 10 karakterlik görüşme notu yazın.";return false;}
- status.textContent="Yapay zekâ firma ve ürün kayıtlarını eşleştiriyor…";
- try{
-  if(!csrfToken)await readCsrf();
-  const response=await fetch("/api/meetings/prepare",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({transcript})});
-  const draft=await response.json().catch(()=>({}));
-  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
-  if(!response.ok)throw new Error(draft.detail||"Görüşme taslağı hazırlanamadı.");
-  const companySelect=document.getElementById("meeting-company"),companySearch=document.getElementById("meeting-company-search");
-  const company=meetingCompanyOptions.find(item=>String(item.id)===String(draft.company_id||""));
-  companySelect.value=company?company.id:"";companySearch.value=company?company.name:(draft.unmatched_company||"");
-  if(draft.meeting_type){document.getElementById("meeting-type").value=draft.meeting_type;}
-  else{const typeSelect=document.getElementById("meeting-type");if(![...typeSelect.options].some(option=>option.value===""))typeSelect.insertBefore(new Option("Görüşme türünü seçin",""),typeSelect.firstChild);typeSelect.value="";}
-  document.getElementById("meeting-topic").value=draft.topic||"Genel görüşme";
-  document.getElementById("meeting-notes").value=draft.notes||transcript;
-  const lines=document.getElementById("meeting-product-lines");lines.replaceChildren();
-  const selectedIds=new Set((draft.product_lines||[]).map(item=>String(item.product_id)));
-  for(const line of (draft.product_lines||[])){
-   const product=productCatalog.find(item=>String(item.id)===String(line.product_id));if(!product)continue;
-   if((product.product_type||"machine")==="option"&&product.parent_product_id&&!selectedIds.has(String(product.parent_product_id))){
-    const parent=productCatalog.find(item=>String(item.id)===String(product.parent_product_id));
-    if(parent){addMeetingProductRow({product_id:parent.id,quantity:0});selectedIds.add(String(parent.id));}
-   }
-   addMeetingProductRow({product_id:product.id,quantity:line.quantity===0?0:line.quantity,unit_price:null});
-  }
-  const issues=[...(draft.questions||[]),...(draft.unmatched_products||[]).map(item=>"Katalogda eşleşmeyen ürün: "+item)];
-  if(!company)issues.unshift("Firma eşleşmesi kesin değil; firma alanını listeden seçin.");
-  status.textContent=issues.length?"Taslak hazır. Kontrol edilmesi gerekenler: "+issues.join(" · "):"Taslak hazır. Firma, ürünler, miktarlar ve notları kontrol edip ardından görüşmeyi kaydedin.";
-  document.getElementById("meeting-ai-status").textContent=status.textContent;
-  return true;
- }catch(error){status.textContent=error.message||"Yapay zekâ taslağı hazırlanamadı.";return false;}
-}
 document.getElementById("dashboard-prepare-meeting")?.addEventListener("click",async()=>{
  const button=document.getElementById("dashboard-prepare-meeting"),status=document.getElementById("dashboard-meeting-ai-status");
  const transcript=document.getElementById("dashboard-meeting-transcript").value.trim();
- if(transcript.length<10){status.textContent="En az 10 karakterlik görüşme notu yazın.";return;}
- button.disabled=true;status.textContent="Firma ve ürün kataloğu yükleniyor…";
+ if(transcript.length<10){status.textContent="En az 10 karakterlik görüşme metni yazın.";return;}
+ button.disabled=true;status.textContent="Firma ve ürün kayıtları kontrol ediliyor; kayıt hazırlanıyor…";
  try{
-  await Promise.all([loadMeetingCompanies(),loadProducts()]);
-  document.getElementById("meeting-notes").value=transcript;
-  const prepared=await prepareMeetingDraftFromText(transcript,status);
-  if(prepared){go("meetings");document.getElementById("meeting-ai-status").textContent=status.textContent;}
- }catch(error){status.textContent=error.message||"Görüşme taslağı hazırlanamadı.";}
+  if(!csrfToken)await readCsrf();
+  const response=await fetch("/api/meetings/capture",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({transcript})});
+  const result=await response.json().catch(()=>({}));
+  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
+  if(!response.ok)throw new Error(result.detail||"Firma ve görüşme kaydı oluşturulamadı.");
+  if(!result.created){
+   status.textContent="Kayıt oluşturulmadı. "+(result.questions||["Metindeki eksik bilgileri tamamlayıp yeniden deneyin."]).join(" · ");
+   if(result.warnings?.length)status.textContent+=" Uyarı: "+result.warnings.join(" · ");
+   return;
+  }
+  await Promise.all([loadCompanies(),loadMeetings()]);
+  document.getElementById("dashboard-meeting-transcript").value="";
+  status.textContent=(result.company.created?"Yeni firma kaydı oluşturuldu: ":"Mevcut firma ile görüşme kaydedildi: ")+result.company.name+" · "+result.company.sector+" · Görüşme kaydı oluşturuldu.";
+  if(result.warnings?.length)status.textContent+=" Uyarı: "+result.warnings.join(" · ");
+ }catch(error){status.textContent=error.message||"Firma ve görüşme kaydı oluşturulamadı.";}
  finally{button.disabled=false;}
 });
 document.getElementById("meeting-form").addEventListener("submit",async event=>{

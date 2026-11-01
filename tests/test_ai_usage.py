@@ -58,3 +58,29 @@ def test_gpt55_long_context_multiplier_is_applied():
     cost = ai_usage.calculate_cost("gpt-5.5", 272001, 0, 1000)
     expected = (272001 * 5 * 2 + 1000 * 30 * 1.5) / 1_000_000
     assert cost == Decimal(str(expected))
+
+
+def test_daily_budget_blocks_at_limit_and_unknown_pricing(tmp_path, monkeypatch):
+    from app import db, ai_usage
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "usage-budget.db"))
+    monkeypatch.setenv("OPENAI_DAILY_BUDGET_USD", "0.01")
+    db.init_db()
+    ai_usage.init_ai_usage()
+    from datetime import datetime, timezone
+    with db.connect() as connection:
+        connection.execute(
+            """INSERT INTO agent_ai_usage
+               (response_id, agent_id, model, input_tokens, output_tokens, cost_usd, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            ("priced", "assistant", "gpt-5.5", 100, 20, "0.02", datetime.now(timezone.utc).isoformat()),
+        )
+    assert ai_usage.daily_budget_exceeded() is True
+
+
+def test_daily_budget_is_opt_in_when_not_configured(tmp_path, monkeypatch):
+    from app import db, ai_usage
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "usage-no-budget.db"))
+    monkeypatch.delenv("OPENAI_DAILY_BUDGET_USD", raising=False)
+    db.init_db()
+    ai_usage.init_ai_usage()
+    assert ai_usage.daily_budget_exceeded() is False

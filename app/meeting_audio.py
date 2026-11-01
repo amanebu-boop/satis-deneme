@@ -1,4 +1,4 @@
-"""Authenticated, non-persistent audio transcription for meeting capture."""
+"""Authenticated AI-assisted meeting draft preparation from user-entered text."""
 from __future__ import annotations
 
 import os
@@ -28,7 +28,7 @@ def _check_meeting_ai_rate_limit(session_token: str) -> None:
         while events and now - events[0] >= 60:
             events.popleft()
         if len(events) >= MAX_REQUESTS_PER_MINUTE:
-            raise HTTPException(status_code=429, detail="Bir dakika içinde en fazla 5 ses dönüştürme isteği gönderilebilir.")
+            raise HTTPException(status_code=429, detail="Bir dakika içinde en fazla 5 yapay zekâ görüşme taslağı isteği gönderilebilir.")
         events.append(now)
         if len(_rate_events) > 2048:
             for old_key in list(_rate_events):

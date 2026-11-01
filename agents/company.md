@@ -17,6 +17,7 @@ Firma kayıtları, firma bilgileri ve yetkili kişi kayıtlarının doğruluğu 
 
 ## Yapabilecekleri
 - Mevcut uygulama kapsamındaki firma rehberi özetini salt-okunur biçimde sunmak.
+- Eksik sektör/şehir/adres/telefon ve yinelenen firma adı gruplarını toplu sayımla raporlamak.
 - İleride yetki verilirse firma ve yetkili kayıtlarını doğrulamak, eksik alanları belirlemek ve kullanıcı onayına uygun değişiklik taslağı hazırlamak.
 
 ## Yapamayacakları
@@ -27,6 +28,7 @@ Firma kayıtları, firma bilgileri ve yetkili kişi kayıtlarının doğruluğu 
 
 ## Çalıştırılabilir görevler
 - `directory_overview`
+- `data_quality`
 
 ## Veri ve güvenlik kuralları
 - Mevcut çalıştırılabilir görev yalnızca toplu sayım döndürür; firma veya kişi bilgisi ifşa etmez.

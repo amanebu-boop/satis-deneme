@@ -108,9 +108,9 @@ function renderAiUsage(data,agents){
  addReportMetric(root,"Toplam giriş tokenı",totals.input_tokens||0);
  addReportMetric(root,"Toplam çıkış tokenı",totals.output_tokens||0);
  addReportMetric(root,"API isteği",totals.requests||0);
- addReportMetric(root,"Tahmini toplam maliyet",money(totals.cost_usd||0));
+ const costMetric=document.createElement("div");costMetric.className="report-metric";const costValue=document.createElement("strong");costValue.textContent=money(totals.cost_usd||0);const costLabel=document.createElement("span");costLabel.textContent="Tahmini toplam maliyet";costMetric.append(costValue,costLabel);root.append(costMetric);
  const rows=new Map((data.agents||[]).map(x=>[x.agent_id,x]));
- const ordered=[...agents,{id:"assistant",name:"Asistan / ortak yönlendirme",enabled:false}];
+ const ordered=[...agents,{id:"assistant",name:"Genel asistan",enabled:false},{id:"assistant_shared",name:"Ortak ajan yönlendirme",enabled:false}];
  ordered.forEach(agent=>{
   const x=rows.get(agent.id)||{};
   const row=document.createElement("tr");

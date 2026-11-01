@@ -14,7 +14,7 @@ def test_wiki_retrieves_relevant_catalog_item_without_external_embeddings(tmp_pa
 
     result = llm_wiki.search_wiki("çift kafa büküm", limit=3)
 
-    assert result["retrieval"] == "local_lexical"
+    assert result["retrieval"] in {"local_lexical", "local_fts5"}
     assert result["results"]
     assert result["results"][0]["source_type"] == "product"
     assert "22000" in result["results"][0]["content"]
@@ -33,6 +33,7 @@ def test_wiki_removes_deleted_dynamic_records(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "list_meetings", lambda: [])
     llm_wiki.search_wiki("eski makine")
     products.clear()
+    llm_wiki._last_refresh_at = 0
     result = llm_wiki.search_wiki("eski makine")
     assert not any(item["source_type"] == "product" for item in result["results"])
 

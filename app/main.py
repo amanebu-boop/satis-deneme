@@ -756,7 +756,10 @@ def browser_push_subscribe(payload: PushSubscriptionCreate, request: Request) ->
     _require_csrf(request, session)
     if not push_notifications.configured():
         raise HTTPException(status_code=503, detail="Push notifications are not configured")
-    return push_notifications.save_subscription(payload.model_dump())
+    try:
+        return push_notifications.save_subscription(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.delete("/api/push/subscribe")

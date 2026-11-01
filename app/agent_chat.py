@@ -7,6 +7,8 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse
+from pathlib import Path
 from pydantic import BaseModel, Field
 
 from app import agent_foundation, agent_runtime
@@ -153,3 +155,8 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
         raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Asistan isteği tamamlanamadı; sunucu kayıtlarını kontrol edin") from exc
+
+
+@router.get("/assistant")
+def assistant_page():
+    return FileResponse(Path(__file__).resolve().parent.parent / "web" / "assistant.html")

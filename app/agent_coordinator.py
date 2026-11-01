@@ -6,6 +6,7 @@ validation, sequencing, and failure isolation; it never performs business writes
 from __future__ import annotations
 
 from typing import Any, Callable
+from datetime import date
 
 from app.agent_instructions import load_agent_instructions
 from app import agent_foundation
@@ -13,11 +14,16 @@ from app import agent_foundation
 # Public intent -> (agent id, allowlisted task type).
 TASKS: dict[str, tuple[str, str]] = {
     "company_overview": ("company", "directory_overview"),
+    "company_data_quality": ("company", "data_quality"),
     "product_overview": ("product", "catalog_overview"),
+    "product_catalog_health": ("product", "catalog_health"),
     "meeting_overview": ("meeting", "activity_overview"),
+    "meeting_follow_up_review": ("meeting", "follow_up_review"),
     "quotation_overview": ("quotation", "pipeline_overview"),
     "sales_overview": ("reporting", "sales_overview"),
+    "sales_period_summary": ("reporting", "period_summary"),
     "audit_overview": ("audit", "audit_overview"),
+    "audit_anomalies": ("audit", "anomaly_review"),
     "meeting_quotation_preview": ("quotation", "prepare_from_meeting"),
 }
 MAX_COORDINATED_TASKS = 6
@@ -33,8 +39,8 @@ def run_sales_coordination(
     enabled_agents = {item["id"]: item["enabled"] for item in agent_foundation.list_agents()}
     if not enabled_agents.get("sales", False):
         raise ValueError("Satış Ajanı etkin değil; ajan yönetiminden etkinleştirilmelidir")
-    if not isinstance(input_data, dict) or set(input_data) - {"tasks", "meeting_id"}:
-        raise ValueError("sales_coordinate accepts only tasks and optional meeting_id")
+    if not isinstance(input_data, dict) or set(input_data) - {"tasks", "meeting_id", "date_from", "date_to"}:
+        raise ValueError("sales_coordinate accepts only allowlisted task inputs")
     requested = input_data.get("tasks")
     if not isinstance(requested, list) or not requested:
         raise ValueError("En az bir koordinasyon görevi seçilmelidir")
@@ -53,6 +59,17 @@ def run_sales_coordination(
             raise ValueError("Görüşmeden teklif önizlemesi için meeting_id gereklidir")
     elif meeting_id is not None:
         raise ValueError("meeting_id yalnızca meeting_quotation_preview ile kullanılabilir")
+    if "sales_period_summary" in requested:
+        if not isinstance(input_data.get("date_from"), str) or not isinstance(input_data.get("date_to"), str):
+            raise ValueError("Dönem raporu için date_from ve date_to gereklidir")
+        try:
+            start, end = date.fromisoformat(input_data["date_from"]), date.fromisoformat(input_data["date_to"])
+        except ValueError as exc:
+            raise ValueError("Dönem tarihleri YYYY-MM-DD biçiminde olmalıdır") from exc
+        if start > end or (end - start).days > 3660:
+            raise ValueError("Dönem tarih aralığı geçersiz")
+    elif "date_from" in input_data or "date_to" in input_data:
+        raise ValueError("Tarih alanları yalnızca sales_period_summary ile kullanılabilir")
 
     # Fixed order prevents model-controlled sequencing of dependent workflows.
     ordered = [name for name in TASKS if name in requested]
@@ -60,7 +77,12 @@ def run_sales_coordination(
     failures: list[dict[str, str]] = []
     for name in ordered:
         agent_id, task_type = TASKS[name]
-        task_input = {"meeting_id": meeting_id.strip()} if name == "meeting_quotation_preview" else {}
+        if name == "meeting_quotation_preview":
+            task_input = {"meeting_id": meeting_id.strip()}
+        elif name == "sales_period_summary":
+            task_input = {"date_from": input_data["date_from"], "date_to": input_data["date_to"]}
+        else:
+            task_input = {}
         if not enabled_agents.get(agent_id, False):
             failures.append({
                 "task": name, "status": "blocked",

@@ -140,7 +140,7 @@ def test_prepare_meeting_draft_only_returns_catalogued_ids_and_flags_missing_dat
     assert draft["product_lines"][0]["unit_price"] is None
     assert "bilinmeyen ürün" in draft["unmatched_products"]
     assert any("miktarı" in item for item in draft["questions"])
-    assert any("görüşme türünü" in item for item in draft["questions"])
+    assert any("görüşme türünü" in item.lower() for item in draft["questions"])
     sent = client.responses.kwargs["input"]
     assert "tax_number" not in sent
     assert "22000" not in sent

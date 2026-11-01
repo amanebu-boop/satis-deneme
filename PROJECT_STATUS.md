@@ -402,3 +402,5 @@ Her görevde:
 - Yeni görevler SAFE_TASKS, HANDLERS, Satış Ajanı koordinasyon eşlemesi ve ilgili Markdown talimat dosyalarına bağlandı.
 - Yeni Wiki maliyet, arama niyeti, gizlilik, görüşme ürün bağlantısı, teklif bütünlüğü ve üst-alt ajan çalışma zinciri testleri eklendi.
 - Bu değişiklikler yalnızca feature/agent-foundation test dalındadır. CI ve test Render doğrulaması bu kayıt güncellemesi sırasında henüz yapılmadı; main ve production Render servisine gönderim yapılmadı.
+
+- İlk Python CI çalışması 132 başarılı, 1 atlanan ve 4 başarısız test verdi. Başarısızlıklar: eski asistan test beklentileri, ürün para birimi test verisinin DB CHECK kuralını ihlali ve IBAN deseninin Türkiye IBAN uzunluğunu kapsamaması. Kod/test düzeltmeleri yapıldı; yeniden CI doğrulaması bekleniyor.

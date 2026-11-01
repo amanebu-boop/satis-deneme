@@ -25,7 +25,7 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 ## Bağımlılık ve otomatik etkinleştirme
 
 - Bir ajanın başka bir ajana gerçekten ihtiyaç duyduğu bağımlılık, `AGENT_DEPENDENCIES` içinde açıkça tanımlanır.
-- Satış Ajanı koordinatör olduğu için Firma, Ürün, Görüşme ve Teklif ajanları etkinleştirilirken otomatik etkinleştirilir.
+- Satış Ajanı koordinatör olduğu için Firma, Ürün, Görüşme, Teklif ve Raporlama ajanları etkinleştirilirken otomatik etkinleştirilir.
 - Denetim Ajanı diğer ajanların kayıtlarını okuyarak denetim yapar; diğer ajanların etkin olmasına ihtiyaç duymaz. Bu nedenle Denetim Ajanı etkinleştirildiğinde Teklif Ajanı veya diğer işlem ajanları otomatik açılmaz.
 - Bir koordinatör kapatıldığında, başka iş akışlarının da kullanabileceği bağımlılık ajanları otomatik kapatılmaz.
 - Her otomatik etkinleştirme `agent_auto_enabled` denetim olayıyla kaydedilir.
@@ -44,7 +44,7 @@ Bu belge, Satış projesinde kabul edilmiş ajan rol modelini ve görev sınırl
 
 1. Depo ajanını ancak gerçek stok kartı, depo hareketi ve stok bakiyesi veri modeli eklendiğinde etkinleştirmek.
 2. Raporlama için dönüşüm oranı ve satış hedefi raporlarını, kaynak veri alanları doğrulandıktan sonra eklemek.
-3. Wiki aramasını ihtiyaç halinde yerel FTS/semantic retrieval ile ölçeklemek; mevcut ilk sürüm sözcük eşleştirmesidir.
+3. Wiki aramasını ihtiyaç halinde yerel FTS5 BM25 sıralamasının ötesinde semantik retrieval ile ölçeklemek; FTS5 kullanılamazsa sözcüksel yedek arama devrededir.
 
 Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsamı ifade eder; henüz geliştirilmemiş görevler tamamlandı kabul edilmez.
 
@@ -65,7 +65,7 @@ Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsam�
 - Modelin araç çağrısı doğrudan veritabanına erişmez. `run_agent_task` sunucu tarafında sabit izin listesine, ajanın etkin olmasına, görev kaydına ve `AGENTS.md` + ajana ait talimat dosyasına bağlıdır. Ajan talimatı bir önceki model turunda okunmadan aynı turda görev çalıştırılamaz.
 - Asistanın tek kullanıcı arayüzü ana ekrandadır. Ayrı `/assistant` sayfası kaldırılmıştır; sohbet API'si yalnızca ana ekrandaki arayüz tarafından çağrılır.
 - İzinli özet/rapor görevleri, görüşmeden teklif önizlemesi ve yerel LLM Wiki araması açılır. Teklifin kalıcı oluşturulması ayrı, onaylı işlem akışıdır. Firma/ürün/görüşme/teklif silme araçları modele sunulmaz.
-- LLM Wiki; ürün kataloğu ve bağlı opsiyonları, firma temel bilgileri, görüşme geçmişi, teklif satırları, takip görevleri ve Markdown satış/ajan dokümanlarını SQLite üzerinde yerel sözcük eşleştirmesiyle indeksler. Ana ekrandan PDF/DOCX/TXT/MD belge alır ve uzun belgeleri parçalara böler. Sadece en alakalı birkaç sonuç modele bağlam olarak verilir; arka plan LLM çağrısı veya harici embedding isteği yapılmaz.
+- LLM Wiki; ürün kataloğu ve bağlı opsiyonları, firma temel bilgileri, görüşme geçmişi, teklif satırları, takip görevleri ve Markdown satış/ajan dokümanlarını SQLite FTS5 üzerinde BM25 sıralamasıyla indeksler; FTS5 kullanılamazsa sözcüksel yedek arama kullanılır. Ana ekrandan PDF/DOCX/TXT/MD belge alır ve uzun belgeleri parçalara böler. Sadece en alakalı birkaç sonuç modele bağlam olarak verilir; arka plan LLM çağrısı veya harici embedding isteği yapılmaz.
 - İndeks, silinen ürün/firma/görüşme/teklif/takip kayıtlarını arama dışı bırakır. Firma iletişim alanları Wiki indeksine alınmaz; görüşme notlarında e-posta, telefon ve 10–11 haneli vergi/kimlik numarası biçimleri maskelenir.
 - Kritik işlemler için modelin onayı yeterli değildir. Uygulamanın mevcut onay kaydı, kullanıcı incelemesi, onay süresi ve onaylanan içerik özeti doğrulaması tamamlanmadan işlem yürütülmez. Mevcut görüşmeden teklif oluşturma onay akışı bu ayrımı örnekler.
 - Gerçek OpenAI bağlantısının çalıştığı, yalnızca Render test servisine anahtar eklendikten ve uçtan uca çağrı başarıyla tamamlandıktan sonra doğrulanmış sayılır. Kaynak kodda anahtar bulunmaz.
@@ -79,7 +79,7 @@ Bu belgedeki "mevcut" ifadeleri yalnızca tabloda belirtilen kodlanmış kapsam�
 - Anahtar kullanıcı tarafından Render arayüzüne girilir; sohbet veya destek mesajı üzerinden paylaşılmaz. Anahtar yenilenirse eski anahtar iptal edilir.
 - Asistan uç noktası mevcut oturum + same-origin + CSRF kontrollerini korur; oturum başına süreç belleğinde dakikada en fazla 10 istek kabul eder.
 - `previous_response_id` yalnızca aynı tarayıcı oturumunun sunucuda saklanan son yanıt kimliğiyle eşleşirse kabul edilir; istemci başka oturumun yanıt kimliğini kullanamaz. Sunucu yeniden başlatılırsa sohbet devamlılığı sıfırlanır.
-- Kullanıcı mesajı 6.000 karakterle, model çıktısı 700 tokenla, araç çağrıları kullanıcı isteği başına 4 ile sınırlandırılır. Görüşme kayıt isteği modeline tüm katalog yerine metinle ilişkili en fazla 12 firma ve 20 ürün adayı gönderilir; ilişkili ana/alt ürünler de korunur. OpenAI istemcisi 30 saniye zaman aşımı ve otomatik yeniden deneme olmadan çalışır.
+- Kullanıcı mesajı 6.000 karakterle, model çıktısı 700 tokenla, araç çağrıları kullanıcı isteği başına 8 ile sınırlandırılır; konuşma geçmişi en fazla 8 kullanıcı turuyla sınırlandırılır. Görüşme kayıt isteği modeline tüm katalog yerine metinle ilişkili en fazla 12 firma ve 20 ürün adayı gönderilir; ilişkili ana/alt ürünler de korunur. OpenAI istemcisi 30 saniye zaman aşımı ve otomatik yeniden deneme olmadan çalışır.
 - Araç hatalarının iç ayrıntıları modele iletilmez; API anahtarı veya ham sağlayıcı hata metni kullanıcıya döndürülmez.
 - İsteğe bağlı günlük harcama sınırı `OPENAI_DAILY_BUDGET_USD` Render gizli değişkeniyle belirlenir; sınır aşıldığında veya günlük kayıtlarda fiyatı bilinmeyen istek varsa yeni OpenAI çağrısı durdurulur. Bu değişken ayarlanmazsa uygulama içi günlük harcama freni etkin değildir. Dakikalık sınır süreç belleğindedir; tek Render instance için koruyucu katmandır, dağıtık/çok instance limit garantisi değildir. Kalıcı ve çok instance limitleri gerekirse ortak depolama tabanlı rate limiter ayrıca eklenmelidir.
 - Bu önlemler anahtarın Render hesap yetkileri ihlal edilirse açığa çıkma riskini ortadan kaldırmaz. Render hesap erişimi MFA ile korunmalı, erişim yalnızca gerekli kişilerle sınırlandırılmalı ve anahtar düzenli yenilenmelidir.

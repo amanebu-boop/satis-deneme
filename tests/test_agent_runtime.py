@@ -402,7 +402,7 @@ def test_meeting_product_link_review_reports_broken_catalog_links_and_invalid_va
                (id, meeting_id, product_id, name, quantity, unit_price, currency)
                VALUES (?, 'm1', ?, ?, ?, ?, ?)""",
             [("mp1", "p1", "Makine", "1", "100", "EUR"),
-             ("mp2", None, "Eski ürün", "1.5", "", "EURO")],
+             ("mp2", None, "Eski ürün", "1.5", "", "USD")],
         )
     run = foundation.create_run("meeting", "product_link_review", "test-user")
     output = agent_runtime.execute_run(run["id"], "test-user")["output"]

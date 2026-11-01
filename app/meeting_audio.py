@@ -55,7 +55,7 @@ MEETING_CAPTURE_SCHEMA = {
             "properties": {
                 "company_id": {"type": ["string", "null"]},
                 "name": {"type": ["string", "null"]},
-                "sector": {"type": ["string", "null"], "enum": [*COMPANY_SECTORS, None]},
+                "sectors": {"type": "array", "items": {"type": "string", "enum": COMPANY_SECTORS}},
                 "authorized_people": {"type": "array", "items": {"type": "string"}},
                 "phone_numbers": {"type": "array", "items": {"type": "string"}},
                 "city": {"type": ["string", "null"]},
@@ -73,7 +73,7 @@ MEETING_CAPTURE_SCHEMA = {
                 "notes": {"type": ["string", "null"]},
             },
             "required": [
-                "company_id", "name", "sector", "authorized_people", "phone_numbers",
+                "company_id", "name", "sectors", "authorized_people", "phone_numbers",
                 "city", "district", "neighborhood", "street", "building_number",
                 "postal_code", "address_extra", "website", "email", "tax_office", "tax_number", "mersis_number", "notes",
             ],
@@ -121,7 +121,7 @@ def extract_meeting_capture(
     products: list[dict[str, Any]],
 ) -> tuple[dict[str, Any], Any]:
     company_context = [
-        {"id": item["id"], "name": item["name"], "sector": item.get("sector"),
+        {"id": item["id"], "name": item["name"], "sectors": item.get("sectors") or ([item["sector"]] if item.get("sector") else []),
          "city": item.get("city"), "district": item.get("district")}
         for item in companies
     ]
@@ -135,8 +135,8 @@ def extract_meeting_capture(
         model=model,
         instructions=(
             "Sen Erşen Makina'nın satış görüşmesi kayıt yardımcısısın. Türkçe metinden yalnızca açıkça belirtilen firma ve görüşme bilgilerini çıkar. "
-            "Firma kaydında şirket unvanını ve sektörünü belirle. Sektör yalnızca verilen sektör listesinden seçilebilir. "
-            "Sektörü ancak metindeki firmanın açık faaliyet tanımına dayanarak eşleştir; belirsizse null bırak. Çelik Kapı sektörü bu sistemde yoktur. "
+            "Firma kaydında şirket unvanını ve sektörlerini belirle. Metinde açıkça belirtilen birden fazla sektör varsa hepsini seç; yalnızca verilen sektör listesini kullan. "
+            "Sektörleri ancak metindeki firmanın açık faaliyet tanımına dayanarak eşleştir; belirsizse boş liste bırak. Çelik Kapı sektörü bu sistemde yoktur. "
             "Firma listesinde tam olarak eşleşen kayıt varsa yalnızca o kaydın ID'sini seç; benzer isimli firmaları aynı sayma. "
             "Yeni firma için company_id null, name metinde açıkça geçen firma adı olsun. Adres, telefon, e-posta, yetkili, web sitesi ve diğer alanları yalnızca metinde açıkça varsa doldur; uydurma. "
             "Görüşme türü açıkça telefon veya yüz yüze ziyaret olarak anlaşılmıyorsa unknown kullan. Konuyu ve notları metne sadık kalarak düzenle. "
@@ -181,9 +181,12 @@ def extract_meeting_capture(
         questions.append("Metindeki firma adı eşleşen kayıtla çelişiyor. Firma adını netleştirin.")
     if existing is None and not company_name:
         questions.append("Firma unvanı metinde bulunamadı. Firma adını belirtin.")
-    sector = ((existing.get("sector") or company_data.get("sector")) if existing else company_data.get("sector"))
-    if not is_valid_company_sector(sector):
-        questions.append("Firma sektörü belirlenemedi. Firma kaydını oluşturmak için sektörünü belirtin.")
+    sectors = (existing.get("sectors") or ([existing["sector"]] if existing.get("sector") else [])) if existing else company_data.get("sectors") or []
+    if not isinstance(sectors, list):
+        sectors = []
+    sectors = list(dict.fromkeys(item.strip() for item in sectors if isinstance(item, str) and is_valid_company_sector(item.strip())))
+    if not sectors:
+        questions.append("Firma sektörü belirlenemedi. Firma kaydını oluşturmak için en az bir sektör belirtin.")
     meeting_type = meeting_data.get("meeting_type")
     if meeting_type not in {"phone", "visit"}:
         questions.append("Görüşme türü belirsiz. Telefon görüşmesi mi, yüz yüze ziyaret mi olduğunu belirtin.")
@@ -219,7 +222,8 @@ def extract_meeting_capture(
     result = {
         "company_id": existing["id"] if existing else None,
         "company_name": existing["name"] if existing else company_name,
-        "sector": sector,
+        "sectors": sectors,
+        "sector": ", ".join(sectors),
         "is_new_company": existing is None,
         "company_data": company_data,
         "meeting_type": meeting_type if meeting_type in {"phone", "visit"} else None,
@@ -239,7 +243,8 @@ def _company_record_from_capture(data: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(uuid4()),
         "name": str(data["company_name"]).strip(),
-        "sector": data["sector"],
+        "sectors": data["sectors"],
+        "sector": ", ".join(data["sectors"]),
         "authorized_people": [str(item).strip() for item in company.get("authorized_people", []) if str(item).strip()],
         "phone_numbers": [str(item).strip() for item in company.get("phone_numbers", []) if str(item).strip()],
         "city": company.get("city"), "district": company.get("district"),
@@ -284,7 +289,7 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
             "meeting_type": extracted["meeting_type"], "topic": extracted["topic"],
             "notes": extracted["notes"], "product_lines": extracted["product_lines"],
         }
-        saved = db.create_company_and_meeting(company_record, meeting_record, company_sector=extracted["sector"])
+        saved = db.create_company_and_meeting(company_record, meeting_record, company_sectors=extracted["sectors"])
         http_response.status_code = 201
         try:
             from app import ai_usage
@@ -295,7 +300,7 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, 
         return {
             "created": True,
             "company": {"id": saved["company"]["id"], "name": saved["company"]["name"],
-                        "sector": saved["company"]["sector"], "created": company_record is not None},
+                        "sector": saved["company"]["sector"], "sectors": saved["company"]["sectors"], "created": company_record is not None},
             "meeting": saved["meeting"],
             "warnings": extracted["warnings"],
         }

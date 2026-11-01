@@ -338,11 +338,6 @@ def _meeting_products(connection: sqlite3.Connection, meeting_id: str) -> list[d
 
 def create_meeting(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
-        if company_record is None and company_sector:
-            connection.execute(
-                "UPDATE companies SET sector = ? WHERE id = ? AND (sector IS NULL OR trim(sector) = '')",
-                (company_sector, meeting_record["company_id"]),
-            )
         connection.execute(
             """INSERT INTO meetings
                (id, company_id, meeting_date, notes, meeting_type, topic)
@@ -375,6 +370,11 @@ def create_company_and_meeting(company_record: dict[str, Any] | None, meeting_re
                  stored.get("building_number"), stored.get("postal_code"), stored.get("address_extra"),
                  stored.get("website"), stored.get("email"), stored.get("tax_office"),
                  stored.get("tax_number"), stored.get("mersis_number"), stored.get("notes")),
+            )
+        if company_record is None and company_sector:
+            connection.execute(
+                "UPDATE companies SET sector = ? WHERE id = ? AND (sector IS NULL OR trim(sector) = '')",
+                (company_sector, meeting_record["company_id"]),
             )
         connection.execute(
             """INSERT INTO meetings

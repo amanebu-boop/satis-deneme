@@ -209,3 +209,18 @@ def test_responses_usage_is_attributed_to_the_invoked_agent(
         ("resp_usage_2", "gpt-5.5", agent_id, "session-hash"),
         ("resp_usage_3", "gpt-5.5", agent_id, "session-hash"),
     ]
+
+
+def test_profile_and_task_in_same_model_round_do_not_execute_task(monkeypatch):
+    read = tool("read_agent_profile", "profile_same_round", '{"agent_id":"reporting"}')
+    run = tool("run_agent_task", "task_same_round",
+               '{"agent_id":"reporting","task_type":"sales_overview","input_data":{}}')
+    client = FakeClient([
+        FakeResponse("resp_same_round_1", [read, run]),
+        FakeResponse("resp_same_round_2", output_text="Talimatın önceki turda okunması gerekiyor."),
+    ])
+    invoked = []
+    monkeypatch.setattr(agent_chat, "_run_safe_task", lambda *args: invoked.append(args))
+    result = agent_chat.run_assistant_turn(client, "gpt-test", "Raporla", "tester")
+    assert invoked == []
+    assert result["message"] == "Talimatın önceki turda okunması gerekiyor."

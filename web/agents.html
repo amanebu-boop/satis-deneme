@@ -100,10 +100,13 @@ function addReportGroup(parent,title,data,unit){const section=document.createEle
 function renderAiUsage(data,agents){
  const root=$("ai-usage-summary"),body=$("ai-usage-agents");root.replaceChildren();body.replaceChildren();
  const configured=data.provider_configured;
- $("ai-usage-status").textContent=configured
+ const totals=data.totals||{};
+ const baseStatus=configured
   ?"OpenAI API anahtarı sunucuda tanımlı · Model: "+data.model
   :"OpenAI API anahtarı tanımlı değil · Gerçek API çağrısı ve faturalandırma yapılmadı.";
- const totals=data.totals||{};
+ $("ai-usage-status").textContent=baseStatus+(Number(totals.unpriced_requests||0)>0
+  ?" · "+totals.unpriced_requests+" isteğin model fiyatı tanımlı değil; toplam maliyete eklenmedi."
+  :Number(totals.requests||0)===0&&configured?" · Henüz API kullanımı kaydı yok.":"");
  const money=value=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:6,maximumFractionDigits:6}).format(Number(value||0));
  addReportMetric(root,"Toplam giriş tokenı",totals.input_tokens||0);
  addReportMetric(root,"Toplam çıkış tokenı",totals.output_tokens||0);

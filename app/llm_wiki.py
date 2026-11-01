@@ -8,10 +8,17 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+
 from app import db
+
+router = APIRouter()
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+MAX_EXTRACTED_CHARS = 200_000
 
 _ROOT = Path(__file__).resolve().parent.parent
 _MAX_CONTENT = 12000
@@ -139,6 +146,78 @@ def refresh_wiki_index() -> None:
                         "DELETE FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
                         (source_type, row["source_id"]),
                     )
+
+
+def _extract_document_text(filename: str, data: bytes) -> str:
+    suffix = Path(filename).suffix.casefold()
+    if suffix in {".txt", ".md"}:
+        return data.decode("utf-8-sig")
+    if suffix == ".pdf":
+        from pypdf import PdfReader
+        reader = PdfReader(BytesIO(data))
+        return "\\n".join((page.extract_text() or "") for page in reader.pages[:100])
+    if suffix == ".docx":
+        from docx import Document
+        document = Document(BytesIO(data))
+        parts = [paragraph.text for paragraph in document.paragraphs]
+        for table in document.tables:
+            for row in table.rows:
+                parts.append(" | ".join(cell.text for cell in row.cells))
+        return "\\n".join(parts)
+    raise HTTPException(status_code=415, detail="Yalnızca PDF, DOCX, TXT veya MD dosyaları kabul edilir.")
+
+
+@router.get("/api/wiki/documents")
+def list_wiki_documents(request: Request) -> list[dict[str, Any]]:
+    from app.main import _require_browser_session
+    _require_browser_session(request)
+    with db.connect() as connection:
+        rows = connection.execute(
+            """SELECT source_id, title, updated_at FROM llm_wiki_documents
+               WHERE source_type='uploaded_document' ORDER BY title"""
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@router.post("/api/wiki/documents", status_code=201)
+async def upload_wiki_document(request: Request, file: UploadFile = File(...)) -> dict[str, Any]:
+    from app.main import _require_browser_session, _require_csrf
+    _require_csrf(request, _require_browser_session(request))
+    filename = Path(file.filename or "").name.strip()
+    if not filename or Path(filename).suffix.casefold() not in {".pdf", ".docx", ".txt", ".md"}:
+        raise HTTPException(status_code=415, detail="Yalnızca PDF, DOCX, TXT veya MD dosyaları kabul edilir.")
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Bilgi belgesi en fazla 8 MB olabilir.")
+    if not data:
+        raise HTTPException(status_code=422, detail="Dosya boş.")
+    try:
+        content = _extract_document_text(filename, data).strip()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="Belge metni okunamadı; dosya biçimini kontrol edin.") from exc
+    if not content:
+        raise HTTPException(status_code=422, detail="Belgede aranabilir metin bulunamadı. Taranmış PDF için OCR gerekir.")
+    if len(content) > MAX_EXTRACTED_CHARS:
+        content = content[:MAX_EXTRACTED_CHARS]
+    source_id = hashlib.sha256((filename + hashlib.sha256(data).hexdigest()).encode("utf-8")).hexdigest()[:32]
+    _upsert("uploaded_document", source_id, filename, content)
+    return {"source_id": source_id, "title": filename, "characters_indexed": len(content)}
+
+
+@router.delete("/api/wiki/documents/{source_id}")
+def delete_wiki_document(source_id: str, request: Request) -> dict[str, bool]:
+    from app.main import _require_browser_session, _require_csrf
+    _require_csrf(request, _require_browser_session(request))
+    with db.connect() as connection:
+        changed = connection.execute(
+            "DELETE FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id=?",
+            (source_id,),
+        ).rowcount
+    if not changed:
+        raise HTTPException(status_code=404, detail="Bilgi belgesi bulunamadı.")
+    return {"deleted": True}
 
 
 def search_wiki(query: str, limit: int = 5) -> dict[str, Any]:

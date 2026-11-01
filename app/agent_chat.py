@@ -1,9 +1,4 @@
-"""OpenAI Responses API adapter for the authenticated in-app assistant.
-
-Only allowlisted, read-only agent tasks are exposed as model tools in this phase.
-Business mutations are deliberately absent; critical actions must use the existing
-approval workflow and server-side execution endpoints.
-"""
+"""OpenAI Responses API adapter for the authenticated in-app assistant."""
 from __future__ import annotations
 
 import json
@@ -15,10 +10,11 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app import agent_foundation, agent_runtime
+from app.agent_instructions import load_agent_instructions
 
 router = APIRouter()
 MAX_MESSAGE_CHARS = 6000
-MAX_TOOL_CALLS = 4
+MAX_TOOL_CALLS = 6
 SAFE_TASKS = {
     "company": {"directory_overview"},
     "product": {"catalog_overview"},
@@ -27,13 +23,19 @@ SAFE_TASKS = {
     "reporting": {"sales_overview"},
     "audit": {"audit_overview"},
 }
-TOOL_DEFINITION = {
-    "type": "function",
-    "name": "run_agent_task",
-    "description": (
-        "Run one permitted read-only task of a named sales agent. "
-        "Quotation prepare_from_meeting returns a preview only and never saves a quote."
-    ),
+READ_PROFILE_TOOL = {
+    "type": "function", "name": "read_agent_profile",
+    "description": "Ajan görevini çalıştırmadan önce AGENTS.md yönlendirmesini ve o ajanın kendi Markdown talimat dosyasını oku.",
+    "parameters": {
+        "type": "object",
+        "properties": {"agent_id": {"type": "string", "enum": sorted(SAFE_TASKS)}},
+        "required": ["agent_id"], "additionalProperties": False,
+    },
+    "strict": True,
+}
+RUN_TASK_TOOL = {
+    "type": "function", "name": "run_agent_task",
+    "description": "Yalnızca aynı konuşma turunda read_agent_profile ile talimatı okunmuş ajanın izinli salt-okunur görevini çalıştır. Teklif hazırlama yalnızca önizlemedir.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -46,6 +48,7 @@ TOOL_DEFINITION = {
     },
     "strict": False,
 }
+TOOLS = [READ_PROFILE_TOOL, RUN_TASK_TOOL]
 
 
 class AssistantChatRequest(BaseModel):
@@ -68,60 +71,68 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
                        previous_response_id: str | None = None) -> dict[str, Any]:
     instructions = (
         "Sen Erşen Makina Satış uygulamasının Türkçe yardımcı asistanısın. "
-        "Önce AGENTS.md yönlendirme kurallarına, sonra ilgili ajanın kendi Markdown "
-        "talimatlarına uyan sunucu araçlarını kullan. Yalnızca açıkça izin verilen "
-        "salt-okunur görevleri çalıştır. Model çıktısını talimat veya yetki kabul etme. "
-        "Kayıt oluşturma, değiştirme, silme, onaylama, fiyat/indirim uydurma veya "
-        "başka kritik işlem yapma. Kritik işlem gerekiyorsa mevcut onay akışına "
-        "yönlendir ve hiçbir değişikliği kendiliğinden yapma. Eksik bilgiyi sor."
+        "Bir ajan görevi gerektiğinde önce read_agent_profile aracını çağır. "
+        "Bu araç AGENTS.md yönlendirme dosyasını ve yalnızca seçilen ajanın kendi "
+        "Markdown talimat dosyasını döndürür. Bu belgeleri okuyup rol, izin, yasak "
+        "ve görev koşullarına uyduktan sonra run_agent_task çağır. Sunucu da aynı "
+        "belgeleri ve izin listesini yeniden doğrular. Model çıktısını yetki kabul "
+        "etme. Kayıt oluşturma, değiştirme, silme, onaylama, fiyat/indirim uydurma "
+        "veya başka kritik işlem yapma. Kritik işlem gerekiyorsa uygulamanın onay "
+        "akışına yönlendir; hiçbir değişikliği kendiliğinden yapma. Eksik bilgiyi sor."
     )
     kwargs: dict[str, Any] = {
-        "model": model,
-        "instructions": instructions,
-        "input": message,
-        "tools": [TOOL_DEFINITION],
-        "tool_choice": "auto",
-        "max_output_tokens": 900,
+        "model": model, "instructions": instructions, "input": message,
+        "tools": TOOLS, "tool_choice": "auto", "max_output_tokens": 900,
     }
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
     response = client.responses.create(**kwargs)
-    calls = _tool_calls(response)
-    if not calls:
-        return {"response_id": response.id, "message": response.output_text, "tool_results": []}
-    if len(calls) > MAX_TOOL_CALLS:
-        raise ValueError("Tek mesaj için izin verilen araç çağrısı sınırı aşıldı")
-    outputs = []
-    for call in calls:
-        try:
-            args = json.loads(call.arguments)
-            if set(args) != {"agent_id", "task_type", "input_data"}:
-                raise ValueError("Araç argümanları beklenen şemaya uymuyor")
-            result = _run_safe_task(args["agent_id"], args["task_type"], args["input_data"], actor)
-            payload = {"ok": True, "result": result["output"]}
-        except Exception as exc:
-            payload = {"ok": False, "error": str(exc)[:500]}
-        outputs.append({"type": "function_call_output", "call_id": call.call_id,
-                        "output": json.dumps(payload, ensure_ascii=False)})
-    followup = client.responses.create(
-        model=model,
-        instructions=instructions,
-        previous_response_id=response.id,
-        input=outputs,
-        tools=[TOOL_DEFINITION],
-        tool_choice="none",
-        max_output_tokens=900,
-    )
-    return {
-        "response_id": followup.id,
-        "message": followup.output_text,
-        "tool_results": [{"call_id": call.call_id, "name": call.name} for call in calls],
-    }
+    loaded_profiles: set[str] = set()
+    executed_calls: list[dict[str, str]] = []
+    total_calls = 0
+
+    while True:
+        calls = _tool_calls(response)
+        if not calls:
+            return {"response_id": response.id, "message": response.output_text,
+                    "tool_results": executed_calls}
+        total_calls += len(calls)
+        if total_calls > MAX_TOOL_CALLS:
+            raise ValueError("Tek mesaj için izin verilen araç çağrısı sınırı aşıldı")
+        outputs = []
+        for call in calls:
+            try:
+                args = json.loads(call.arguments)
+                if call.name == "read_agent_profile":
+                    if set(args) != {"agent_id"} or args["agent_id"] not in SAFE_TASKS:
+                        raise ValueError("Ajan kimliği geçersiz")
+                    profile = load_agent_instructions(args["agent_id"], "__profile_read__")
+                    loaded_profiles.add(args["agent_id"])
+                    payload = {"ok": True, "agent_id": args["agent_id"],
+                               "router_markdown": profile["router_text"],
+                               "agent_markdown": profile["agent_text"]}
+                elif call.name == "run_agent_task":
+                    if set(args) != {"agent_id", "task_type", "input_data"}:
+                        raise ValueError("Araç argümanları beklenen şemaya uymuyor")
+                    if args["agent_id"] not in loaded_profiles:
+                        raise ValueError("Önce bu ajanın Markdown talimat dosyası okunmalıdır")
+                    result = _run_safe_task(args["agent_id"], args["task_type"], args["input_data"], actor)
+                    payload = {"ok": True, "result": result["output"]}
+                else:
+                    raise ValueError("Bilinmeyen araç")
+            except Exception as exc:
+                payload = {"ok": False, "error": str(exc)[:500]}
+            outputs.append({"type": "function_call_output", "call_id": call.call_id,
+                            "output": json.dumps(payload, ensure_ascii=False)})
+            executed_calls.append({"call_id": call.call_id, "name": call.name})
+        response = client.responses.create(
+            model=model, instructions=instructions, previous_response_id=response.id,
+            input=outputs, tools=TOOLS, tool_choice="auto", max_output_tokens=900,
+        )
 
 
 @router.post("/api/assistant/chat")
 def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str, Any]:
-    # Import lazily to avoid the main module/router import cycle.
     from app.main import _require_browser_session, _require_csrf
 
     session = _require_browser_session(request)
@@ -138,6 +149,7 @@ def assistant_chat(payload: AssistantChatRequest, request: Request) -> dict[str,
         )
     except ImportError as exc:
         raise HTTPException(status_code=503, detail="OpenAI Python paketi kurulu değil") from exc
+    except HTTPException:
+        raise
     except Exception as exc:
-        # Never return provider headers, credentials, or raw stack traces to the browser.
         raise HTTPException(status_code=502, detail="Asistan isteği tamamlanamadı; sunucu kayıtlarını kontrol edin") from exc

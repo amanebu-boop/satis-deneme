@@ -272,3 +272,117 @@ def test_every_registered_agent_has_routed_instruction_file(isolated_database):
     assert load_agent_instructions("quotation", "prepare_from_meeting")["agent_id"] == "quotation"
     assert load_agent_instructions("reporting", "sales_overview")["agent_id"] == "reporting"
     assert load_agent_instructions("audit", "audit_overview")["agent_id"] == "audit"
+
+
+def test_company_data_quality_reports_only_aggregate_counts(isolated_database):
+    from app import db
+    _enable("company")
+    with db.connect() as connection:
+        connection.executemany(
+            """INSERT INTO companies (id, name, sector, city, address, phone_numbers)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            [
+                ("c1", "ABC Makina", '["Mobilya"]', "Konya", "Adres 1", '["05550000000"]'),
+                ("c2", "ABC Makina", None, None, None, "[]"),
+            ],
+        )
+    run = foundation.create_run("company", "data_quality", "tester")
+    result = agent_runtime.execute_run(run["id"], "tester")["output"]
+    assert result["missing_sector"] == 1
+    assert result["missing_city"] == 1
+    assert result["missing_address"] == 1
+    assert result["missing_phone"] == 1
+    assert result["duplicate_name_groups"] == 1
+    assert "ABC Makina" not in str(result)
+
+
+def test_product_catalog_health_checks_integer_price_and_option_links(isolated_database):
+    from app import db
+    _enable("product")
+    with db.connect() as connection:
+        connection.execute(
+            """INSERT INTO products (id, sku, name, description, currency, unit_price, product_type)
+               VALUES ('machine', 'M-1', 'Makine', 'Ana makine', 'EUR', '22000', 'machine')"""
+        )
+        connection.execute(
+            """INSERT INTO products (id, sku, name, description, currency, unit_price, product_type)
+               VALUES ('bad-option', 'O-1', 'Opsiyon A', '', 'EUR', '4500.5', 'option')"""
+        )
+        connection.execute(
+            """INSERT INTO products (id, sku, name, description, currency, unit_price, product_type)
+               VALUES ('service', 'S-1', 'Servis', 'Servis', 'EUR', '100', 'service')"""
+        )
+        connection.execute(
+            """INSERT INTO products (id, sku, name, description, currency, unit_price, product_type, parent_product_id)
+               VALUES ('bad-parent-option', 'O-2', 'Opsiyon B', 'Opsiyon', 'EUR', '500', 'option', 'service')"""
+        )
+    run = foundation.create_run("product", "catalog_health", "tester")
+    result = agent_runtime.execute_run(run["id"], "tester")["output"]
+    assert result["missing_description"] == 1
+    assert result["invalid_integer_price"] == 1
+    assert result["options_without_parent"] == 1
+    assert result["options_with_non_machine_parent"] == 1
+
+
+def test_meeting_follow_up_review_lists_overdue_and_next_week_tasks(isolated_database):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    from app import db
+    _enable("meeting")
+    today = datetime.now(ZoneInfo("Europe/Istanbul")).date()
+    with db.connect() as connection:
+        connection.execute("INSERT INTO companies (id, name) VALUES ('c1', 'ABC')")
+        connection.executemany(
+            """INSERT INTO follow_up_tasks (id, company_id, title, due_date, status, created_at)
+               VALUES (?, 'c1', ?, ?, ?, ?)""",
+            [
+                ("f1", "Gecikmiş", (today - timedelta(days=1)).isoformat(), "open", today.isoformat()),
+                ("f2", "Yaklaşan", (today + timedelta(days=3)).isoformat(), "open", today.isoformat()),
+                ("f3", "Tamamlandı", (today - timedelta(days=1)).isoformat(), "done", today.isoformat()),
+            ],
+        )
+    run = foundation.create_run("meeting", "follow_up_review", "tester")
+    result = agent_runtime.execute_run(run["id"], "tester")["output"]
+    assert result["overdue_count"] == 1
+    assert result["due_within_7_days_count"] == 1
+
+
+def test_sales_period_summary_keeps_currency_totals_separate(isolated_database):
+    from app import db
+    _enable("reporting")
+    with db.connect() as connection:
+        connection.execute("INSERT INTO companies (id, name) VALUES ('c1', 'ABC')")
+        connection.execute(
+            "INSERT INTO meetings (id, company_id, meeting_date, notes) VALUES ('m1','c1','2026-11-01','not')")
+        connection.executemany(
+            """INSERT INTO quotations
+               (id, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, 'c1', ?, ?, '0.20', ?, ?, 'draft', ?)""",
+            [("q1", "EUR", "100", "20", "120", "2026-11-01T10:00:00+00:00"),
+             ("q2", "TRY", "200", "40", "240", "2026-11-01T10:00:00+00:00")],
+        )
+    run = foundation.create_run(
+        "reporting", "period_summary", "tester",
+        {"date_from": "2026-11-01", "date_to": "2026-11-01"},
+    )
+    result = agent_runtime.execute_run(run["id"], "tester")["output"]
+    assert result["meetings"] == 1
+    assert result["quotations"] == 2
+    assert result["quotation_totals_by_currency"] == {
+        "EUR": {"count": 1, "total": "120"}, "TRY": {"count": 1, "total": "240"}
+    }
+
+
+def test_audit_anomaly_review_counts_failed_runs_without_actor_details(isolated_database):
+    from app import db
+    with db.connect() as connection:
+        connection.execute(
+            """INSERT INTO agent_runs
+               (id, agent_id, task_type, status, input_json, output_json, requested_by, created_at, finished_at)
+               VALUES ('failed-1', 'reporting', 'sales_overview', 'failed', '{}', '{}', 'private-user', '2026-11-01', '2026-11-01')"""
+        )
+    _enable("audit")
+    run = foundation.create_run("audit", "anomaly_review", "tester")
+    result = agent_runtime.execute_run(run["id"], "tester")["output"]
+    assert result["failed_or_blocked_runs"]["failed"] == 1
+    assert "private-user" not in str(result)

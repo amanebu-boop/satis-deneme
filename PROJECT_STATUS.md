@@ -174,3 +174,11 @@ Her görevde:
 - Sekiz ajanın tamamında `Çalıştırılabilir görevler` bölümü standartlaştırıldı. Satış ve Depo ajanlarının izinli görev listesi boş; bu ajanlar henüz görev çalıştıramaz.
 - Testler eklendi ancak henüz çalıştırılmadı. GitHub Actions sonucu doğrulanmadı; otomatik test başarısı iddia edilmez.
 - Son kod commit'i: `0b83737f4e51f6accd85a1b37d5f85d3dfa3824f`. `main` ve canlı Render değiştirilmedi.
+
+
+## 2026-11-01 — Ajan talimatları için test altyapısı ve test dağıtımı
+
+- `.github/workflows/python-tests.yml` eklendi. `feature/agent-foundation` dalına push, `main` hedefine PR ve manuel çalıştırma tetikleyicileriyle Python 3.12 üzerinde `python -m pip install -e ".[test]"` ve `python -m pytest -q` çalıştırır.
+- Test ortamı Render dağıtımı commit `a2ed70171a0201e7fd2ce2670b2f2d1438e467ec` için `live` oldu. Build başarılı, uygulama başlangıcı tamamlandı ve Render sağlık isteği `GET /` için `200 OK` döndü.
+- GitHub Actions test sonucunu mevcut bağlantı üzerinden doğrulayamadım: commit workflow sorgusu yalnızca PR tetiklemeli çalışmaları döndürüyor; commit status sorgusunda da henüz kontrol sonucu görünmüyor. Bu nedenle pytest testleri geçti denemez. Test workflow dosyası eklendi, fakat test koşum sonucu beklemede/doğrulanamadı.
+- Test servisi: `https://satis-deneme-test.onrender.com`. `main` ve canlı Render'a dokunulmadı.

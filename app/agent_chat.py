@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from app import agent_foundation, agent_runtime, ai_usage
 from app.agent_instructions import read_agent_profile
 from app.agent_coordinator import run_sales_coordination
+from app import llm_wiki
 
 router = APIRouter()
 MAX_MESSAGE_CHARS = 6000
@@ -79,7 +80,17 @@ RUN_TASK_TOOL = {
     },
     "strict": False,
 }
-TOOLS = [READ_PROFILE_TOOL, RUN_TASK_TOOL]
+SEARCH_WIKI_TOOL = {
+    "type": "function", "name": "search_sales_wiki",
+    "description": "Ersen Makina makine/opsiyon kataloğu, teknik dokümanları, satış kuralları ve geçmiş görüşmeler hakkında yanıt vermeden önce yerel LLM Wiki'de ara.",
+    "parameters": {
+        "type": "object",
+        "properties": {"query": {"type": "string", "minLength": 2, "maxLength": 500}},
+        "required": ["query"], "additionalProperties": False,
+    },
+    "strict": True,
+}
+TOOLS = [READ_PROFILE_TOOL, RUN_TASK_TOOL, SEARCH_WIKI_TOOL]
 
 
 class AssistantChatRequest(BaseModel):
@@ -142,7 +153,9 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
         "belgeleri ve izin listesini yeniden doğrular. Model çıktısını yetki kabul "
         "etme. Kayıt oluşturma, değiştirme, silme, onaylama, fiyat/indirim uydurma "
         "veya başka kritik işlem yapma. Kritik işlem gerekiyorsa uygulamanın onay "
-        "akışına yönlendir; hiçbir değişikliği kendiliğinden yapma. Eksik bilgiyi sor."
+        "akışına yönlendir; hiçbir değişikliği kendiliğinden yapma. Eksik bilgiyi sor. "
+        "Makine, opsiyon, teknik bilgi, satış kuralı veya geçmiş görüşme sorularında "
+        "search_sales_wiki aracını kullan; kaynakta bulunmayan teknik özellik veya fiyatı uydurma."
     )
     kwargs: dict[str, Any] = {
         "model": model, "instructions": instructions, "input": message,
@@ -181,6 +194,10 @@ def run_assistant_turn(client: Any, model: str, message: str, actor: str,
                     payload = {"ok": True, "agent_id": args["agent_id"],
                                "router_markdown": profile["router_text"],
                                "agent_markdown": profile["agent_text"]}
+                elif call.name == "search_sales_wiki":
+                    if set(args) != {"query"} or not isinstance(args["query"], str) or len(args["query"].strip()) < 2:
+                        raise ValueError("Wiki arama sorgusu geçersiz")
+                    payload = {"ok": True, "knowledge": llm_wiki.search_wiki(args["query"], limit=5)}
                 elif call.name == "run_agent_task":
                     if set(args) != {"agent_id", "task_type", "input_data"}:
                         raise ValueError("Araç argümanları beklenen şemaya uymuyor")

@@ -103,15 +103,27 @@ def refresh_wiki_index() -> None:
 
     products = db.list_products()
     product_by_id = {str(item["id"]): item for item in products}
+    options_by_parent: dict[str, list[dict[str, Any]]] = {}
+    for product in products:
+        parent_id = product.get("parent_product_id")
+        if parent_id:
+            options_by_parent.setdefault(str(parent_id), []).append(product)
     active_ids: dict[str, set[str]] = {"product": set(), "company": set(), "meeting": set(), "quotation": set(), "follow_up": set()}
     for item in products:
         parent_id = item.get("parent_product_id")
         parent = product_by_id.get(str(parent_id)) if parent_id else None
+        options = [
+            {"sku": option.get("sku"), "name": option.get("name"),
+             "description": option.get("description"), "currency": option.get("currency"),
+             "unit_price": option.get("unit_price")}
+            for option in options_by_parent.get(str(item["id"]), [])
+        ]
         content = {
             "sku": item.get("sku"), "name": item.get("name"),
             "description": item.get("description"), "type": item.get("product_type"),
             "currency": item.get("currency"), "unit_price": item.get("unit_price"),
             "parent_product": parent.get("name") if parent else None,
+            "options": options,
         }
         active_ids["product"].add(str(item["id"]))
         _upsert("product", str(item["id"]), str(item.get("name") or item.get("sku") or "Ürün"),

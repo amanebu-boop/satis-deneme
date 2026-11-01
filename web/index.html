@@ -1392,6 +1392,8 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   const panel=document.createElement("div");panel.className="date-picker-panel";panel.id=config.id+"-calendar";panel.hidden=true;panel.setAttribute("role","dialog");panel.setAttribute("aria-label",config.mode==="date"?"Takip tarihi seç":"Görüşme tarihi ve saati seç");
   panel.innerHTML='<div class="date-picker-head"><strong class="date-picker-title"></strong><div class="date-picker-nav"><button type="button" data-month="-1" aria-label="Önceki ay">‹</button><button type="button" data-month="1" aria-label="Sonraki ay">›</button></div></div><div class="date-picker-week"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div><div class="date-picker-grid"></div><div class="date-picker-time" '+(config.mode==="date"?'hidden':'')+'><label for="'+config.id+'-time">Saat</label><input id="'+config.id+'-time" type="time" step="60"></div><div class="date-picker-actions"><button type="button" class="btn" data-cancel>Vazgeç</button><button type="button" class="btn primary" data-apply>Uygula</button></div>';
   wrap.append(panel);
+  // Takvim içindeki dokunma/tıklamalar dışarı tıklama olarak değerlendirilmemeli.
+  panel.addEventListener("click",event=>event.stopPropagation());
   let shown=new Date(),selected=parse(field.value)||new Date();
   const time=panel.querySelector("input[type=time]");
   const render=()=>{
@@ -1401,7 +1403,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
    for(let i=0;i<offset;i++){const blank=document.createElement("span");blank.className="date-picker-empty";grid.append(blank);}
    for(let day=1;day<=days;day++){const date=new Date(shown.getFullYear(),shown.getMonth(),day);const button=document.createElement("button");button.type="button";button.className="date-picker-day";button.textContent=day;
     if(isoDate(date)===isoDate(selected))button.classList.add("selected");if(isoDate(date)===isoDate(new Date()))button.classList.add("today");
-    button.addEventListener("click",()=>{selected=date;render();});grid.append(button);}
+    button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();selected=new Date(date.getFullYear(),date.getMonth(),date.getDate());render();});grid.append(button);}
   };
   const updateDisplay=()=>{
    const value=parse(field.value);
@@ -1422,7 +1424,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   });
   updateDisplay();
  });
- document.addEventListener("click",event=>{configs.forEach(c=>{const display=document.getElementById(c.display),panel=document.getElementById(c.id+"-calendar");if(panel&&!panel.hidden&&!event.target.closest(".custom-date-field")){panel.hidden=true;display.setAttribute("aria-expanded","false");}});});
+ document.addEventListener("click",event=>{configs.forEach(c=>{const display=document.getElementById(c.display),panel=document.getElementById(c.id+"-calendar");if(panel&&!panel.hidden&&!panel.contains(event.target)&&!display.contains(event.target)){panel.hidden=true;display.setAttribute("aria-expanded","false");}});});
  document.addEventListener("keydown",event=>{if(event.key==="Escape")configs.forEach(c=>{const panel=document.getElementById(c.id+"-calendar");if(panel&&!panel.hidden){panel.hidden=true;document.getElementById(c.display).setAttribute("aria-expanded","false");}});});
 })();
 </script>

@@ -203,7 +203,11 @@ def _company_data_quality(input_data: dict[str, Any]) -> dict[str, Any]:
                       SUM(CASE WHEN sector IS NULL OR trim(sector)='' THEN 1 ELSE 0 END) AS missing_sector,
                       SUM(CASE WHEN city IS NULL OR trim(city)='' THEN 1 ELSE 0 END) AS missing_city,
                       SUM(CASE WHEN address IS NULL OR trim(address)='' THEN 1 ELSE 0 END) AS missing_address,
-                      SUM(CASE WHEN phone_numbers IS NULL OR trim(phone_numbers) IN ('', '[]') THEN 1 ELSE 0 END) AS missing_phone
+                      SUM(CASE WHEN (phone_numbers IS NULL OR trim(phone_numbers) IN ('', '[]'))
+                               AND NOT EXISTS (
+                                 SELECT 1 FROM contacts ct
+                                 WHERE ct.company_id=companies.id AND trim(COALESCE(ct.phone,'')) != ''
+                               ) THEN 1 ELSE 0 END) AS missing_phone
                FROM companies"""
         ).fetchone()
         duplicates = connection.execute(

@@ -238,4 +238,9 @@ def test_wiki_search_tool_is_available_to_dashboard_assistant(monkeypatch):
     result = agent_chat.run_assistant_turn(client, "gpt-test", "Makine opsiyonları nedir?", "tester")
     assert calls == [("makine opsiyonları", 5)]
     assert result["message"] == "Katalogda ilgili bilgi bulundu."
-    assert client.responses.calls[1]["input"][0]["output"].find('"retrieval"') == -1
+    assert "local_lexical" in client.responses.calls[1]["input"][0]["output"]
+
+
+def test_standalone_assistant_page_route_is_removed():
+    from app.main import app
+    assert not any(getattr(route, "path", None) == "/assistant" for route in app.routes)

@@ -8,7 +8,7 @@ import os
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from uuid import uuid4
-from hashlib import sha256
+from urllib.parse import urlparse
 
 from app import db
 
@@ -44,6 +44,14 @@ def initialize() -> None:
 
 def save_subscription(payload: dict) -> dict:
     endpoint = payload["endpoint"]
+    host = (urlparse(endpoint).hostname or "").lower()
+    allowed_hosts = {
+        "fcm.googleapis.com", "android.googleapis.com",
+        "updates.push.services.mozilla.com", "push.services.mozilla.com",
+        "web.push.apple.com",
+    }
+    if urlparse(endpoint).scheme != "https" or host not in allowed_hosts:
+        raise ValueError("Unsupported push service endpoint")
     now = datetime.now(TZ).isoformat()
     with db.connect() as conn:
         row = conn.execute("SELECT id FROM push_subscriptions WHERE endpoint=?", (endpoint,)).fetchone()

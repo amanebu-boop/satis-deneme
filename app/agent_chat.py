@@ -20,7 +20,7 @@ from app import llm_wiki
 
 router = APIRouter()
 MAX_MESSAGE_CHARS = 6000
-MAX_TOOL_CALLS = 6
+MAX_TOOL_CALLS = 4
 MAX_REQUESTS_PER_MINUTE = 10
 _RATE_WINDOW_SECONDS = 60
 _rate_events: dict[str, deque[float]] = {}

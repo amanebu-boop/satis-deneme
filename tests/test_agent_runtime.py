@@ -248,3 +248,23 @@ def test_sales_agent_has_no_executable_task_until_coordinator_is_implemented(iso
 
     with pytest.raises(ValueError, match="not permitted"):
         load_agent_instructions("sales", "sales_coordinate")
+
+
+def test_every_registered_agent_has_routed_instruction_file(isolated_database):
+    from app.agent_instructions import AGENT_FILES, load_agent_instructions
+
+    assert set(AGENT_FILES) == {
+        "company", "product", "meeting", "quotation",
+        "warehouse", "sales", "reporting", "audit",
+    }
+    for agent_id in AGENT_FILES:
+        path = AGENT_FILES[agent_id]
+        from pathlib import Path
+        assert (Path(__file__).resolve().parents[1] / path).is_file()
+
+    assert load_agent_instructions("company", "directory_overview")["agent_id"] == "company"
+    assert load_agent_instructions("product", "catalog_overview")["agent_id"] == "product"
+    assert load_agent_instructions("meeting", "activity_overview")["agent_id"] == "meeting"
+    assert load_agent_instructions("quotation", "prepare_from_meeting")["agent_id"] == "quotation"
+    assert load_agent_instructions("reporting", "sales_overview")["agent_id"] == "reporting"
+    assert load_agent_instructions("audit", "audit_overview")["agent_id"] == "audit"

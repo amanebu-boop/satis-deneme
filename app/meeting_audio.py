@@ -12,7 +12,7 @@ from typing import Any
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from app import db
@@ -67,12 +67,15 @@ MEETING_CAPTURE_SCHEMA = {
                 "address_extra": {"type": ["string", "null"]},
                 "website": {"type": ["string", "null"]},
                 "email": {"type": ["string", "null"]},
+                "tax_office": {"type": ["string", "null"]},
+                "tax_number": {"type": ["string", "null"]},
+                "mersis_number": {"type": ["string", "null"]},
                 "notes": {"type": ["string", "null"]},
             },
             "required": [
                 "company_id", "name", "sector", "authorized_people", "phone_numbers",
                 "city", "district", "neighborhood", "street", "building_number",
-                "postal_code", "address_extra", "website", "email", "notes",
+                "postal_code", "address_extra", "website", "email", "tax_office", "tax_number", "mersis_number", "notes",
             ],
             "additionalProperties": False,
         },
@@ -235,15 +238,17 @@ def _company_record_from_capture(data: dict[str, Any]) -> dict[str, Any]:
         "neighborhood": company.get("neighborhood"), "street": company.get("street"),
         "building_number": company.get("building_number"), "postal_code": company.get("postal_code"),
         "address_extra": company.get("address_extra"), "website": company.get("website"),
-        "email": company.get("email"), "notes": company.get("notes"),
+        "email": company.get("email"), "tax_office": company.get("tax_office"),
+        "tax_number": company.get("tax_number"), "mersis_number": company.get("mersis_number"),
+        "notes": company.get("notes"),
         "address": ", ".join(str(company.get(key)).strip() for key in
             ("neighborhood", "street", "building_number", "district", "city") if company.get(key)) or None,
         "tax_office": None, "tax_number": None, "mersis_number": None,
     }
 
 
-@router.post("/api/meetings/capture", status_code=201)
-def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request) -> dict[str, Any]:
+@router.post("/api/meetings/capture")
+def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request, response: Response) -> dict[str, Any]:
     from app.main import _require_browser_session, _require_csrf
 
     session = _require_browser_session(request)
@@ -272,6 +277,7 @@ def capture_meeting_from_text(payload: MeetingCaptureRequest, request: Request) 
             "notes": extracted["notes"], "product_lines": extracted["product_lines"],
         }
         saved = db.create_company_and_meeting(company_record, meeting_record, company_sector=extracted["sector"])
+        response.status_code = 201
         try:
             from app import ai_usage
             session_hash = hashlib.sha256(request.cookies.get("sales_session", "").encode("utf-8")).hexdigest()

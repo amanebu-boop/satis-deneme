@@ -23,9 +23,10 @@ Görüşme kayıtları, notları ve görüşmede seçilmiş ürünlerden sorumlu
 Görüşmeden teklif taslağı talebi Teklif Ajanı'na yönlendirilir.
 
 
-## AI destekli görüşme taslağı
-- Yazılı metin veya ses transkripsiyonu, mevcut firma ve ürün kataloğuyla eşleştirilerek yalnızca düzenlenebilir taslak oluşturur.
-- Eşleşmeyen veya belirsiz firma/ürün, belirtilmemiş miktar ve görüşme türü kullanıcıya sorulur.
-- Taslak hiçbir zaman kendiliğinden kaydedilmez; kalıcı kayıt için kullanıcının görüşme formundaki açık kaydetme eylemi gerekir.
-- Ses dosyaları uygulamada saklanmaz; transkripsiyon için OpenAI API'ye gönderilir.
-- Bu taslak hazırlama uç noktası salt-okunur katalog verisi kullanır; kayıt oluşturma/değiştirme yetkisi vermez.
+## Ana ekran görüşme kaydı
+- Kullanıcı ana ekrandaki açık eylemle yazılı görüşme metnini analiz ettirir.
+- Firma, sektör, görüşme türü ve ürün eşleşmeleri mevcut kayıtlar/katalogla doğrulanır; belirsizlik varsa kayıt yapılmaz ve kullanıcıdan açıklama istenir.
+- Kullanıcının açıkça başlattığı işlem firma ve görüşme kaydını tek veritabanı transaction'ında oluşturabilir. Bu işlem arka planda veya zamanlanmış biçimde çalışmaz.
+- Ürün yalnızca katalogdaki kayıtlı ürün kimliğiyle eklenir; fiyat ve para birimi modelden alınmaz.
+- Ses kaydı, ses dosyası yükleme ve transkripsiyon özelliği yoktur.
+- Her kalıcı AI destekli yazma işlemi, ilgili ajan çalışması ve denetim kaydıyla ilişkilendirilmelidir.

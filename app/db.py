@@ -232,7 +232,7 @@ def create_company(record: dict[str, Any]) -> dict[str, Any]:
              stored.get("email"), stored.get("tax_office"), stored.get("tax_number"),
              stored.get("mersis_number"), stored.get("notes")),
         )
-    return {**record}
+    return get_company(record["id"]) or {**record}
 
 
 def list_companies(search: str | None = None) -> list[dict[str, Any]]:
@@ -303,7 +303,7 @@ def update_company(company_id: str, record: dict[str, Any]) -> dict[str, Any] | 
         )
         if cursor.rowcount == 0:
             return None
-    return {"id": company_id, **record}
+    return get_company(company_id)
 
 
 def company_exists(company_id: str) -> bool:

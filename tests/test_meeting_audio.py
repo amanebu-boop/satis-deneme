@@ -176,9 +176,15 @@ def test_capture_endpoint_creates_new_company_and_meeting(tmp_path, monkeypatch)
     monkeypatch.setattr(openai, "OpenAI", lambda **kwargs: fake)
     with TestClient(app, base_url="https://testserver") as client:
         headers = _login(client)
+        product = client.post("/api/products", headers=headers, json={
+            "sku": "AI-M-001", "name": "Çift Kafa Büküm Makinası",
+            "currency": "EUR", "unit_price": 22000,
+        })
+        assert product.status_code == 201
+        fake.responses.payload = capture_payload(product_id=product.json()["id"])
         response = client.post(
             "/api/meetings/capture", headers=headers,
-            json={"transcript": "ABC Makina Konya'da mobilya üretir. Ziyaret yapıldı."},
+            json={"transcript": "ABC Makina Konya'da mobilya üretir. Ziyaret yapıldı; iki adet çift kafa büküm makinesi."},
         )
         assert response.status_code == 201
         result = response.json()
@@ -189,6 +195,9 @@ def test_capture_endpoint_creates_new_company_and_meeting(tmp_path, monkeypatch)
         meetings = client.get("/api/meetings", headers=headers).json()
         assert len(companies) == 1 and companies[0]["sector"] == "Mobilya"
         assert len(meetings) == 1 and meetings[0]["company_id"] == companies[0]["id"]
+        assert meetings[0]["product_lines"][0]["name"] == "Çift Kafa Büküm Makinası"
+        assert meetings[0]["product_lines"][0]["quantity"] == "2"
+        assert meetings[0]["product_lines"][0]["unit_price"] == ""
 
 
 def test_capture_endpoint_reuses_existing_company_and_does_not_duplicate(tmp_path, monkeypatch):

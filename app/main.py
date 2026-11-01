@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
 
 from app import db
+from app.company_sectors import is_valid_company_sector
 from app import session_store
 from app import agent_foundation
 from app import agent_runtime
@@ -542,6 +543,7 @@ def browser_get_company(company_id: str, request: Request):
 
 class CompanyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
+    sector: str = Field(min_length=1, max_length=100)
     authorized_people: list[str] = Field(default_factory=list, max_length=50)
     phone_numbers: list[str] = Field(default_factory=list, max_length=50)
     address: str | None = Field(default=None, max_length=3000)
@@ -565,6 +567,14 @@ class CompanyCreate(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("Firma unvanı boş olamaz")
+        return value
+
+    @field_validator("sector")
+    @classmethod
+    def validate_company_sector(cls, value: str) -> str:
+        value = value.strip()
+        if not is_valid_company_sector(value):
+            raise ValueError("Geçerli bir firma sektörü seçilmelidir")
         return value
 
     @field_validator("authorized_people", "phone_numbers")

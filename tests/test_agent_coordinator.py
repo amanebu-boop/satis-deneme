@@ -166,3 +166,29 @@ def test_optional_audit_task_reports_disabled_agent_without_running_it(monkeypat
     assert result["failed"] == 1
     assert result["failures"][0]["status"] == "blocked"
     assert "devre dışı" in result["failures"][0]["message"]
+
+
+def test_coordinator_passes_explicit_date_range_to_reporting_agent(monkeypatch):
+    monkeypatch.setattr(
+        agent_coordinator.agent_foundation, "list_agents",
+        lambda: [{"id": "sales", "enabled": True}, {"id": "reporting", "enabled": True}],
+    )
+    calls = []
+    result = agent_coordinator.run_sales_coordination(
+        {"tasks": ["sales_period_summary"], "date_from": "2026-01-01", "date_to": "2026-01-31"},
+        "tester",
+        lambda agent_id, task_type, input_data, actor:
+            calls.append((agent_id, task_type, input_data)) or {"output": {"meetings": 3}},
+    )
+    assert calls == [("reporting", "period_summary", {
+        "date_from": "2026-01-01", "date_to": "2026-01-31"
+    })]
+    assert result["completed"] == 1
+
+
+def test_coordinator_rejects_period_report_without_both_dates(enabled_sales):
+    with pytest.raises(ValueError, match="date_from"):
+        agent_coordinator.run_sales_coordination(
+            {"tasks": ["sales_period_summary"], "date_from": "2026-01-01"},
+            "tester", lambda *args: pytest.fail("No task should execute"),
+        )

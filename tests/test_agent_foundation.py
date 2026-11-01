@@ -201,3 +201,9 @@ def test_external_workflow_is_recorded_with_audit_event(isolated_database):
 def test_external_ai_rule_defaults_to_owner_approved_state(isolated_database):
     assert agents.rule_enabled("external_ai_enabled") is True
     assert agents.rule_enabled("critical_actions_require_approval") is True
+
+
+def test_generic_unused_approval_endpoint_is_removed():
+    from app.main import app
+    assert not any(getattr(route, "path", None) == "/api/agent-approvals" and
+                   "POST" in getattr(route, "methods", set()) for route in app.routes)

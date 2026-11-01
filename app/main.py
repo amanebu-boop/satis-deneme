@@ -290,8 +290,14 @@ def browser_agent_ai_usage(request: Request) -> dict:
     agent_names = {item["id"]: item["name"] for item in agent_foundation.list_agents()}
     for row in summary["agents"]:
         row["agent_name"] = agent_names.get(row["agent_id"], row["agent_id"])
+    with db.connect() as connection:
+        execution_rows = connection.execute(
+            "SELECT agent_id, COUNT(*) AS executions FROM agent_runs GROUP BY agent_id"
+        ).fetchall()
+    execution_counts = {row["agent_id"]: row["executions"] for row in execution_rows}
     return {
         **summary,
+        "execution_counts": execution_counts,
         "provider_configured": bool(os.environ.get("OPENAI_API_KEY", "").strip()),
         "model": os.environ.get("OPENAI_MODEL", "gpt-5.5"),
         "pricing_basis": "OpenAI published standard API token rates; unknown model rates are not estimated",

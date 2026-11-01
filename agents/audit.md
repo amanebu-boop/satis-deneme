@@ -10,6 +10,7 @@ Ajan çalıştırmalarını, yetki değişikliklerini, otomatik etkinleştirmele
 
 ## Yapabilir
 - Denetim olayları, görev ve onay durumlarının toplu özetini sunmak.
+- Başarısız/engellenmiş görevleri, reddedilmiş/süresi dolmuş onayları ve süresi geçmiş bekleyen onayları aktör bilgisi göstermeden raporlamak.
 
 ## Yapamaz
 - Denetim kaydını değiştirmek/silmek.
@@ -18,6 +19,7 @@ Ajan çalıştırmalarını, yetki değişikliklerini, otomatik etkinleştirmele
 
 ## Çalıştırılabilir görevler
 - `audit_overview`
+- `anomaly_review`
 
 ## Güvenlik
 Mevcut özet aktör kimliği ve olay ayrıntısı içermez. Denetim Ajanı bağımsızdır.

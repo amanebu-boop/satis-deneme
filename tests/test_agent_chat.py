@@ -89,3 +89,42 @@ def test_tool_call_count_is_bounded():
 
     with pytest.raises(ValueError, match="sınırı"):
         agent_chat.run_assistant_turn(client, "gpt-test", "işlem yap", "tester")
+
+
+
+def test_rate_limit_rejects_eleventh_request(monkeypatch):
+    agent_chat._rate_events.clear()
+    ticks = iter([100.0] * (agent_chat.MAX_REQUESTS_PER_MINUTE + 1))
+    monkeypatch.setattr(agent_chat.time, "monotonic", lambda: next(ticks))
+    for _ in range(agent_chat.MAX_REQUESTS_PER_MINUTE):
+        agent_chat._check_rate_limit("session-a")
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc:
+        agent_chat._check_rate_limit("session-a")
+    assert exc.value.status_code == 429
+
+
+def test_rate_limit_isolated_between_sessions(monkeypatch):
+    agent_chat._rate_events.clear()
+    monkeypatch.setattr(agent_chat.time, "monotonic", lambda: 200.0)
+    for _ in range(agent_chat.MAX_REQUESTS_PER_MINUTE):
+        agent_chat._check_rate_limit("session-a")
+    agent_chat._check_rate_limit("session-b")
+
+
+def test_tool_errors_are_not_forwarded_with_internal_details(monkeypatch):
+    run = tool("run_agent_task", "task_1",
+               '{"agent_id":"reporting","task_type":"sales_overview","input_data":{}}')
+    read = tool("read_agent_profile", "profile_1", '{"agent_id":"reporting"}')
+    client = FakeClient([
+        FakeResponse("resp_1", [read]),
+        FakeResponse("resp_2", [run]),
+        FakeResponse("resp_3", output_text="Görev tamamlanamadı"),
+    ])
+    def fail_task(*args, **kwargs):
+        raise RuntimeError("SECRET_DATABASE_PASSWORD")
+    monkeypatch.setattr(agent_chat, "_run_safe_task", fail_task)
+    agent_chat.run_assistant_turn(client, "gpt-test", "Rapor", "tester")
+    output = client.responses.calls[2]["input"][0]["output"]
+    assert "SECRET_DATABASE_PASSWORD" not in output
+    assert "İzinli görev tamamlanamadı" in output

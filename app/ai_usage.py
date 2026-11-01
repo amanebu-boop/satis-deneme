@@ -7,6 +7,8 @@ tokens unless they are explicitly invoked through the AI assistant.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
+import os
 from decimal import Decimal
 from typing import Any
 
@@ -141,3 +143,36 @@ def usage_summary() -> dict[str, Any]:
         "agents": [dict(row) for row in rows],
         "totals": dict(totals),
     }
+
+
+def daily_spend_usd() -> Decimal:
+    """Return priced API usage recorded since UTC midnight."""
+    start = datetime.now(timezone.utc).date().isoformat()
+    with db.connect() as connection:
+        row = connection.execute(
+            """SELECT COALESCE(SUM(CAST(cost_usd AS REAL)), 0) AS cost
+               FROM agent_ai_usage WHERE created_at >= ?""",
+            (start,),
+        ).fetchone()
+    return Decimal(str(row["cost"] or 0))
+
+
+def daily_budget_status() -> dict[str, Any]:
+    raw = os.environ.get("OPENAI_DAILY_BUDGET_USD", "").strip()
+    try:
+        limit = Decimal(raw) if raw else None
+    except InvalidOperation:
+        limit = None
+    spent = daily_spend_usd()
+    enabled = limit is not None and limit > 0
+    return {
+        "enabled": enabled,
+        "limit_usd": str(limit) if enabled else None,
+        "spent_usd": str(spent),
+        "remaining_usd": str(max(Decimal("0"), limit - spent)) if enabled else None,
+        "exceeded": bool(enabled and spent >= limit),
+    }
+
+
+def daily_budget_exceeded() -> bool:
+    return bool(daily_budget_status()["exceeded"])

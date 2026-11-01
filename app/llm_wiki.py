@@ -155,7 +155,7 @@ def _extract_document_text(filename: str, data: bytes) -> str:
     if suffix == ".pdf":
         from pypdf import PdfReader
         reader = PdfReader(BytesIO(data))
-        return "\\n".join((page.extract_text() or "") for page in reader.pages[:100])
+        return "\n".join((page.extract_text() or "") for page in reader.pages[:100])
     if suffix == ".docx":
         from docx import Document
         document = Document(BytesIO(data))
@@ -163,7 +163,7 @@ def _extract_document_text(filename: str, data: bytes) -> str:
         for table in document.tables:
             for row in table.rows:
                 parts.append(" | ".join(cell.text for cell in row.cells))
-        return "\\n".join(parts)
+        return "\n".join(parts)
     raise HTTPException(status_code=415, detail="Yalnızca PDF, DOCX, TXT veya MD dosyaları kabul edilir.")
 
 

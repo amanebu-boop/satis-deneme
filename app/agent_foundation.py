@@ -174,7 +174,7 @@ def get_rule_config(rule_key: str, default: Any = None) -> Any:
 
 def rule_enabled(rule_key: str, default: bool = False) -> bool:
     config = get_rule_config(rule_key, {"enabled": default})
-    return bool(config.get("enabled", default)) if isinstance(config, dict) else default
+    return config.get("enabled") is True if isinstance(config, dict) else default
 
 
 def record_external_run(

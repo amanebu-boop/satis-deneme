@@ -25,11 +25,16 @@ Satış sürecinin koordinatörüdür; kullanıcının isteğini sınıflandır�
 
 ## Koordinasyon görev anahtarları
 - `company_overview`: Firma Ajanı toplu rehber özeti.
+- `company_data_quality`: Firma Ajanı eksik alan ve yinelenen ad sayımları.
 - `product_overview`: Ürün Ajanı katalog özeti.
+- `product_catalog_health`: Ürün Ajanı fiyat/para birimi/açıklama/opsiyon ilişki kontrolleri.
 - `meeting_overview`: Görüşme Ajanı hareket özeti.
+- `meeting_follow_up_review`: Görüşme Ajanı gecikmiş ve yaklaşan takip listesi.
 - `quotation_overview`: Teklif Ajanı teklif süreç özeti.
-- `sales_overview`: Raporlama Ajanı satış özeti.
+- `sales_overview`: Raporlama Ajanı genel satış özeti.
+- `sales_period_summary`: Raporlama Ajanı; `date_from` ve `date_to` alanlarıyla tarih aralığı raporu.
 - `audit_overview`: Denetim Ajanı toplu denetim özeti.
+- `audit_anomalies`: Denetim Ajanı başarısız görev ve onay anomalileri.
 - `meeting_quotation_preview`: Görüşme Ajanı verisi yerine Teklif Ajanı'nın görüşme ürünlerinden salt-okunur teklif önizlemesi; `meeting_id` zorunludur.
 
 ## Otomatik çalışma ve onay sınırı

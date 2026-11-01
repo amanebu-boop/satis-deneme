@@ -249,13 +249,6 @@ class AgentRunRequest(BaseModel):
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=200)
 
 
-class AgentApprovalRequest(BaseModel):
-    run_id: str = Field(min_length=1, max_length=80)
-    action_type: str = Field(min_length=1, max_length=120)
-    payload: dict = Field(default_factory=dict)
-    ttl_seconds: int = Field(default=900, ge=1, le=86400)
-
-
 class AgentApprovalReviewRequest(BaseModel):
     decision: str = Field(pattern=r"^(approved|rejected)$")
     current_payload: dict
@@ -344,21 +337,6 @@ def browser_create_agent_run(payload: AgentRunRequest, request: Request) -> dict
     except ValueError as exc:
         message = str(exc)
         status = 404 if message == "unknown agent" else 422
-        raise HTTPException(status_code=status, detail=message) from exc
-
-
-@app.post("/api/agent-approvals", status_code=201)
-def browser_request_agent_approval(payload: AgentApprovalRequest, request: Request) -> dict:
-    session = _require_browser_session(request)
-    _require_csrf(request, session)
-    try:
-        return agent_foundation.request_approval(
-            payload.run_id, payload.action_type, payload.payload,
-            str(session["subject"]), payload.ttl_seconds,
-        )
-    except ValueError as exc:
-        message = str(exc)
-        status = 404 if message == "unknown run" else 409 if message == "run is not eligible for approval" else 422
         raise HTTPException(status_code=status, detail=message) from exc
 
 

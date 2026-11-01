@@ -234,7 +234,7 @@ def test_wiki_search_tool_is_available_to_dashboard_assistant(monkeypatch):
     ])
     calls = []
     monkeypatch.setattr(agent_chat.llm_wiki, "search_wiki",
-                        lambda query, limit=5: calls.append((query, limit)) or {"results": []})
+                        lambda query, limit=5: calls.append((query, limit)) or {"retrieval": "local_lexical", "results": []})
     result = agent_chat.run_assistant_turn(client, "gpt-test", "Makine opsiyonları nedir?", "tester")
     assert calls == [("makine opsiyonları", 5)]
     assert result["message"] == "Katalogda ilgili bilgi bulundu."

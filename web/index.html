@@ -309,6 +309,12 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <button type="button" class="stat stat-link" data-go="quotes" aria-label="Teklifler bölümünü aç"><div class="stat-top">Kayıtlı teklif <span class="stat-icon">▧</span></div><div class="stat-value" id="dashboard-quote-count">—</div><div class="stat-foot">Toplam teklif kaydı</div></button>
 <div class="stat"><div class="stat-top">Teklif toplamı <span class="stat-icon">€</span></div><div class="stat-value" id="dashboard-quote-total">—</div><div class="stat-foot" id="dashboard-quote-foot">Kayıtlı tekliflerin toplamı</div></div>
 </div>
+<div class="panel dashboard-ai-capture" style="margin-bottom:12px;padding:12px">
+<div class="panel-head" style="margin-bottom:7px"><h2>Yapay zekâ ile görüşme taslağı</h2><span class="pill blue">Hızlı giriş</span></div>
+<p class="footer-note" style="margin:0 0 8px">Görüşme notlarını yazın; yapay zekâ firma ve ürün kataloğuyla eşleştirerek görüşme formunu hazırlasın.</p>
+<textarea id="dashboard-meeting-transcript" rows="2" maxlength="15000" placeholder="Görüşmede konuşulanları buraya yazın…" style="width:100%;min-height:58px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>
+<div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap"><button class="btn primary" id="dashboard-prepare-meeting" type="button">Taslak hazırla</button><span id="dashboard-meeting-ai-status" class="footer-note" role="status" aria-live="polite"></span></div>
+</div>
 <div class="columns">
 <div class="panel"><div class="panel-head"><h2>Son görüşmeler</h2><button class="link" data-go="meetings">Tümünü gör →</button></div><div class="list" id="dashboard-recent-meetings"><div class="empty">Görüşmeler yükleniyor…</div></div></div>
 <div class="panel"><div class="panel-head"><h2>Takip listesi</h2><span class="pill amber" id="dashboard-follow-up-count">Yükleniyor</span></div><div class="list" id="dashboard-follow-ups"><div class="empty">Takip görevleri yükleniyor…</div></div></div>
@@ -348,12 +354,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 </div>
 <div id="company-rows" class="company-list"><div class="empty">Firmalar yükleniyor…</div></div>
 </div></section>
-<section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div class="location-picker"><label for="meeting-company-search">Firma seçimi</label><input id="meeting-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="meeting-company-results" class="autocomplete-results"></div><select id="meeting-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><div class="custom-date-field" data-date-picker="datetime"><input id="meeting-date" type="datetime-local" lang="tr" step="60" hidden><input id="meeting-date-display" class="date-picker-display" type="text" readonly required placeholder="Tarih ve saat seçin" aria-haspopup="dialog" aria-expanded="false" aria-controls="meeting-date-calendar"></div></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder=""></div></div><div class="meeting-audio-tools" style="display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px">
-<div><strong>Sesli görüşme girişi</strong><p class="footer-note">Mikrofonla konuşun veya ses dosyası yükleyin. Ses, metne dönüştürülmek üzere OpenAI API'ye gönderilir; uygulamada ses dosyası saklanmaz.</p></div>
-<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="start-meeting-recording" type="button">● Kaydı başlat</button><button class="btn" id="stop-meeting-recording" type="button" disabled>Kaydı durdur ve yazıya çevir</button><label class="btn" for="meeting-audio-file" style="cursor:pointer">Ses dosyası seç</label><input id="meeting-audio-file" type="file" accept="audio/webm,audio/wav,audio/mpeg,audio/mp4,.m4a,.mp3,.wav,.webm,.mp4" hidden></div>
-<p id="meeting-audio-status" class="footer-note" role="status" aria-live="polite">Ses kaydı için mikrofon izni gerekir. En fazla 25 MB.</p>
-</div>
-<div><label for="meeting-notes">Görüşmeyi yazın veya ses kaydının metnini buraya alın</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea><button class="btn" id="prepare-meeting-ai" type="button" style="margin-top:8px">Yapay zekâ ile görüşme taslağı hazırla</button><p id="meeting-ai-status" class="footer-note" role="status" aria-live="polite">Yapay zekâ metni firma ve ürün kataloğuyla eşleştirir. Taslak siz kontrol etmeden kaydedilmez.</p></div>
+<section class="page" id="page-meetings"><div class="meeting-tabs" role="tablist"><button type="button" class="meeting-tab active" data-meeting-tab="create" aria-selected="true">Görüşme kaydet / takip</button><button type="button" class="meeting-tab" data-meeting-tab="history" aria-selected="false">Görüşme kayıtları</button></div><div id="meeting-create-tab" class="meeting-tab-panel"><div class="panel"><div class="panel-head"><h2>Görüşme kaydet</h2><span class="pill blue">Kalıcı kayıt</span></div><form id="meeting-form" class="quote-form"><div class="meeting-company-picker"><div class="location-picker"><label for="meeting-company-search">Firma seçimi</label><input id="meeting-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="meeting-company-results" class="autocomplete-results"></div><select id="meeting-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="meeting-date">Görüşme tarihi ve saati</label><div class="custom-date-field" data-date-picker="datetime"><input id="meeting-date" type="datetime-local" lang="tr" step="60" hidden><input id="meeting-date-display" class="date-picker-display" type="text" readonly required placeholder="Tarih ve saat seçin" aria-haspopup="dialog" aria-expanded="false" aria-controls="meeting-date-calendar"></div></div><div class="quote-fields"><div><label for="meeting-type">Görüşme şekli</label><select id="meeting-type" required><option value="phone">Telefon görüşmesi</option><option value="visit">Ziyaret</option></select></div><div><label for="meeting-topic">Görüşme konusu</label><input id="meeting-topic" maxlength="200" required placeholder=""></div></div><div><label for="meeting-notes">Görüşme notları</label><textarea id="meeting-notes" maxlength="10000" required rows="4" placeholder=""></textarea><p id="meeting-ai-status" class="footer-note" role="status" aria-live="polite">Ana ekrandaki yapay zekâ görüşme yardımcısı taslağı bu forma aktarır. Kaydetmeden önce kontrol edin.</p></div>
 <div><div class="panel-head"><h3>Görüşmede konuşulan ürünler</h3><button class="btn" id="add-meeting-product" type="button">＋ Ürün ekle</button></div><div id="meeting-product-lines" class="meeting-product-lines"></div><p class="footer-note">Katalogdan seçin; miktar ve fiyatı kontrol edin. Kalıp kullanılan makinelerde 1 takım kalıp seti makina fiyatına dahildir; ekstra set bedelini görüşmede siz belirlersiniz.</p></div>
 <p id="meeting-message" role="status" aria-live="polite" class="footer-note"></p><button class="btn primary" id="save-meeting" type="submit">Görüşmeyi kaydet</button></form></div><div class="panel"><div class="panel-head"><h2>Takip planı</h2><span class="pill blue">Ayrı görevler</span></div><form id="follow-up-form" class="quote-form"><div class="meeting-company-picker"><div><label for="follow-up-company">Firma</label><div class="location-picker follow-up-company-picker"><input id="follow-up-company-search" type="search" placeholder="" autocomplete="off" aria-label="Firma seç" aria-expanded="false" required><div id="follow-up-company-results" class="autocomplete-results"></div><select id="follow-up-company" hidden><option value="">Firma seç</option></select></div></div><div><label for="follow-up-date">Takip tarihi</label><div class="custom-date-field" data-date-picker="date"><input id="follow-up-date" type="date" hidden><input id="follow-up-date-display" class="date-picker-display" type="text" readonly required placeholder="Tarih seçin" aria-haspopup="dialog" aria-expanded="false" aria-controls="follow-up-date-calendar"></div></div></div><div><label for="follow-up-title">Yapılacak iş</label><input id="follow-up-title" maxlength="300" required placeholder=""></div><p id="follow-up-message" role="status" class="footer-note"></p><button class="btn primary" id="save-follow-up" type="submit">Takip görevi ekle</button></form><div id="follow-up-list" class="list"><div class="empty">Takip görevleri yükleniyor…</div></div></div></div><div id="meeting-history-tab" class="meeting-tab-panel" hidden><div class="panel"><div class="panel-head"><h2>Kayıtlı görüşmeler</h2><button class="btn" id="refresh-meetings" type="button">Yenile</button></div><input class="search" id="meeting-search" placeholder="" aria-label="Görüşme kayıtlarında ara"><div class="list" id="meeting-list"><div class="empty">Görüşmeler yükleniyor…</div></div></div></div></section>
 <section class="page" id="page-products">
@@ -994,58 +995,9 @@ document.getElementById("meeting-report-form").addEventListener("submit",e=>{
  window.open("/api/meeting-report?"+params.toString(),"_blank","noopener");
 });
 
-// Sesli görüşme: tarayıcıda kaydedilir, sunucuya yalnızca yazıya dönüştürme için gönderilir.
-let meetingMediaRecorder=null, meetingMediaStream=null, meetingAudioChunks=[];
-async function transcribeMeetingAudioFile(file){
- const status=document.getElementById("meeting-audio-status");
- if(!file)return;
- if(file.size>25*1024*1024){status.textContent="Ses dosyası 25 MB sınırını aşamaz.";return;}
- status.textContent="Ses yazıya dönüştürülüyor…";
- try{
-  if(!csrfToken)await readCsrf();
-  const form=new FormData();form.append("file",file,file.name||"meeting-audio.webm");
-  const response=await fetch("/api/meetings/transcribe",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"X-CSRF-Token":csrfToken},body:form});
-  const body=await response.json().catch(()=>({}));
-  if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yapın.");}
-  if(!response.ok)throw new Error(body.detail||"Ses yazıya dönüştürülemedi.");
-  const notes=document.getElementById("meeting-notes");
-  notes.value=(notes.value.trim()?notes.value.trim()+"\n\n":"")+body.text;
-  notes.dispatchEvent(new Event("input",{bubbles:true}));
-  status.textContent="Metin görüşme notlarına eklendi. Kaydetmeden önce kontrol edip düzenleyin.";
- }catch(error){status.textContent=error.message||"Ses işlenemedi.";}
-}
-document.getElementById("meeting-audio-file")?.addEventListener("change",event=>{
- const file=event.target.files?.[0];if(file)transcribeMeetingAudioFile(file);event.target.value="";
-});
-document.getElementById("start-meeting-recording")?.addEventListener("click",async()=>{
- const status=document.getElementById("meeting-audio-status");
- try{
-  if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==="undefined")throw new Error("Bu tarayıcı mikrofon kaydını desteklemiyor. Ses dosyası yükleyebilirsiniz.");
-  meetingMediaStream=await navigator.mediaDevices.getUserMedia({audio:true});
-  const preferred="audio/webm;codecs=opus";
-  const options=MediaRecorder.isTypeSupported?.(preferred)?{mimeType:preferred}:{};
-  meetingMediaRecorder=new MediaRecorder(meetingMediaStream,options);meetingAudioChunks=[];
-  meetingMediaRecorder.addEventListener("dataavailable",event=>{if(event.data?.size)meetingAudioChunks.push(event.data);});
-  meetingMediaRecorder.addEventListener("stop",()=>{
-   const blob=new Blob(meetingAudioChunks,{type:meetingMediaRecorder.mimeType||"audio/webm"});
-   const ext=(blob.type.includes("ogg")?"ogg":blob.type.includes("mp4")?"mp4":"webm");
-   const file=new File([blob],"meeting-recording."+ext,{type:blob.type||"audio/webm"});
-   meetingMediaStream?.getTracks().forEach(track=>track.stop());meetingMediaStream=null;
-   transcribeMeetingAudioFile(file);
-  },{once:true});
-  meetingMediaRecorder.start();document.getElementById("start-meeting-recording").disabled=true;document.getElementById("stop-meeting-recording").disabled=false;
-  status.textContent="Kayıt devam ediyor… Bitirdiğinizde kaydı durdurun.";
- }catch(error){meetingMediaStream?.getTracks().forEach(track=>track.stop());meetingMediaStream=null;status.textContent=error.message||"Mikrofon başlatılamadı.";}
-});
-document.getElementById("stop-meeting-recording")?.addEventListener("click",()=>{
- if(meetingMediaRecorder&&meetingMediaRecorder.state!=="inactive"){meetingMediaRecorder.stop();}
- document.getElementById("start-meeting-recording").disabled=false;document.getElementById("stop-meeting-recording").disabled=true;
-});
-
-document.getElementById("prepare-meeting-ai")?.addEventListener("click",async()=>{
- const button=document.getElementById("prepare-meeting-ai"),status=document.getElementById("meeting-ai-status"),notes=document.getElementById("meeting-notes");
- const transcript=notes.value.trim();if(transcript.length<10){status.textContent="Önce görüşmeyi yazın veya ses kaydını metne dönüştürün.";return;}
- button.disabled=true;status.textContent="Yapay zekâ firma ve ürün kayıtlarını eşleştiriyor…";
+async function prepareMeetingDraftFromText(transcript,status){
+ if(transcript.length<10){status.textContent="En az 10 karakterlik görüşme notu yazın.";return false;}
+ status.textContent="Yapay zekâ firma ve ürün kayıtlarını eşleştiriyor…";
  try{
   if(!csrfToken)await readCsrf();
   const response=await fetch("/api/meetings/prepare",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({transcript})});
@@ -1058,7 +1010,7 @@ document.getElementById("prepare-meeting-ai")?.addEventListener("click",async()=
   if(draft.meeting_type){document.getElementById("meeting-type").value=draft.meeting_type;}
   else{const typeSelect=document.getElementById("meeting-type");if(![...typeSelect.options].some(option=>option.value===""))typeSelect.insertBefore(new Option("Görüşme türünü seçin",""),typeSelect.firstChild);typeSelect.value="";}
   document.getElementById("meeting-topic").value=draft.topic||"Genel görüşme";
-  notes.value=draft.notes||transcript;
+  document.getElementById("meeting-notes").value=draft.notes||transcript;
   const lines=document.getElementById("meeting-product-lines");lines.replaceChildren();
   const selectedIds=new Set((draft.product_lines||[]).map(item=>String(item.product_id)));
   for(const line of (draft.product_lines||[])){
@@ -1072,10 +1024,23 @@ document.getElementById("prepare-meeting-ai")?.addEventListener("click",async()=
   const issues=[...(draft.questions||[]),...(draft.unmatched_products||[]).map(item=>"Katalogda eşleşmeyen ürün: "+item)];
   if(!company)issues.unshift("Firma eşleşmesi kesin değil; firma alanını listeden seçin.");
   status.textContent=issues.length?"Taslak hazır. Kontrol edilmesi gerekenler: "+issues.join(" · "):"Taslak hazır. Firma, ürünler, miktarlar ve notları kontrol edip ardından görüşmeyi kaydedin.";
- }catch(error){status.textContent=error.message||"Yapay zekâ taslağı hazırlanamadı.";}
+  document.getElementById("meeting-ai-status").textContent=status.textContent;
+  return true;
+ }catch(error){status.textContent=error.message||"Yapay zekâ taslağı hazırlanamadı.";return false;}
+}
+document.getElementById("dashboard-prepare-meeting")?.addEventListener("click",async()=>{
+ const button=document.getElementById("dashboard-prepare-meeting"),status=document.getElementById("dashboard-meeting-ai-status");
+ const transcript=document.getElementById("dashboard-meeting-transcript").value.trim();
+ if(transcript.length<10){status.textContent="En az 10 karakterlik görüşme notu yazın.";return;}
+ button.disabled=true;status.textContent="Firma ve ürün kataloğu yükleniyor…";
+ try{
+  await Promise.all([loadMeetingCompanies(),loadProducts()]);
+  document.getElementById("meeting-notes").value=transcript;
+  const prepared=await prepareMeetingDraftFromText(transcript,status);
+  if(prepared){go("meetings");document.getElementById("meeting-ai-status").textContent=status.textContent;}
+ }catch(error){status.textContent=error.message||"Görüşme taslağı hazırlanamadı.";}
  finally{button.disabled=false;}
 });
-
 document.getElementById("meeting-form").addEventListener("submit",async event=>{
   event.preventDefault();const message=document.getElementById("meeting-message");const button=document.getElementById("save-meeting");button.disabled=true;message.textContent="Görüşme kaydediliyor…";
   try{

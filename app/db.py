@@ -2,6 +2,8 @@ import json
 import os
 import sqlite3
 from uuid import uuid4
+
+from app import db_backend
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +14,9 @@ def database_path() -> Path:
     return Path(os.environ.get("SALES_DATABASE_PATH", DEFAULT_DATABASE_PATH))
 
 
-def connect() -> sqlite3.Connection:
+def connect():
+    if db_backend.is_postgres_configured():
+        return db_backend.Connection()
     path = database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path, timeout=10)
@@ -182,6 +186,19 @@ def init_db() -> None:
         for column, definition in additions.items():
             if column not in columns:
                 connection.execute(f"ALTER TABLE companies ADD COLUMN {column} {definition}")
+
+
+def initialize() -> None:
+    """Initialize SQLite locally or apply versioned Alembic migrations on PostgreSQL."""
+    if not db_backend.is_postgres_configured():
+        init_db()
+        return
+    from alembic import command
+    from alembic.config import Config
+    config_path = Path(__file__).resolve().parent.parent / "alembic.ini"
+    config = Config(str(config_path))
+    config.set_main_option("script_location", str(config_path.parent / "migrations"))
+    command.upgrade(config, "head")
 
 
 def _company_record(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:

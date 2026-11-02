@@ -8,3 +8,10 @@ __pycache__
 .env
 .venv
 venv
+.env.*
+!.env.hostinger.example
+data/
+backups/
+__pycache__/
+.pytest_cache/
+tests/

@@ -28,16 +28,19 @@ from app import llm_wiki
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
+from app import storage
 from app.quote_excel import render_quote_excel
 from app.quote_pdf import convert_excel_to_pdf
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    db.init_db()
+    db.initialize()
     agent_foundation.init_agent_foundation()
     ai_usage.init_ai_usage()
     llm_wiki.init_wiki()
+    if storage.is_s3():
+        storage.ensure_bucket()
     yield
 
 

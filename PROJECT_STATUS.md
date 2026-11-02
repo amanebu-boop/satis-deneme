@@ -119,7 +119,8 @@ Her görevde:
 - [ ] Aktarım uçtan uca testi CI'da ilk çalıştırmada hata verdi: psycopg Connection üzerinde olmayan `executemany` kullanımı. Cursor üzerinden batch insert düzeltmesi commit `12575f7` ile eklendi; düzeltme sonrası CI sonucu doğrulanmayı bekliyor.
 - [ ] Yüklenen belgeler için kalıcı depolama ve geri yükleme testi tamamlanmalı.
 - [ ] Uygulama üretim kimlik doğrulaması/yetkilendirmesi ve güvenlik kontrollerinden geçirilmeli.
-- [ ] GitHub Actions ile Hostinger staging dağıtımı için sınırlı yetkili SSH kullanıcısı, sabit sunucu dağıtım komutu ve korumalı GitHub Environment hazırlanmalı.
+- [x] Tek kullanıcılı Hostinger uygulama çalışma Compose dosyası eklendi: `deploy/hostinger/compose.yaml`. Kalıcı yükleme dizini, mevcut özel PostgreSQL ağı, Traefik yönlendirmesi ve kaynak sınırları tanımlı.
+- [ ] Hostinger Compose dosyası VPS üzerinde henüz uygulanmadı; hostname, mevcut Traefik sertifika çözümleyicisi ve uygulama ortam değişkenleri doğrulanmalı.
 - [ ] Hostinger staging uçtan uca test edilmeden üretim dağıtımı yapılmamalı.
 
 **Geçiş sınırı:** Bu dal yalnızca hazırlık içindir. Render, DNS, canlı veri ve Hostinger üretim servisi değiştirilmedi. Haftalık yedekleme tercihi korunur. Canlı geçiş ve veri taşıma ayrıca onay gerektirir.
@@ -138,10 +139,10 @@ Her görevde:
 - [x] Teklif numarası, readiness ve eşzamanlılık testleri eklendi. Son CI çalışmasında migration aktarım testindeki ayrı batch insert hatası dışında 35 test geçti; düzeltme sonrası tam CI sonucu bekleniyor.
 - [x] Teklif numarası sayacı SQLite ve PostgreSQL'de atomik `UPSERT ... RETURNING` ile güncellenecek şekilde düzeltildi; PostgreSQL'de ardışık ve 12 paralel teklif numarası testi eklendi.
 - [x] SQLite → PostgreSQL aktarım aracı ve PostgreSQL 17 üzerinde kuru çalışma + gerçek aktarım testi eklendi.
-- [ ] Aktarım testinin CI sonucu henüz doğrulanmadı; gerçek veriye uygulanmadı.
-- [ ] Hostinger staging Compose dosyası ve sınırlı SSH dağıtım komutu henüz yok.
+- [x] Aktarım testi CI üzerinde geçti; gerçek veriye uygulanmadı.
+- [x] Hostinger staging için ilk Compose dosyası eklendi; VPS üzerinde uygulanmadı ve SSH dağıtım hesabı/komutu henüz yapılandırılmadı.
 - [ ] Üretim kimlik doğrulaması, yetkilendirme, yedek geri yükleme ve kabul testleri tamamlanmadı.
 
-**Test kanıtı:** Önceki GitHub Actions çalışması `41459517303` başarıyla tamamlandı. Daha yeni çalışma `41462992982` içinde Docker image build başarılı; Python testleri `35 passed, 1 failed, 1 warning` ile sonuçlandı. Hata, migration aracının psycopg Connection üzerinde `executemany` çağırmasıydı. Cursor tabanlı düzeltme commit `12575f7` ile eklendi; bu düzeltmenin CI sonucu henüz doğrulanmadı.
+**Test kanıtı:** GitHub Actions çalışması `41465437024` başarıyla tamamlandı: Python testleri `36 passed, 1 warning`; non-root Docker image build başarılı. Quote template validation işi de başarılı.
 
 **PR:** Hazırlık değişiklikleri `#34` numaralı taslak PR üzerinden `main` dalına açıldı. PR merge edilmedi; canlı yayın, DNS ve gerçek veri aktarımı yapılmadı.

@@ -28,7 +28,7 @@ Use GitHub-hosted automation as the control plane so the owner's personal comput
 
 ## Blocking application compatibility issue
 
-The current application is not ready to be deployed against PostgreSQL.
+The application has an opt-in PostgreSQL backend, but is not yet ready for production deployment.
 
 - `app/db.py` retains SQLite for local/test use and now has an opt-in PostgreSQL backend through `SALES_DATABASE_URL` using psycopg 3.
 - Schema setup and migrations use SQLite-specific `PRAGMA table_info`, `executescript`, and SQLite DDL.
@@ -42,11 +42,11 @@ PostgreSQL connection support and a CI smoke test now exist, but this is not yet
 
 ## Required implementation sequence
 
-1. Baseline: GitHub Actions completed the existing SQLite tests and PostgreSQL smoke test: 23 passed, 1 warning (observed on commit `4f7b9fb5` before the container build workflow was added). Re-run the latest branch head before merging.
-2. Database layer: harden the new explicit backend boundary; retain SQLite for local development and add deeper PostgreSQL CRUD, concurrency, migration, and error-mapping coverage.
+1. Baseline: GitHub Actions run `41459517303` completed successfully; both the Python/PostgreSQL test job and non-root Docker image build job passed. The earlier test log showed 23 passed, 1 warning. Re-run the latest branch head before merging.
+2. Database layer: atomic annual quote-number allocation now uses an UPSERT with RETURNING on both supported backends; a PostgreSQL sequential-number test is added. Still add concurrent load, full CRUD, migration, and error-mapping coverage.
 3. Data migration: write a repeatable, dry-run-capable SQLite-to-PostgreSQL export/import tool; preserve IDs, quote numbers, relationships, currencies, and timestamps; verify row counts and referential integrity. Never run against production data without explicit approval and a tested backup.
 4. File storage: use a configurable persistent document root; verify upload, download, generated XLSX/PDF, and backup/restore behavior.
-5. Runtime: non-root application Dockerfile and healthcheck are added; still add resource limits, runtime Compose definition, readiness behavior, and image-build verification. Keep PostgreSQL private.
+5. Runtime: non-root application Dockerfile and healthcheck are added; CI successfully built the image. Still add resource limits, runtime Compose definition, readiness behavior, and staging image verification. Keep PostgreSQL private.
 6. Security: replace prototype access assumptions with production authentication/session controls, CSRF protections, authorization and audit logging. Secrets must not be present in source, image layers, logs, or workflow output.
 7. CI: run unit, integration, migration, document, and container-build checks on GitHub-hosted runners.
 8. Staging deployment: add a dedicated, least-privilege deploy account and a fixed server-side deployment command. Store only the deployment private key and connection metadata in GitHub encrypted secrets. Pin the server host key; do not use blind `ssh-keyscan` trust at deploy time.
@@ -68,6 +68,6 @@ PostgreSQL connection support and a CI smoke test now exist, but this is not yet
 
 Minimize owner work. The assistant should implement repository changes and inspect CI results directly when connector permissions allow. Ask the owner only for actions that cannot be performed through available integrations, such as creating the first VPS-side deploy identity or authorizing a credential. Never request a private key or password in chat. Explain each unavoidable one-time action and batch it.
 
-## Current boundary
+## Database concurrency note\n\nAnnual quote sequence allocation previously read then updated a counter, which could issue duplicate numbers under concurrent requests. It now uses a single atomic `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` statement. A PostgreSQL integration test checks the first two sequence values; a concurrent stress test remains open.\n\n## Current boundary
 
 This branch is preparation only. It does not deploy, restart, migrate data, modify Render, or change DNS.

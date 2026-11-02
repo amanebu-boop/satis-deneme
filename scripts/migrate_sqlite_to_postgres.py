@@ -57,15 +57,20 @@ def _source_snapshot(source_path: Path, target_columns: dict[str, list[str]]):
             order = primary_key or columns
             sql = f"SELECT {', '.join(columns)} FROM {table} ORDER BY {', '.join(order)}"
             rows = [dict(row) for row in source.execute(sql).fetchall()]
+            digest_rows = rows
             if table == "products":
                 rows = _sort_products(rows)
-            snapshot[table] = {"columns": columns, "rows": rows, "count": len(rows), "sha256": _digest(rows, columns)}
+            snapshot[table] = {"columns": columns, "rows": rows, "count": len(rows), "sha256": _digest(digest_rows, columns)}
     return snapshot
 
 
 def migrate_sqlite_to_postgres(source_path: Path, target_url: str, *, apply: bool = False) -> dict[str, Any]:
     if not source_path.is_file():
         raise FileNotFoundError(f"SQLite source database not found: {source_path}")
+    if target_url.startswith("postgres://"):
+        target_url = "postgresql+psycopg://" + target_url[len("postgres://"):]
+    elif target_url.startswith("postgresql://"):
+        target_url = "postgresql+psycopg://" + target_url[len("postgresql://"):]
     engine = create_engine(target_url, pool_pre_ping=True)
     try:
         with engine.connect() as connection:

@@ -84,17 +84,14 @@ def reset_client_for_tests() -> None:
 
 
 def ensure_bucket() -> None:
-    """Create the configured bucket once when the S3-compatible service is ready."""
-    client = _client()
-    bucket = _bucket()
+    """Verify the pre-provisioned bucket using the app's least-privilege S3 identity."""
     try:
-        client.head_bucket(Bucket=bucket)
+        _client().head_bucket(Bucket=_bucket())
     except Exception as exc:
-        status = getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
-        code = str(getattr(exc, "response", {}).get("Error", {}).get("Code", ""))
-        if status not in {404, 400} and code not in {"404", "NoSuchBucket", "NotFound"}:
-            raise
-        client.create_bucket(Bucket=bucket)
+        raise RuntimeError(
+            "Configured RustFS bucket is unavailable. Create it with the RustFS administrator, "
+            "then grant the app service account access."
+        ) from exc
 
 
 def check_health() -> None:

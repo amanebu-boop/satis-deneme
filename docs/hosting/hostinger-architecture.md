@@ -144,6 +144,6 @@ Bu altyapı kod hazırlığıdır; gerçek Hostinger kurulumu veya yedek/restore
 
 ## 12. Veri taşıma araçları
 
-- `scripts/migrate_sqlite_to_postgres.py`: SQLite tabloları için önce dry-run raporu ve SHA-256 özetleri üretir. Hedef şemanın önceden Alembic ile kurulmuş ve tüm uygulama tablolarının boş olması gerekir. Yazma yalnızca `--apply` ile yapılır; kayıt sayısı ve tablo checksum'ları transaction içinde doğrulanır. Ürün opsiyon ebeveyn ilişkileri üstten alta kopyalanır; döngü tespit edilirse işlem durur.
+- `scripts/migrate_sqlite_to_postgres.py`: SQLite veritabanının tutarlı bir kopyasını alır, yalnızca bu geçici kopyada mevcut güvenli SQLite şema yükseltmelerini çalıştırır, sonra dry-run raporu ve SHA-256 özetleri üretir. Hedef şemanın önceden Alembic ile kurulmuş ve tüm uygulama tablolarının boş olması gerekir. Yazma yalnızca `--apply` ile yapılır; kayıt sayısı ve tablo checksum'ları transaction içinde doğrulanır. Ürün opsiyon ebeveyn ilişkileri üstten alta kopyalanır; döngü tespit edilirse işlem durur.
 - `scripts/migrate_local_documents_to_s3.py`: yerel `.source`, `.json` ve `.output.*` dosyalarını RustFS anahtarlarına eşler; varsayılan dry-run'dır. `--apply` sırasında SHA-256 doğrulaması yapar ve mevcut farklı nesnenin üzerine yazmaz.
-- Her iki araç da kaynak SQLite dosyasını veya yerel dosyaları silmez. Dry-run raporu, kayıt mutabakatı ve ayrıca kullanıcı onayı olmadan gerçek müşteri verisi taşınmaz.
+- Her iki araç da kaynak SQLite dosyasını veya yerel dosyaları silmez; SQLite şema yükseltmeleri kaynak dosyaya değil geçici kopyaya uygulanır. Dry-run raporu, kayıt mutabakatı ve ayrıca kullanıcı onayı olmadan gerçek müşteri verisi taşınmaz.

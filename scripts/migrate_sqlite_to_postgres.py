@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -73,20 +74,48 @@ def migrate_sqlite_to_postgres(source_path: Path, target_url: str, *, apply: boo
         target_url = "postgresql+psycopg://" + target_url[len("postgresql://"):]
     engine = create_engine(target_url, pool_pre_ping=True)
     try:
-        with engine.connect() as connection:
-            inspector = inspect(connection)
-            target_tables = set(inspector.get_table_names())
-            missing_tables = [table for table in TABLE_ORDER if table not in target_tables]
-            if missing_tables:
-                raise RuntimeError(f"Target schema is not initialized; missing tables: {missing_tables}")
-            target_columns = {table: [column["name"] for column in inspector.get_columns(table)] for table in TABLE_ORDER}
-            target_pks = {table: inspector.get_pk_constraint(table).get("constrained_columns") or [] for table in TABLE_ORDER}
-            source = _source_snapshot(source_path, target_columns)
-            target_counts = {table: connection.execute(text(f"SELECT count(*) FROM {table}")).scalar_one() for table in TABLE_ORDER}
-            occupied = {table: count for table, count in target_counts.items() if count}
-            if occupied:
-                raise RuntimeError(f"Target database is not empty; refusing overwrite: {occupied}")
-        if apply:
+        with tempfile.TemporaryDirectory(prefix="sales-sqlite-migration-") as temporary_dir:
+            source_copy = Path(temporary_dir) / "source.db"
+            source_connection = sqlite3.connect(str(source_path))
+            copy_connection = sqlite3.connect(str(source_copy))
+            try:
+                # SQLite backup API captures a consistent snapshot, including committed WAL pages.
+                source_connection.backup(copy_connection)
+            finally:
+                copy_connection.close()
+                source_connection.close()
+
+            previous = {
+                name: os.environ.get(name)
+                for name in ("DATABASE_URL", "SALES_DATABASE_URL", "SALES_DATABASE_PATH")
+            }
+            try:
+                os.environ.pop("DATABASE_URL", None)
+                os.environ.pop("SALES_DATABASE_URL", None)
+                os.environ["SALES_DATABASE_PATH"] = str(source_copy)
+                from app import db
+                db.init_db()  # Apply the existing safe SQLite schema upgrades to the copy only.
+            finally:
+                for name, value in previous.items():
+                    if value is None:
+                        os.environ.pop(name, None)
+                    else:
+                        os.environ[name] = value
+
+            with engine.connect() as connection:
+                inspector = inspect(connection)
+                target_tables = set(inspector.get_table_names())
+                missing_tables = [table for table in TABLE_ORDER if table not in target_tables]
+                if missing_tables:
+                    raise RuntimeError(f"Target schema is not initialized; missing tables: {missing_tables}")
+                target_columns = {table: [column["name"] for column in inspector.get_columns(table)] for table in TABLE_ORDER}
+                target_pks = {table: inspector.get_pk_constraint(table).get("constrained_columns") or [] for table in TABLE_ORDER}
+                source = _source_snapshot(source_copy, target_columns)
+                target_counts = {table: connection.execute(text(f"SELECT count(*) FROM {table}")).scalar_one() for table in TABLE_ORDER}
+                occupied = {table: count for table, count in target_counts.items() if count}
+                if occupied:
+                    raise RuntimeError(f"Target database is not empty; refusing overwrite: {occupied}")
+            if apply:
             with engine.begin() as connection:
                 for table in TABLE_ORDER:
                     entry = source[table]

@@ -32,6 +32,34 @@ def quote_identifier(value: str) -> str:
     return '"' + value.replace('"', '""') + '"'
 
 
+def order_product_rows(rows: list[sqlite3.Row]) -> list[sqlite3.Row]:
+    """Insert parent products before child options, independent of SQLite row order."""
+    by_id = {row["id"]: row for row in rows}
+    ordered: list[sqlite3.Row] = []
+    inserted: set[str] = set()
+    pending = list(rows)
+    while pending:
+        ready = [
+            row for row in pending
+            if row["parent_product_id"] is None or row["parent_product_id"] in inserted
+        ]
+        if not ready:
+            missing = sorted({
+                row["parent_product_id"] for row in pending
+                if row["parent_product_id"] not in by_id
+            })
+            if missing:
+                raise RuntimeError(
+                    "Products reference missing parent records: " + ", ".join(missing)
+                )
+            raise RuntimeError("Product parent relationships contain a cycle.")
+        for row in ready:
+            ordered.append(row)
+            inserted.add(row["id"])
+            pending.remove(row)
+    return ordered
+
+
 def migrate(source_path: Path, *, apply: bool) -> dict[str, int]:
     target_url = os.environ.get("SALES_DATABASE_URL")
     if not target_url:
@@ -124,7 +152,10 @@ def migrate(source_path: Path, *, apply: bool) -> dict[str, int]:
             if apply:
                 with target.transaction():
                     for table in TABLES:
-                        if not rows_by_table[table]:
+                        import_rows = rows_by_table[table]
+                        if table == "products":
+                            import_rows = order_product_rows(import_rows)
+                        if not import_rows:
                             continue
                         columns = columns_by_table[table]
                         column_sql = ", ".join(quote_identifier(column) for column in columns)
@@ -135,7 +166,7 @@ def migrate(source_path: Path, *, apply: bool) -> dict[str, int]:
                         )
                         target.executemany(
                             insert_sql,
-                            [tuple(row[column] for column in columns) for row in rows_by_table[table]],
+                            [tuple(row[column] for column in columns) for row in import_rows],
                         )
 
                     # Restore the annual quote counter to at least the maximum quote number

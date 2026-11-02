@@ -22,6 +22,7 @@ Use GitHub-hosted automation as the control plane so the owner's personal comput
 - A separate branch `infra/github-hostinger-pipeline` exists.
 - A GitHub Actions test workflow exists at `.github/workflows/hostinger-migration-checks.yml`; it provisions a temporary PostgreSQL 17 service, runs the SQLite suite plus a PostgreSQL integration test, and builds the application image without publishing it.
 - A non-root application `Dockerfile` and `.dockerignore` exist; the image is built only in CI and has not been deployed.
+- A single-user Hostinger runtime Compose file exists at `deploy/hostinger/compose.yaml`; it mounts persistent uploads, joins the existing private `satis-internal` network, sets basic CPU/RAM limits, and exposes the app only through the existing Traefik proxy labels. It has not been applied to the VPS.
 - The workflow runs on pushes to this migration branch / feature branches, pull requests, and manual dispatch.
 - CI installs Python 3.11, LibreOffice Calc and fonts used by document integration tests, then runs `python -m pytest -q`.
 - VPS preparation already reported by the owner: Docker/Compose, Traefik, private `satis-internal` network, PostgreSQL 17 container with persistent data, UFW and SSH hardening. This document does not independently assert current live health.
@@ -42,11 +43,11 @@ PostgreSQL connection support and a CI smoke test now exist, but this is not yet
 
 ## Required implementation sequence
 
-1. Baseline: earlier GitHub Actions run `41459517303` passed both Python/PostgreSQL tests and the non-root Docker build. The latest pre-fix run `41462992982` exposed a migration-tool bug: batch inserts called `executemany` on a psycopg connection instead of a cursor. Fixed on this branch in commit `12575f7`. The follow-up CI run is `41465393641` and was pending at the time of this update.
+1. Baseline: latest verified Hostinger migration workflow run `41465437024` completed successfully: Python test suite passed and the non-root Docker image build passed. The separate quote-template validation job also passed. The earlier migration importer bug was fixed in commit `12575f7`.
 2. Database layer: opt-in PostgreSQL backend, psycopg 3, schema introspection, case-insensitive search, health readiness (HTTP 503 on DB failure), atomic quote-number allocation and 12-way concurrency test are implemented. Full CRUD and PostgreSQL error-mapping coverage remain open.
 3. Data migration: dry-run-by-default SQLite-to-PostgreSQL importer is implemented. It preserves IDs/values, checks required tables and exact column order, refuses non-empty targets, orders product options after parents, imports transactionally and verifies row counts. An end-to-end PostgreSQL 17 test covers company/contact/product-option/meeting/follow-up/quotation records. Follow-up CI result pending. Never run against production data without explicit approval and a tested backup.
 4. File storage: configurable persistent document root, upload/download/generated XLSX/PDF and backup/restore behavior remain to be implemented and tested.
-5. Runtime: non-root Dockerfile and healthcheck exist; CI image build passed in run `41462992982`. Runtime Compose, resource limits, persistent upload mount, staging image publication/deployment and smoke tests remain open. Keep PostgreSQL private.
+5. Runtime: non-root Dockerfile and healthcheck exist; CI image build passed in run `41465437024`. Single-user Hostinger Compose file now defines app container, persistent uploads, private PostgreSQL network, Traefik routing labels and modest resource limits. It still needs VPS-side configuration values, resolver/hostname confirmation, and a staging smoke test. Keep PostgreSQL private.
 6. Security: replace prototype access assumptions with production authentication/session controls, CSRF protections, authorization and audit logging. Secrets must not be present in source, image layers, logs, or workflow output.
 7. CI: run unit, integration, migration, document, and container-build checks on GitHub-hosted runners.
 8. Staging deployment: add a dedicated, least-privilege deploy account and a fixed server-side deployment command. Store only the deployment private key and connection metadata in GitHub encrypted secrets. Pin the server host key; do not use blind `ssh-keyscan` trust at deploy time.
@@ -67,6 +68,10 @@ PostgreSQL connection support and a CI smoke test now exist, but this is not yet
 ## Owner interaction policy
 
 Minimize owner work. The assistant should implement repository changes and inspect CI results directly when connector permissions allow. Ask the owner only for actions that cannot be performed through available integrations, such as creating the first VPS-side deploy identity or authorizing a credential. Never request a private key or password in chat. Explain each unavoidable one-time action and batch it.
+
+## Single-user deployment scope
+
+The initial deployment target is one trusted operator. Multi-user roles, tenant isolation, SSO/OIDC and advanced approval workflows are deferred. Retain only the practical minimum: one login password, HTTPS through Traefik, private PostgreSQL, and the existing weekly backup plan. The app remains a prototype until its business flows are accepted in staging.
 
 ## Current boundary
 

@@ -107,22 +107,37 @@ Her görevde:
 - **Sıradaki tek öncelikli görev:**
 
 
-## 9. Hostinger yayın mimarisi kararı (2026-11-02)
+## 9. Hostinger yayın mimarisi ve uygulama hazırlığı (2026-11-02)
 
-Kullanıcı tarafından onaylanan hedef:
-- Yayın sağlayıcısı: **tamamen Hostinger**.
-- Uygulama: FastAPI, Hostinger Linux VPS.
-- Veritabanı: PostgreSQL.
-- Belgeler: kalıcı depolama; dosya sistemi uyumluluğu ve S3 uyumlu depolama seçeneği teknik olarak doğrulanacak.
-- Yedekleme: **günlük (daily)**.
-- Render mevcut servisi geçiş ve kabul testleri tamamlanana kadar geri dönüş noktası olarak korunacak.
+**Kullanıcı tarafından onaylanan hedef:** Yayın sağlayıcısı tamamen Hostinger; uygulama Hostinger Linux VPS; veritabanı PostgreSQL; belgeler kalıcı depolama; günlük yedekleme. Mevcut Render servisi geçiş ve kabul testleri tamamlanana kadar geri dönüş noktası olarak korunur.
 
-Hazırlanan teknik belgeler:
-- `docs/hosting/hostinger-architecture.md` — hedef mimari, PostgreSQL uyarlaması, kalıcı belge depolama, güvenlik, yedekleme ve aşamalı geçiş sınırları.
-- `docs/hosting/hostinger-test-plan.md` — mevcut taban testleri, PostgreSQL, belge depolama, güvenlik, günlük yedek/restore, performans ve kullanıcı kabul testleri.
+### Geliştirme dalında oluşturulan altyapı
+- `infra/hostinger-migration-prep` dalında PostgreSQL bağlantısı için SQLAlchemy 2 + psycopg uyumluluk katmanı eklendi. SQLite yerel geliştirme varsayılanı olarak korundu.
+- Alembic yapılandırması, başlangıç şema migration köprüsü ve uygulama başlangıcında migration çalıştırma eklendi. İlk migration mevcut idempotent şema kurulumunu çağırır; sonraki şema değişiklikleri gerçek Alembic `op` migration'ları olarak yazılmalıdır.
+- Yerel dosya sistemi ve S3 uyumlu RustFS için depolama katmanı eklendi. Şablon yükleme/listeleme ve üretilen dosyaların S3'e yazılması uyarlandı.
+- Dockerfile: Python 3.11, LibreOffice, PostgreSQL istemci araçları, root olmayan uygulama kullanıcısı.
+- Docker Compose: FastAPI, PostgreSQL 16, RustFS ve Nginx. Nginx test portu yalnızca `127.0.0.1:8080` adresine bağlıdır; HTTPS/public port açılmadı.
+- Sağlık kontrolü veritabanı ve depolama bağımlılıklarını doğrular.
+- Günlük PostgreSQL + RustFS yedekleme betikleri, AES-256-GCM/PBKDF2 tabanlı şifreleme, 14 günlük yerel saklama ve kontrollü geri yükleme betiği eklendi.
+- Günlük 02.00 cron şablonu eklendi. Hostinger VPS panelindeki otomatik snapshot yedeği ayrıca etkinleştirilmeli ve doğrulanmalıdır.
+- GitHub Actions: SQLite regresyonu, PostgreSQL smoke testi, Python derleme, shell syntax ve Docker Compose yapılandırma doğrulaması.
 
-**İşlem sınırı:** Bu çalışma yalnızca `infra/hostinger-migration-prep` dalında dokümantasyon hazırlığıdır. Hostinger satın alınmadı; VPS kurulmadı; Render veya canlı sistem değiştirilmedi; DNS değişmedi; gerçek veri taşınmadı. Bu adımların her biri için kullanıcıdan ayrıca açık onay alınmalıdır.
+### Son doğrulama kaydı
+- GitHub Actions başarılı koşu: commit `0165170a088684b5308630f1c83551` öncesi sürümde SQLite: **25 passed, 2 skipped, 1 warning**; PostgreSQL: **5 passed**.
+- Bu başarılı koşu AES-GCM yedekleme ve son Docker Compose düzeltmelerinden önceydi. Yeni commit'ler için son CI sonucu ayrıca kontrol edilmelidir; bu nedenle son değişikliklerin tümü testten geçti olarak işaretlenmez.
+- Yerel konteyner imajı veya RustFS gerçek uçtan uca çalıştırılmadı; GitHub CI'da yalnızca Compose yapılandırması doğrulanır.
+- Hostinger satın alma/VPS kurulumu, DNS, canlı değişiklik, Render değişikliği ve gerçek müşteri verisi taşıma yapılmadı.
 
-**Doğrulama durumu:** İki yeni doküman GitHub dalında oluşturuldu ve tekrar okunarak doğrulandı. Bu adımda uygulama kodu değiştirilmedi ve otomatik test çalıştırılmadı. Dolayısıyla kod/test hazırlığı tamamlanmış veya geçişe hazır olarak işaretlenmemelidir.
+### Canlı geçişi engelleyen açık işler
+1. Son CI koşusunun yeşil olması; gerekirse düzeltme.
+2. Docker imajının gerçek build ve Compose servislerinin yerel/staging ortamda çalıştırılması.
+3. PostgreSQL üzerinde firma, görüşme, ürün, teklif numarası, teklif/Excel/PDF ve KDV akışlarının tam regresyonu.
+4. RustFS yükleme, listeleme, indirme, çıktı üretme ve yeniden başlatma kalıcılığı için uçtan uca test.
+5. Yedek üretimi ve boş test veritabanı/bucket'a geri yükleme tatbikatı.
+6. Gerçek kullanıcı girişi/OIDC, rol ve erişim kontrolleri; HTTPS/TLS ve firewall.
+7. SQLite → PostgreSQL ve yerel dosya → RustFS taşıma provası, checksum ve kayıt mutabakatı.
+8. Hostinger satın alma, VPS staging, gerçek veri taşıma ve canlı DNS için ayrı onay kapıları.
 
-**Sıradaki öncelik:** Mevcut SQLite erişim katmanını ve test tabanını inceleyip PostgreSQL uyarlamasını küçük, test edilebilir parçalara ayırmak; önce yerel/CI test ortamını hazırlamak. Hostinger sunucusu veya canlı sistem kullanılmayacak.
+**İşlem sınırı:** Bütün geliştirme bu dalda kalır. `main`, Render, Hostinger hesabı, DNS ve gerçek veri değiştirilmez. Satın alma, sunucu kurulumu, gerçek veri taşıma ve canlı geçiş için ayrıca açık onay gerekir.
+
+**Sıradaki öncelik:** Son CI koşusunu incele; tüm kontroller geçtikten sonra draft PR hazırla. Ardından Docker/RustFS staging ve güvenlik/backup kabul testlerini tamamla.

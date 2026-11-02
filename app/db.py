@@ -64,6 +64,13 @@ def connect():
                 "PostgreSQL support requires the psycopg package; install project dependencies."
             ) from exc
         connection = psycopg.connect(database_url, row_factory=dict_row, connect_timeout=10)
+        schema = os.environ.get("SALES_DATABASE_SCHEMA")
+        if schema:
+            import re
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", schema):
+                connection.close()
+                raise ValueError("SALES_DATABASE_SCHEMA must be a simple PostgreSQL identifier.")
+            connection.execute(f'SET search_path TO "{schema}"')
         return _PostgresConnection(connection)
 
     path = database_path()

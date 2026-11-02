@@ -800,7 +800,7 @@ def browser_generate_template(
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "stage": "prototype", "storage": "sqlite"}
+    return {"status": "ok", "stage": "prototype", "storage": db.database_backend()}
 
 
 @app.get("/")

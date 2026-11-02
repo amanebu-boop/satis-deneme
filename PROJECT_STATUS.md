@@ -123,9 +123,9 @@ Her görevde:
 - GitHub Actions: SQLite regresyonu, PostgreSQL smoke testi, Python derleme, shell syntax ve Docker Compose yapılandırma doğrulaması.
 
 ### Son doğrulama kaydı
-- GitHub Actions başarılı koşu: commit `0165170a088684b5308630f1c835205a780a0936` öncesi sürümde SQLite: **25 passed, 2 skipped, 1 warning**; PostgreSQL: **5 passed**.
-- Bu başarılı koşu AES-GCM yedekleme ve son Docker Compose düzeltmelerinden önceydi. Yeni commit'ler için son CI sonucu ayrıca kontrol edilmelidir; bu nedenle son değişikliklerin tümü testten geçti olarak işaretlenmez.
-- Yerel konteyner imajı veya RustFS gerçek uçtan uca çalıştırılmadı; GitHub CI'da yalnızca Compose yapılandırması doğrulanır.
+- GitHub Actions başarılı koşu: commit `040dca21f2e38ab48b35a00e6b35eacabcc2b9f8` üzerinde SQLite: **28 passed, 2 skipped, 1 warning**; PostgreSQL: **5 passed**. Python compileall, backup/restore shell syntax ve Docker Compose config kontrolleri de geçti.
+- Bu koşu AES-GCM yedekleme testlerini ve Compose YAML doğrulamasını içerir; Docker image build adımı daha sonra eklendi. Ardından uygulama healthcheck/restore guard ve CI image-build adımı değişti; bunların son CI sonucu ayrıca bekleniyor.
+- RustFS gerçek uçtan uca testi ve Docker image build sonucu henüz doğrulanmış değil.
 - Hostinger satın alma/VPS kurulumu, DNS, canlı değişiklik, Render değişikliği ve gerçek müşteri verisi taşıma yapılmadı.
 
 ### Canlı geçişi engelleyen açık işler

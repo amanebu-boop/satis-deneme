@@ -22,7 +22,7 @@ jobs:
   tests:
     name: Python test suite
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -33,8 +33,15 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      - name: Install LibreOffice for document integration tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-calc fonts-liberation
+
       - name: Install application and test dependencies
-        run: python -m pip install --upgrade pip && python -m pip install -e ".[test]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]"
 
       - name: Run tests
         run: python -m pytest -q

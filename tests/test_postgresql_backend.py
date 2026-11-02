@@ -105,6 +105,36 @@ def test_postgresql_backend_schema_and_core_records(monkeypatch):
             }],
         })
         assert second_quote["quote_number"] == "ERS-2026-0002"
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        def create_parallel_quote(index: int) -> str:
+            result = db.create_quotation({
+                "id": str(uuid4()),
+                "company_id": company_id,
+                "currency": "EUR",
+                "subtotal": "10.00",
+                "tax_rate": "0.20",
+                "tax_amount": "2.00",
+                "total": "12.00",
+                "status": "draft",
+                "created_at": "2026-11-02T12:00:00+00:00",
+                "lines": [{
+                    "id": str(uuid4()),
+                    "description": f"Parallel CI Test {index}",
+                    "quantity": "1",
+                    "unit_price": "10",
+                    "line_total": "10.00",
+                }],
+            })
+            return result["quote_number"]
+
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            parallel_numbers = list(executor.map(create_parallel_quote, range(12)))
+        assert len(set(parallel_numbers)) == 12
+        assert sorted(parallel_numbers) == [
+            f"ERS-2026-{number:04d}" for number in range(3, 15)
+        ]
     finally:
         monkeypatch.delenv("SALES_DATABASE_SCHEMA", raising=False)
         monkeypatch.delenv("SALES_DATABASE_URL", raising=False)

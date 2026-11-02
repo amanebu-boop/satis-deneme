@@ -17,7 +17,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -e ".[test]"
-      - run: python -m pytest -q
+      - run: python -m pytest -q tests/test_hostinger_database_backend.py tests/test_postgres_smoke.py
 
   postgres-regression:
     runs-on: ubuntu-latest

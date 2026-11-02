@@ -114,7 +114,9 @@ Her görevde:
 - [x] Hedef mimari ve güvenlik sınırları `docs/operations/hostinger-migration-architecture.md` dosyasına yazıldı.
 - [x] GitHub Actions test ve container-build çalışması `41459517303` başarıyla tamamlandı.
 - [ ] SQLite bağımlı `app/db.py` için PostgreSQL uyumlu veri erişim katmanı ve şema geçişleri geliştirilmeli.
-- [ ] SQLite → PostgreSQL aktarım aracı ve veri bütünlüğü doğrulamaları hazırlanmalı.
+- [x] SQLite → PostgreSQL aktarım aracı eklendi; varsayılan kuru çalışma, boş hedef zorunluluğu, şema/kolon kontrolü ve satır sayısı doğrulaması var.
+- [x] SQLite → PostgreSQL uçtan uca aktarım testi eklendi; PostgreSQL 17 CI üzerinde firma, kişi, ürün/opsiyon ilişkisi, görüşme, takip ve teklif kayıtlarını doğrular.
+- [ ] Yeni aktarım testi GitHub Actions üzerinde başarıyla tamamlanmalı; sonuç henüz doğrulanmadı.
 - [ ] Yüklenen belgeler için kalıcı depolama ve geri yükleme testi tamamlanmalı.
 - [ ] Uygulama üretim kimlik doğrulaması/yetkilendirmesi ve güvenlik kontrollerinden geçirilmeli.
 - [ ] GitHub Actions ile Hostinger staging dağıtımı için sınırlı yetkili SSH kullanıcısı, sabit sunucu dağıtım komutu ve korumalı GitHub Environment hazırlanmalı.
@@ -135,8 +137,11 @@ Her görevde:
 - [x] Non-root kullanıcıyla çalışan uygulama Dockerfile'ı ve gizli/yerel verileri build context dışında tutan `.dockerignore` eklendi.
 - [ ] Son teklif numarası, readiness ve eşzamanlılık testlerinin CI sonucu bekleniyor.
 - [x] Teklif numarası sayacı SQLite ve PostgreSQL'de atomik `UPSERT ... RETURNING` ile güncellenecek şekilde düzeltildi; PostgreSQL'de ardışık ve 12 paralel teklif numarası testi eklendi.
-- [ ] SQLite → PostgreSQL veri aktarım/geri alma aracı henüz yok.
+- [x] SQLite → PostgreSQL aktarım aracı ve PostgreSQL 17 üzerinde kuru çalışma + gerçek aktarım testi eklendi.
+- [ ] Aktarım testinin CI sonucu henüz doğrulanmadı; gerçek veriye uygulanmadı.
 - [ ] Hostinger staging Compose dosyası ve sınırlı SSH dağıtım komutu henüz yok.
 - [ ] Üretim kimlik doğrulaması, yetkilendirme, yedek geri yükleme ve kabul testleri tamamlanmadı.
 
-**Test kanıtı:** GitHub Actions çalışması `41459517303` genel olarak `success` tamamlandı. Python test işi ve non-root Docker image build işi başarıyla geçti. Önceki PostgreSQL entegrasyon test çıktısı `23 passed, 1 warning` idi; son teklif numarası değişikliği için yeni CI çalışması ayrıca bekleniyor.
+**Test kanıtı:** GitHub Actions çalışması `41459517303` genel olarak `success` tamamlandı. Python test işi ve non-root Docker image build işi başarıyla geçti. Önceki PostgreSQL entegrasyon test çıktısı `23 passed, 1 warning` idi. SQLite → PostgreSQL aktarım uçtan uca testi eklendi; bu yeni testin CI sonucu henüz doğrulanmadı.
+
+**PR:** Hazırlık değişiklikleri `#34` numaralı taslak PR üzerinden `main` dalına açıldı. PR merge edilmedi; canlı yayın, DNS ve gerçek veri aktarımı yapılmadı.

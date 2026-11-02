@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice-calc libreoffice-writer fonts-dejavu-core fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md alembic.ini ./
+COPY migrations ./migrations
 COPY app ./app
 COPY web ./web
 COPY templates ./templates

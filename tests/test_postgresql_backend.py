@@ -83,7 +83,28 @@ def test_postgresql_backend_schema_and_core_records(monkeypatch):
             }],
         })
         assert quotation["id"] == quote_id
+        assert quotation["quote_number"] == "ERS-2026-0001"
         assert db.get_quotation(quote_id)["total"] == "26400.00"
+
+        second_quote = db.create_quotation({
+            "id": str(uuid4()),
+            "company_id": company_id,
+            "currency": "EUR",
+            "subtotal": "100.00",
+            "tax_rate": "0.20",
+            "tax_amount": "20.00",
+            "total": "120.00",
+            "status": "draft",
+            "created_at": "2026-11-02T11:00:00+00:00",
+            "lines": [{
+                "id": str(uuid4()),
+                "description": "Second CI Test",
+                "quantity": "1",
+                "unit_price": "100",
+                "line_total": "100.00",
+            }],
+        })
+        assert second_quote["quote_number"] == "ERS-2026-0002"
     finally:
         monkeypatch.delenv("SALES_DATABASE_SCHEMA", raising=False)
         monkeypatch.delenv("SALES_DATABASE_URL", raising=False)

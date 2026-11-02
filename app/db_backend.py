@@ -65,6 +65,10 @@ class Result:
     def first(self):
         return self.fetchone()
 
+    def __iter__(self):
+        for row in self._result:
+            yield Row(row._mapping)
+
 
 def _translate(sql: str, parameters: Any):
     statement = sql.strip()

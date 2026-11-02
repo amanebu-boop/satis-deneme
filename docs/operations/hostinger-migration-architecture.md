@@ -20,7 +20,8 @@ Use GitHub-hosted automation as the control plane so the owner's personal comput
 ## Current verified state
 
 - A separate branch `infra/github-hostinger-pipeline` exists.
-- A GitHub Actions test workflow exists at `.github/workflows/hostinger-migration-checks.yml`.
+- A GitHub Actions test workflow exists at `.github/workflows/hostinger-migration-checks.yml`; it provisions a temporary PostgreSQL 17 service, runs the SQLite suite plus a PostgreSQL integration test, and builds the application image without publishing it.
+- A non-root application `Dockerfile` and `.dockerignore` exist; the image is built only in CI and has not been deployed.
 - The workflow runs on pushes to this migration branch / feature branches, pull requests, and manual dispatch.
 - CI installs Python 3.11, LibreOffice Calc and fonts used by document integration tests, then runs `python -m pytest -q`.
 - VPS preparation already reported by the owner: Docker/Compose, Traefik, private `satis-internal` network, PostgreSQL 17 container with persistent data, UFW and SSH hardening. This document does not independently assert current live health.
@@ -29,23 +30,23 @@ Use GitHub-hosted automation as the control plane so the owner's personal comput
 
 The current application is not ready to be deployed against PostgreSQL.
 
-- `app/db.py` imports `sqlite3` directly and opens a local SQLite file.
+- `app/db.py` retains SQLite for local/test use and now has an opt-in PostgreSQL backend through `SALES_DATABASE_URL` using psycopg 3.
 - Schema setup and migrations use SQLite-specific `PRAGMA table_info`, `executescript`, and SQLite DDL.
-- SQL statements use qmark placeholders (`?`) and SQLite row behavior.
-- `pyproject.toml` does not currently declare a PostgreSQL driver.
-- `app/main.py` health endpoint currently reports `stage=prototype` and `storage=sqlite`.
+- Existing qmark SQL is adapted for PostgreSQL by a compatibility wrapper; PostgreSQL schema introspection, case-insensitive search, and stable row ordering are covered by a dedicated integration test.
+- `pyproject.toml` now declares `psycopg[binary]`.
+- `app/main.py` health endpoint reports the configured backend dynamically; the application stage remains `prototype`.
 - README explicitly describes the application as a prototype and warns against real customer data / commercial offers.
 - The app has local authentication/prototype limitations; PostgreSQL alone does not make the app production-safe.
 
-Do not point the current app at PostgreSQL, do not copy SQLite data into a live database, and do not expose the VPS publicly until the database adapter, migrations, auth, and acceptance tests are complete.
+PostgreSQL connection support and a CI smoke test now exist, but this is not yet a production migration. Do not copy SQLite data into the Hostinger database or expose the VPS publicly until migration/rollback tooling, auth, backup/restore, and acceptance tests are complete.
 
 ## Required implementation sequence
 
-1. Baseline: run the existing test suite in GitHub Actions and record the exact result.
-2. Database layer: introduce an explicit database backend boundary; retain SQLite for tests/local development while adding PostgreSQL support with parameterized queries and PostgreSQL-safe schema migrations.
+1. Baseline: GitHub Actions completed the existing SQLite tests and PostgreSQL smoke test: 23 passed, 1 warning (observed on commit `4f7b9fb5` before the container build workflow was added). Re-run the latest branch head before merging.
+2. Database layer: harden the new explicit backend boundary; retain SQLite for local development and add deeper PostgreSQL CRUD, concurrency, migration, and error-mapping coverage.
 3. Data migration: write a repeatable, dry-run-capable SQLite-to-PostgreSQL export/import tool; preserve IDs, quote numbers, relationships, currencies, and timestamps; verify row counts and referential integrity. Never run against production data without explicit approval and a tested backup.
 4. File storage: use a configurable persistent document root; verify upload, download, generated XLSX/PDF, and backup/restore behavior.
-5. Runtime: add a non-root application image, health/readiness checks, resource limits, restart policy, and Docker Compose definition. Keep PostgreSQL private.
+5. Runtime: non-root application Dockerfile and healthcheck are added; still add resource limits, runtime Compose definition, readiness behavior, and image-build verification. Keep PostgreSQL private.
 6. Security: replace prototype access assumptions with production authentication/session controls, CSRF protections, authorization and audit logging. Secrets must not be present in source, image layers, logs, or workflow output.
 7. CI: run unit, integration, migration, document, and container-build checks on GitHub-hosted runners.
 8. Staging deployment: add a dedicated, least-privilege deploy account and a fixed server-side deployment command. Store only the deployment private key and connection metadata in GitHub encrypted secrets. Pin the server host key; do not use blind `ssh-keyscan` trust at deploy time.

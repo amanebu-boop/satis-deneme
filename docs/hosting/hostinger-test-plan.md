@@ -165,11 +165,30 @@ Aşağıdakilerden biri varsa canlıya geçilmez:
 - [x] Yerel belge → RustFS dry-run/checksum taşıma aracı ve testleri eklendi.
 - [x] AES-GCM şifreli günlük backup/restore betikleri, checksum ve cron şablonu eklendi.
 - [x] CI Docker image build, Compose config, Python compile ve shell syntax kontrolleri geçti.
-- [ ] Son SQLite kaynak-kopya migration iyileştirmesi için CI sonucu bekleniyor.
+- [x] Son SQLite kaynak-kopya migration iyileştirmesi için CI sonucu doğrulandı (commit `e2bdf8574c7e0fba0ee80f3fb5e8bcada9d6b2a1`).
 - [ ] RustFS servis uçtan uca testi.
 - [ ] PostgreSQL üzerinde tüm iş akışları regresyonu.
 - [ ] Şifreli backup/restore tatbikatı.
 - [ ] TLS, kimlik doğrulama/yetkilendirme ve güvenlik sertleştirmesi.
 - [ ] Gerçek veri taşıma provası.
 
-**Son başarılı CI (commit `2eedc4d53957c2226ad64114a727c4b50577ec37`):** SQLite 29 passed, 3 skipped, 1 warning; PostgreSQL 6 passed. Docker image build ve Compose config başarılı. Sonraki migration kaynak-kopya değişikliği ayrıca test bekliyor.
+**Son başarılı CI (2 Kasım 2026, commit `e2bdf8574c7e0fba0ee80f3fb5e8bcada9d6b2a1`, workflow run `41412761295`):** SQLite 29 passed, 3 skipped, 1 warning; PostgreSQL 6 passed. Python compileall, backup/restore shell syntax, Docker Compose config ve Docker image build başarılı. Son PR doğrulama workflow'u da aynı commit için başarılı. Sonraki migration kaynak-kopya değişikliği ayrıca test bekliyor.
+
+
+## 13. 2 Kasım 2026 — Son CI doğrulaması ve kalan gerçek ortam testleri
+
+**PASS — CI'da kanıtlandı (commit `e2bdf8574c7e0fba0ee80f3fb5e8bcada9d6b2a1`):**
+- SQLite regresyonu: 29 passed, 3 skipped, 1 warning.
+- PostgreSQL adaptör + smoke + SQLite→PostgreSQL sentetik migration: 6 passed.
+- Python compileall, backup/restore shell syntax, Docker Compose config ve Docker image build: başarılı.
+- PR doğrulama workflow'u: başarılı.
+
+**NOT RUN / BLOCKED — CI yeşil olsa da tamamlanmış sayılmaz:**
+- RustFS gerçek S3 servisiyle put/get/head/list/delete ve kalıcılık uçtan uca testi.
+- PostgreSQL üzerinde tüm firma/görüşme/ürün/teklif/Excel/PDF/KDV iş akışı regresyonu.
+- Şifreli PostgreSQL + nesne yedeğinin gerçek üretimi ve temiz hedefe tam restore tatbikatı.
+- TLS/HTTPS, firewall, gerçek kullanıcı/rol yetkilendirmesi ve güvenlik taraması.
+- Yük, disk doluluğu, servis kesintisi ve rollback testleri.
+- Hostinger VPS ortamı olmadan VPS'e özgü snapshot, cron ve restore testi.
+
+**Sonuç:** Kod/CI doğrulaması başarılıdır; teknik kabul testlerinin tamamı henüz bitmemiştir. Bu engelleyici testler gerçek Hostinger staging ortamı gerektirir. Satın alma/VPS kurulumu için ayrı onay alınmadan bu ortam testleri yapılamaz.

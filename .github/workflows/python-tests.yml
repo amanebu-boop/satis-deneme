@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feature/agent-foundation
+      - fix/wiki-atomic-document-replacement
   pull_request:
     branches:
       - main
+      - feature/agent-foundation
   workflow_dispatch:
 
 jobs:

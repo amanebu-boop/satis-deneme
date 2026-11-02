@@ -198,6 +198,7 @@ def initialize() -> None:
 
     config_path = Path(__file__).resolve().parent.parent / "alembic.ini"
     config = Config(str(config_path))
+    config.set_main_option("script_location", str(config_path.parent / "migrations"))
     command.upgrade(config, "head")
 
 

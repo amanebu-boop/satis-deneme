@@ -413,3 +413,12 @@ Her görevde:
 - Test Render servisi (satis-deneme-test) commit e16606cd961da535d74befff6482ab9998f51d8a ile **live**. Bu commit, doğrulanan kod değişikliklerini ve mimari dokümantasyon güncellemelerini içerir.
 - Üretim Render servisi ve main dalı değiştirilmedi. PR #11 açık/draft bırakıldı.
 - Gerçek OpenAI API ücretli uçtan uca çağrısı yapılmadı; token tasarrufu kod akışı ve bağlam sınırları üzerinden sağlandı, parasal tasarruf miktarı ölçülmedi.
+
+
+## 2026-11-02 — Wiki belge değiştirme işlemi (güvenli geliştirme dalı)
+
+- Çalışma dalı: `fix/wiki-atomic-document-replacement`; temel dal `feature/agent-foundation`. `main` ve canlı Render servisi değiştirilmedi.
+- Aynı adlı bilgi belgesi güncellemesinde eski indeksin yeni içerik yazılmadan önce silinmesi riski gideriliyor: belge metaverisi, tüm parçalar ve FTS5 satırları tek SQLite işlemi içinde değiştirilir.
+- Yeni sürümün herhangi bir parçası yazılamazsa işlem geri alınır; önceki belge ve arama kayıtları korunur.
+- Başarısız yazma simülasyonu ve başarılı değiştirme için regresyon testi eklendi.
+- GitHub Actions ve test Render doğrulaması bekleniyor; test sonucu alınmadan tamamlandı sayılmayacak.

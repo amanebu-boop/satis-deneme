@@ -29,6 +29,7 @@ from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
 from app import storage
+from app import db_backend
 from app.quote_excel import render_quote_excel
 from app.quote_pdf import convert_excel_to_pdf
 
@@ -1110,7 +1111,19 @@ def agent_management_page():
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "stage": "prototype", "storage": "sqlite"}
+    try:
+        with db.connect() as connection:
+            connection.execute("SELECT 1").fetchone()
+        if storage.is_s3():
+            storage.check_health()
+        return {
+            "status": "ok",
+            "database": "postgresql" if db_backend.is_postgres_configured() else "sqlite",
+            "storage": storage.backend_name(),
+        }
+    except Exception as exc:
+        security_logger.error("health_check_failed dependency=%s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Application dependencies are unavailable") from exc
 
 
 @app.get("/")

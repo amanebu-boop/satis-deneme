@@ -16,6 +16,7 @@ def test_agent_and_wiki_foundation_initializes_on_postgresql():
     agent_foundation.init_agent_foundation()
     ai_usage.init_ai_usage()
     llm_wiki.init_wiki()
+    assert llm_wiki._fts_available is False
 
     agents = agent_foundation.list_agents()
     assert {item["id"] for item in agents} >= {"company", "product", "meeting", "quotation", "sales"}

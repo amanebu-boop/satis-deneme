@@ -17,6 +17,7 @@ from typing import Any
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 from app import db
+from app import db_backend
 
 router = APIRouter()
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
@@ -65,27 +66,32 @@ def init_wiki() -> None:
             "CREATE INDEX IF NOT EXISTS idx_llm_wiki_source ON llm_wiki_documents(source_type, source_id)"
         )
         global _fts_available
-        try:
-            connection.execute("CREATE VIRTUAL TABLE IF NOT EXISTS llm_wiki_fts USING fts5(title, content, tokenize='unicode61')")
-            fts_count = connection.execute("SELECT COUNT(*) AS total FROM llm_wiki_fts").fetchone()["total"]
-            _fts_available = True
-            # Repair legacy orphan rows and backfill documents missing from the index.
-            connection.execute(
-                """DELETE FROM llm_wiki_fts
-                   WHERE rowid NOT IN (
-                       SELECT rowid FROM llm_wiki_documents
-                       WHERE source_type != 'uploaded_document_meta'
-                   )"""
-            )
-            connection.execute(
-                """INSERT INTO llm_wiki_fts(rowid, title, content)
-                   SELECT d.rowid, d.title, d.content
-                   FROM llm_wiki_documents d
-                   WHERE d.source_type != 'uploaded_document_meta'
-                     AND NOT EXISTS (SELECT 1 FROM llm_wiki_fts f WHERE f.rowid=d.rowid)"""
-            )
-        except Exception:
+        if db_backend.is_postgres_configured():
+            # FTS5 is SQLite-only. PostgreSQL safely uses the lexical fallback;
+            # do not execute unsupported DDL inside the active transaction.
             _fts_available = False
+        else:
+            try:
+                connection.execute("CREATE VIRTUAL TABLE IF NOT EXISTS llm_wiki_fts USING fts5(title, content, tokenize='unicode61')")
+                fts_count = connection.execute("SELECT COUNT(*) AS total FROM llm_wiki_fts").fetchone()["total"]
+                _fts_available = True
+                # Repair legacy orphan rows and backfill documents missing from the index.
+                connection.execute(
+                    """DELETE FROM llm_wiki_fts
+                       WHERE rowid NOT IN (
+                           SELECT rowid FROM llm_wiki_documents
+                           WHERE source_type != 'uploaded_document_meta'
+                       )"""
+                )
+                connection.execute(
+                    """INSERT INTO llm_wiki_fts(rowid, title, content)
+                       SELECT d.rowid, d.title, d.content
+                       FROM llm_wiki_documents d
+                       WHERE d.source_type != 'uploaded_document_meta'
+                         AND NOT EXISTS (SELECT 1 FROM llm_wiki_fts f WHERE f.rowid=d.rowid)"""
+                )
+            except Exception:
+                _fts_available = False
         _wiki_initialized_path = str(db.database_path().resolve())
 
 

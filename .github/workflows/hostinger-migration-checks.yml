@@ -61,3 +61,14 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+  container-build:
+    name: Build non-root application image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build image without publishing
+        run: docker build --pull -t sales-ai-platform:ci .

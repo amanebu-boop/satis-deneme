@@ -28,9 +28,9 @@ class _PostgresConnection:
     def execute(self, sql: str, parameters: tuple | list | None = None):
         import re
 
-        if re.fullmatch(r"\\s*PRAGMA\\s+foreign_keys\\s*=\\s*ON\\s*", sql, re.I):
+        if re.fullmatch(r"\s*PRAGMA\s+foreign_keys\s*=\s*ON\s*", sql, re.I):
             return self._connection.execute("SELECT 1")
-        table_info = re.fullmatch(r"\\s*PRAGMA\\s+table_info\\((\\w+)\\)\\s*", sql, re.I)
+        table_info = re.fullmatch(r"\s*PRAGMA\s+table_info\((\w+)\)\s*", sql, re.I)
         if table_info:
             sql = (
                 "SELECT column_name AS name FROM information_schema.columns "
@@ -39,8 +39,8 @@ class _PostgresConnection:
             parameters = (table_info.group(1),)
         else:
             sql = sql.replace("?", "%s")
-            sql = re.sub(r"\\bLIKE\\s+%s\\s+COLLATE\\s+NOCASE\\b", "ILIKE %s", sql, flags=re.I)
-            sql = re.sub(r"\\bORDER\\s+BY\\s+rowid\\b", "ORDER BY id", sql, flags=re.I)
+            sql = re.sub(r"\bLIKE\s+%s\s+COLLATE\s+NOCASE\b", "ILIKE %s", sql, flags=re.I)
+            sql = re.sub(r"\bORDER\s+BY\s+rowid\b", "ORDER BY id", sql, flags=re.I)
         return self._connection.execute(sql, parameters or ())
 
     def executescript(self, script: str) -> None:

@@ -12,7 +12,7 @@ services:
   app:
     image: satis-app:hostinger
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile
     container_name: satis-app
     restart: unless-stopped
@@ -29,6 +29,7 @@ services:
     cpus: 0.80
     networks:
       - satis-internal
+      - satis-edge
     labels:
       - traefik.enable=true
       - traefik.docker.network=satis-internal
@@ -46,3 +47,5 @@ services:
 networks:
   satis-internal:
     external: true
+  satis-edge:
+    driver: bridge

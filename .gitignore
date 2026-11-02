@@ -1,0 +1,13 @@
+# Local secrets and runtime data
+.env
+.env.*
+!.env.hostinger.example
+data/
+backups/
+*.dump
+*.dump.enc
+*.tar.gz
+*.tar.gz.enc
+__pycache__/
+.pytest_cache/
+*.py[cod]

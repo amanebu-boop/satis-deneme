@@ -123,9 +123,10 @@ Her görevde:
 - GitHub Actions: SQLite regresyonu, PostgreSQL smoke testi, Python derleme, shell syntax ve Docker Compose yapılandırma doğrulaması.
 
 ### Son doğrulama kaydı
-- GitHub Actions başarılı koşu: commit `040dca21f2e38ab48b35a00e6b35eacabcc2b9f8` üzerinde SQLite: **28 passed, 2 skipped, 1 warning**; PostgreSQL: **5 passed**. Python compileall, backup/restore shell syntax ve Docker Compose config kontrolleri de geçti.
-- Bu koşu AES-GCM yedekleme testlerini ve Compose YAML doğrulamasını içerir; Docker image build adımı daha sonra eklendi. Ardından uygulama healthcheck/restore guard ve CI image-build adımı değişti; bunların son CI sonucu ayrıca bekleniyor.
-- RustFS gerçek uçtan uca testi ve Docker image build sonucu henüz doğrulanmış değil.
+- GitHub Actions başarılı koşu: commit `2eedc4d53957c2226ad64114a727c4b50577ec37` üzerinde SQLite: **29 passed, 3 skipped, 1 warning**; PostgreSQL: **6 passed**. Python compileall, backup/restore shell syntax, Docker Compose config ve Docker image build de başarılı.
+- Bu koşu AES-GCM backup testlerini, RustFS yönetici/uygulama kimliği ayrımını, bucket ön kontrolünü, PostgreSQL smoke ve sentetik SQLite → PostgreSQL taşıma testini kapsar.
+- Sonrasında SQLite kaynak veritabanını değiştirmeden tutarlı kopya üzerinde şema yükseltmesi yapan taşıma iyileştirmesi eklendi. Bu son commit'in CI sonucu henüz bekleniyor.
+- RustFS gerçek servis uçtan uca testi ve günlük backup/restore tatbikatı yapılmadı.
 - Hostinger satın alma/VPS kurulumu, DNS, canlı değişiklik, Render değişikliği ve gerçek müşteri verisi taşıma yapılmadı.
 
 ### Canlı geçişi engelleyen açık işler
@@ -140,4 +141,4 @@ Her görevde:
 
 **İşlem sınırı:** Bütün geliştirme bu dalda kalır. `main`, Render, Hostinger hesabı, DNS ve gerçek veri değiştirilmez. Satın alma, sunucu kurulumu, gerçek veri taşıma ve canlı geçiş için ayrıca açık onay gerekir.
 
-**Sıradaki öncelik:** Son CI koşusunu incele; tüm kontroller geçtikten sonra draft PR hazırla. Ardından Docker/RustFS staging ve güvenlik/backup kabul testlerini tamamla.
+**Draft PR:** https://github.com/amanebu-boop/satis-deneme/pull/33 (main'e birleştirilmedi).\n\n**Sıradaki öncelik:** Son SQLite kaynak-kopya migration değişikliğinin CI sonucunu doğrula; ardından Docker/RustFS staging ve güvenlik/backup kabul testlerini tamamla.

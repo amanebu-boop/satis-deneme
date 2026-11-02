@@ -12,7 +12,60 @@ def database_path() -> Path:
     return Path(os.environ.get("SALES_DATABASE_PATH", DEFAULT_DATABASE_PATH))
 
 
-def connect() -> sqlite3.Connection:
+class _PostgresConnection:
+    """Small compatibility layer for the existing qmark-based data access code."""
+
+    def __init__(self, connection: Any):
+        self._connection = connection
+
+    def __enter__(self):
+        self._connection.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return self._connection.__exit__(exc_type, exc, traceback)
+
+    def execute(self, sql: str, parameters: tuple | list | None = None):
+        import re
+
+        if re.fullmatch(r"\\s*PRAGMA\\s+foreign_keys\\s*=\\s*ON\\s*", sql, re.I):
+            return self._connection.execute("SELECT 1")
+        table_info = re.fullmatch(r"\\s*PRAGMA\\s+table_info\\((\\w+)\\)\\s*", sql, re.I)
+        if table_info:
+            sql = (
+                "SELECT column_name AS name FROM information_schema.columns "
+                "WHERE table_schema = current_schema() AND table_name = %s"
+            )
+            parameters = (table_info.group(1),)
+        else:
+            sql = sql.replace("?", "%s")
+            sql = re.sub(r"\\bLIKE\\s+%s\\s+COLLATE\\s+NOCASE\\b", "ILIKE %s", sql, flags=re.I)
+            sql = re.sub(r"\\bORDER\\s+BY\\s+rowid\\b", "ORDER BY id", sql, flags=re.I)
+        return self._connection.execute(sql, parameters or ())
+
+    def executescript(self, script: str) -> None:
+        for statement in script.split(";"):
+            if statement.strip():
+                self.execute(statement)
+
+
+def database_backend() -> str:
+    return "postgresql" if os.environ.get("SALES_DATABASE_URL") else "sqlite"
+
+
+def connect():
+    database_url = os.environ.get("SALES_DATABASE_URL")
+    if database_url:
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+        except ImportError as exc:
+            raise RuntimeError(
+                "PostgreSQL support requires the psycopg package; install project dependencies."
+            ) from exc
+        connection = psycopg.connect(database_url, row_factory=dict_row, connect_timeout=10)
+        return _PostgresConnection(connection)
+
     path = database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path, timeout=10)
@@ -314,7 +367,7 @@ def list_company_contacts(company_id: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def _save_meeting_products(connection: sqlite3.Connection, meeting_id: str, products: list[dict[str, Any]]) -> None:
+def _save_meeting_products(connection: Any, meeting_id: str, products: list[dict[str, Any]]) -> None:
     connection.execute("DELETE FROM meeting_products WHERE meeting_id = ?", (meeting_id,))
     for item in products:
         connection.execute(
@@ -326,10 +379,10 @@ def _save_meeting_products(connection: sqlite3.Connection, meeting_id: str, prod
         )
 
 
-def _meeting_products(connection: sqlite3.Connection, meeting_id: str) -> list[dict[str, Any]]:
+def _meeting_products(connection: Any, meeting_id: str) -> list[dict[str, Any]]:
     rows = connection.execute(
         """SELECT id, meeting_id, product_id, sku, name, quantity, unit_price, currency
-           FROM meeting_products WHERE meeting_id = ? ORDER BY rowid""",
+           FROM meeting_products WHERE meeting_id = ? ORDER BY id""",
         (meeting_id,),
     ).fetchall()
     return [dict(row) for row in rows]
@@ -532,7 +585,7 @@ def get_quotation(quotation_id: str) -> dict[str, Any] | None:
         record["lines"] = [
             dict(line) for line in connection.execute(
                 """SELECT id, description, quantity, unit_price, line_total
-                   FROM quotation_lines WHERE quotation_id = ? ORDER BY rowid""",
+                   FROM quotation_lines WHERE quotation_id = ? ORDER BY id""",
                 (quotation_id,),
             ).fetchall()
         ]

@@ -123,3 +123,20 @@ Her görevde:
 **Geçiş sınırı:** Bu dal yalnızca hazırlık içindir. Render, DNS, canlı veri ve Hostinger üretim servisi değiştirilmedi. Haftalık yedekleme tercihi korunur. Canlı geçiş ve veri taşıma ayrıca onay gerektirir.
 
 **Önemli teknik bulgu:** Mevcut `app/db.py` doğrudan `sqlite3` kullanıyor; `PRAGMA` ve SQLite DDL içeriyor. Bu nedenle hazır PostgreSQL sunucusu mevcut uygulamanın doğrudan bağlanabileceği anlamına gelmez. Önce veri katmanı uyarlanmalı; uygulama henüz Hostinger üretimine dağıtıma hazır değildir.
+
+
+### 2026-11-02 — PostgreSQL ve container hazırlık ilerlemesi
+
+- [x] `SALES_DATABASE_URL` ile isteğe bağlı PostgreSQL backend eklendi; SQLite yerel/test varsayılanı olarak korundu.
+- [x] PostgreSQL için psycopg 3 bağımlılığı eklendi.
+- [x] Mevcut qmark SQL ifadeleri, PostgreSQL şema introspection, case-insensitive arama ve sıra alanları için uyumluluk katmanı eklendi.
+- [x] Sağlık endpoint'i yapılandırılmış veritabanı türünü dinamik raporluyor.
+- [x] PostgreSQL 17 hizmeti kullanan GitHub Actions entegrasyon testi eklendi.
+- [x] Non-root kullanıcıyla çalışan uygulama Dockerfile'ı ve gizli/yerel verileri build context dışında tutan `.dockerignore` eklendi.
+- [ ] En son commit üzerindeki CI ve Docker image build sonucu henüz doğrulanmadı.
+- [ ] PostgreSQL eşzamanlı teklif numarası üretimi için yarış koşulu testi eklenmeli; mevcut sayaç mantığı gözden geçirilmeli.
+- [ ] SQLite → PostgreSQL veri aktarım/geri alma aracı henüz yok.
+- [ ] Hostinger staging Compose dosyası ve sınırlı SSH dağıtım komutu henüz yok.
+- [ ] Üretim kimlik doğrulaması, yetkilendirme, yedek geri yükleme ve kabul testleri tamamlanmadı.
+
+**Test kanıtı:** GitHub Actions çalışması `41459143233` içindeki test adımı PostgreSQL 17 servisiyle `23 passed, 1 warning` sonucu verdi. Aynı çalışmanın genel durumu daha sonraki commit tarafından iptal edildiği için bu sonuç, test adımının başarılı çıktısıdır; son dal başının tamamlanmış CI sonucu değildir.

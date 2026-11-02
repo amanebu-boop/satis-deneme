@@ -2,8 +2,6 @@ services:
   app:
     build: .
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       SALES_STORAGE_BACKEND: s3
@@ -11,6 +9,9 @@ services:
       S3_BUCKET: ${S3_BUCKET:-sales-documents}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      SALES_API_TOKEN: ${SALES_API_TOKEN}
+      SALES_LOGIN_PASSWORD: ${SALES_LOGIN_PASSWORD}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${BACKUP_ENCRYPTION_PASSPHRASE}
     depends_on:
       postgres:
         condition: service_healthy

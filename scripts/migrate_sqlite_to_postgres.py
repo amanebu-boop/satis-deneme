@@ -116,25 +116,25 @@ def migrate_sqlite_to_postgres(source_path: Path, target_url: str, *, apply: boo
                 if occupied:
                     raise RuntimeError(f"Target database is not empty; refusing overwrite: {occupied}")
             if apply:
-            with engine.begin() as connection:
-                for table in TABLE_ORDER:
-                    entry = source[table]
-                    if not entry["rows"]:
-                        continue
-                    columns = entry["columns"]
-                    names = ", ".join(columns)
-                    binds = ", ".join(f":v{i}" for i in range(len(columns)))
-                    statement = text(f"INSERT INTO {table} ({names}) VALUES ({binds})")
-                    batch = [{f"v{i}": row.get(column) for i, column in enumerate(columns)} for row in entry["rows"]]
-                    for offset in range(0, len(batch), 500):
-                        connection.execute(statement, batch[offset:offset + 500])
-                for table in TABLE_ORDER:
-                    columns = source[table]["columns"]
-                    order = target_pks[table] or columns
-                    rows = [dict(row._mapping) for row in connection.execute(text(f"SELECT {', '.join(columns)} FROM {table} ORDER BY {', '.join(order)}")).fetchall()]
-                    actual_digest = _digest(rows, columns)
-                    if len(rows) != source[table]["count"] or actual_digest != source[table]["sha256"]:
-                        raise RuntimeError(f"Post-copy verification failed for table {table}")
+                with engine.begin() as connection:
+                    for table in TABLE_ORDER:
+                        entry = source[table]
+                        if not entry["rows"]:
+                            continue
+                        columns = entry["columns"]
+                        names = ", ".join(columns)
+                        binds = ", ".join(f":v{i}" for i in range(len(columns)))
+                        statement = text(f"INSERT INTO {table} ({names}) VALUES ({binds})")
+                        batch = [{f"v{i}": row.get(column) for i, column in enumerate(columns)} for row in entry["rows"]]
+                        for offset in range(0, len(batch), 500):
+                            connection.execute(statement, batch[offset:offset + 500])
+                    for table in TABLE_ORDER:
+                        columns = source[table]["columns"]
+                        order = target_pks[table] or columns
+                        rows = [dict(row._mapping) for row in connection.execute(text(f"SELECT {', '.join(columns)} FROM {table} ORDER BY {', '.join(order)}")).fetchall()]
+                        actual_digest = _digest(rows, columns)
+                        if len(rows) != source[table]["count"] or actual_digest != source[table]["sha256"]:
+                            raise RuntimeError(f"Post-copy verification failed for table {table}")
         return {
             "mode": "apply" if apply else "dry-run",
             "source": str(source_path),

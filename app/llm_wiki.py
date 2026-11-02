@@ -67,8 +67,7 @@ def init_wiki() -> None:
         )
         global _fts_available
         if db_backend.is_postgres_configured():
-            # FTS5 is SQLite-only. PostgreSQL safely uses the lexical fallback;
-            # do not execute unsupported DDL inside the active transaction.
+            # FTS5 is SQLite-only. PostgreSQL safely uses the lexical fallback.
             _fts_available = False
         else:
             try:
@@ -103,37 +102,104 @@ def _delete_wiki_documents(connection, where_sql: str, params: tuple[Any, ...]) 
     connection.execute(f"DELETE FROM llm_wiki_documents WHERE {where_sql}", params)
 
 
-def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
+def _upsert_with_connection(
+    connection,
+    source_type: str,
+    source_id: str,
+    title: str,
+    content: str,
+) -> None:
+    """Upsert one Wiki row using the caller's transaction."""
     content = (content or "").strip()[:_MAX_CONTENT]
     if not content:
         return
     digest = hashlib.sha256((title + "\n" + content).encode("utf-8")).hexdigest()
-    with db.connect() as connection:
-        existing = connection.execute(
-            "SELECT rowid, content_hash FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
+    existing = connection.execute(
+        "SELECT rowid, content_hash FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
+        (source_type, source_id),
+    ).fetchone()
+    changed = existing is None or existing["content_hash"] != digest
+    connection.execute(
+        """INSERT INTO llm_wiki_documents
+           (id, source_type, source_id, title, content, content_hash, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(source_type, source_id) DO UPDATE SET
+             title=excluded.title, content=excluded.content,
+             content_hash=excluded.content_hash, updated_at=CURRENT_TIMESTAMP
+           WHERE llm_wiki_documents.content_hash != excluded.content_hash""",
+        (f"{source_type}:{source_id}", source_type, source_id, title, content, digest),
+    )
+    if _fts_available and source_type != "uploaded_document_meta" and changed:
+        rowid = existing["rowid"] if existing else connection.execute(
+            "SELECT rowid FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
             (source_type, source_id),
-        ).fetchone()
-        changed = existing is None or existing["content_hash"] != digest
+        ).fetchone()["rowid"]
+        connection.execute("DELETE FROM llm_wiki_fts WHERE rowid=?", (rowid,))
         connection.execute(
-            """INSERT INTO llm_wiki_documents
-               (id, source_type, source_id, title, content, content_hash, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-               ON CONFLICT(source_type, source_id) DO UPDATE SET
-                 title=excluded.title, content=excluded.content,
-                 content_hash=excluded.content_hash, updated_at=CURRENT_TIMESTAMP
-               WHERE llm_wiki_documents.content_hash != excluded.content_hash""",
-            (f"{source_type}:{source_id}", source_type, source_id, title, content, digest),
+            "INSERT INTO llm_wiki_fts(rowid, title, content) VALUES (?, ?, ?)",
+            (rowid, title, content),
         )
-        if _fts_available and source_type != "uploaded_document_meta" and changed:
-            rowid = existing["rowid"] if existing else connection.execute(
-                "SELECT rowid FROM llm_wiki_documents WHERE source_type=? AND source_id=?",
-                (source_type, source_id),
-            ).fetchone()["rowid"]
-            connection.execute("DELETE FROM llm_wiki_fts WHERE rowid=?", (rowid,))
-            connection.execute(
-                "INSERT INTO llm_wiki_fts(rowid, title, content) VALUES (?, ?, ?)",
-                (rowid, title, content),
+
+
+def _upsert(source_type: str, source_id: str, title: str, content: str) -> None:
+    with db.connect() as connection:
+        _upsert_with_connection(connection, source_type, source_id, title, content)
+
+
+def _split_document_chunks(content: str) -> list[str]:
+    """Split extracted text into overlapping, searchable chunks."""
+    chunks = []
+    position = 0
+    while position < len(content):
+        end = min(len(content), position + 1600)
+        if end < len(content):
+            boundary = content.rfind(" ", position + 1100, end)
+            if boundary > position:
+                end = boundary
+        chunk = content[position:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        if end >= len(content):
+            break
+        position = max(position + 1, end - 180)
+    return chunks
+
+
+def _replace_uploaded_document_version(filename: str, source_id: str, content: str) -> int:
+    """Replace a same-name upload atomically, including all FTS rows."""
+    chunks = _split_document_chunks(content)
+    with db.connect() as connection:
+        old_versions = connection.execute(
+            """SELECT source_id FROM llm_wiki_documents
+               WHERE source_type='uploaded_document_meta' AND lower(title)=lower(?)""",
+            (filename,),
+        ).fetchall()
+        for old in old_versions:
+            old_id = str(old["source_id"])
+            _delete_wiki_documents(
+                connection, "source_type='uploaded_document' AND source_id LIKE ?",
+                (old_id + ":%",),
             )
+            _delete_wiki_documents(
+                connection, "source_type='uploaded_document_meta' AND source_id=?",
+                (old_id,),
+            )
+
+        # Also clear a retry of this exact content ID before inserting its chunks.
+        _delete_wiki_documents(
+            connection, "source_type='uploaded_document' AND source_id LIKE ?",
+            (source_id + ":%",),
+        )
+        _upsert_with_connection(
+            connection, "uploaded_document_meta", source_id, filename,
+            json.dumps({"characters": len(content)}, ensure_ascii=False),
+        )
+        for index, chunk in enumerate(chunks, start=1):
+            _upsert_with_connection(
+                connection, "uploaded_document", f"{source_id}:{index:04d}",
+                f"{filename} · Bölüm {index}", chunk,
+            )
+    return len(chunks)
 
 
 def refresh_wiki_index() -> None:
@@ -347,40 +413,11 @@ async def upload_wiki_document(request: Request, file: UploadFile = File(...)) -
     if truncated:
         content = content[:MAX_EXTRACTED_CHARS]
     source_id = hashlib.sha256((filename + hashlib.sha256(data).hexdigest()).encode("utf-8")).hexdigest()[:32]
-    # A newer upload with the same filename replaces the old indexed version.
-    with db.connect() as connection:
-        old_versions = connection.execute(
-            """SELECT source_id FROM llm_wiki_documents
-               WHERE source_type='uploaded_document_meta' AND lower(title)=lower(?)""",
-            (filename,),
-        ).fetchall()
-        for old in old_versions:
-            _delete_wiki_documents(connection, "source_type='uploaded_document' AND source_id LIKE ?", (str(old["source_id"]) + ":%",))
-            _delete_wiki_documents(connection, "source_type='uploaded_document_meta' AND source_id=?", (old["source_id"],))
-    _upsert("uploaded_document_meta", source_id, filename, json.dumps({"characters": len(content)}, ensure_ascii=False))
-    # Chunk long manuals so later pages remain retrievable instead of indexing only
-    # the first few thousand characters. Small overlap preserves split paragraphs.
-    chunks = []
-    position = 0
-    while position < len(content):
-        end = min(len(content), position + 1600)
-        if end < len(content):
-            boundary = content.rfind(" ", position + 1100, end)
-            if boundary > position:
-                end = boundary
-        chunk = content[position:end].strip()
-        if chunk:
-            chunks.append(chunk)
-        if end >= len(content):
-            break
-        position = max(position + 1, end - 180)
-    with db.connect() as connection:
-        _delete_wiki_documents(connection, "source_type='uploaded_document' AND source_id LIKE ?", (source_id + ":%",))
-    for index, chunk in enumerate(chunks, start=1):
-        _upsert("uploaded_document", f"{source_id}:{index:04d}",
-                f"{filename} · Bölüm {index}", chunk)
+    # Metadata, chunks and FTS rows are replaced in one transaction. If any
+    # insert fails, SQLite rolls back and the previous version remains searchable.
+    chunks_indexed = _replace_uploaded_document_version(filename, source_id, content)
     return {"source_id": source_id, "title": filename, "characters_indexed": len(content),
-            "chunks_indexed": len(chunks), "truncated": truncated}
+            "chunks_indexed": chunks_indexed, "truncated": truncated}
 
 
 @router.delete("/api/wiki/documents/{source_id}")

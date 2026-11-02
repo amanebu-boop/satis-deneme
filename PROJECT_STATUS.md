@@ -105,3 +105,21 @@ Her görevde:
 - **GitHub dalı ve commit:**
 - **Render dağıtım durumu (doğrulandıysa):**
 - **Sıradaki tek öncelikli görev:**
+
+
+## 9. Hostinger geçiş hazırlığı — 2026-11-02
+
+- [x] Ana daldan bağımsız `infra/github-hostinger-pipeline` dalı oluşturuldu.
+- [x] GitHub-hosted runner üzerinde test çalıştırmak için `.github/workflows/hostinger-migration-checks.yml` eklendi. Python 3.11 ve belge entegrasyon testleri için LibreOffice kurulur; ardından `python -m pytest -q` çalıştırılır.
+- [x] Hedef mimari ve güvenlik sınırları `docs/operations/hostinger-migration-architecture.md` dosyasına yazıldı.
+- [ ] GitHub Actions test çalışmasının gerçek sonucu alınmalı; henüz başarılı olduğu iddia edilmemeli.
+- [ ] SQLite bağımlı `app/db.py` için PostgreSQL uyumlu veri erişim katmanı ve şema geçişleri geliştirilmeli.
+- [ ] SQLite → PostgreSQL aktarım aracı ve veri bütünlüğü doğrulamaları hazırlanmalı.
+- [ ] Yüklenen belgeler için kalıcı depolama ve geri yükleme testi tamamlanmalı.
+- [ ] Uygulama üretim kimlik doğrulaması/yetkilendirmesi ve güvenlik kontrollerinden geçirilmeli.
+- [ ] GitHub Actions ile Hostinger staging dağıtımı için sınırlı yetkili SSH kullanıcısı, sabit sunucu dağıtım komutu ve korumalı GitHub Environment hazırlanmalı.
+- [ ] Hostinger staging uçtan uca test edilmeden üretim dağıtımı yapılmamalı.
+
+**Geçiş sınırı:** Bu dal yalnızca hazırlık içindir. Render, DNS, canlı veri ve Hostinger üretim servisi değiştirilmedi. Haftalık yedekleme tercihi korunur. Canlı geçiş ve veri taşıma ayrıca onay gerektirir.
+
+**Önemli teknik bulgu:** Mevcut `app/db.py` doğrudan `sqlite3` kullanıyor; `PRAGMA` ve SQLite DDL içeriyor. Bu nedenle hazır PostgreSQL sunucusu mevcut uygulamanın doğrudan bağlanabileceği anlamına gelmez. Önce veri katmanı uyarlanmalı; uygulama henüz Hostinger üretimine dağıtıma hazır değildir.

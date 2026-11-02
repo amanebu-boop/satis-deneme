@@ -18,12 +18,8 @@ trap 'rm -rf "$WORK"' EXIT
 cd "$BACKUP_DIR"
 sha256sum --check "SHA256SUMS-$BACKUP_STAMP"
 
-openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
-  -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
-  -in "postgres-$BACKUP_STAMP.dump.enc" -out "$WORK/postgres.dump"
-openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
-  -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
-  -in "objects-$BACKUP_STAMP.tar.gz.enc" -out "$WORK/objects.tar.gz"
+python /app/scripts/backup_crypto.py decrypt "postgres-$BACKUP_STAMP.dump.enc" "$WORK/postgres.dump"
+python /app/scripts/backup_crypto.py decrypt "objects-$BACKUP_STAMP.tar.gz.enc" "$WORK/objects.tar.gz"
 
 pg_restore --list "$WORK/postgres.dump" >/dev/null
 pg_restore --clean --if-exists --no-owner --no-acl --dbname "$DATABASE_URL" "$WORK/postgres.dump"

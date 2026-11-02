@@ -1,6 +1,6 @@
 # Satış Projesi — Durum ve Devam Dosyası
 
-> Son güncelleme: 2026-10-29  
+> Son güncelleme: 2026-11-02  
 > Depo: https://github.com/amanebu-boop/satis-deneme  
 > Ana dal: `main`  
 > Daha önce paylaşılan canlı adres: https://satis-deneme.onrender.com  
@@ -105,3 +105,24 @@ Her görevde:
 - **GitHub dalı ve commit:**
 - **Render dağıtım durumu (doğrulandıysa):**
 - **Sıradaki tek öncelikli görev:**
+
+
+## 9. Hostinger yayın mimarisi kararı (2026-11-02)
+
+Kullanıcı tarafından onaylanan hedef:
+- Yayın sağlayıcısı: **tamamen Hostinger**.
+- Uygulama: FastAPI, Hostinger Linux VPS.
+- Veritabanı: PostgreSQL.
+- Belgeler: kalıcı depolama; dosya sistemi uyumluluğu ve S3 uyumlu depolama seçeneği teknik olarak doğrulanacak.
+- Yedekleme: **günlük (daily)**.
+- Render mevcut servisi geçiş ve kabul testleri tamamlanana kadar geri dönüş noktası olarak korunacak.
+
+Hazırlanan teknik belgeler:
+- `docs/hosting/hostinger-architecture.md` — hedef mimari, PostgreSQL uyarlaması, kalıcı belge depolama, güvenlik, yedekleme ve aşamalı geçiş sınırları.
+- `docs/hosting/hostinger-test-plan.md` — mevcut taban testleri, PostgreSQL, belge depolama, güvenlik, günlük yedek/restore, performans ve kullanıcı kabul testleri.
+
+**İşlem sınırı:** Bu çalışma yalnızca `infra/hostinger-migration-prep` dalında dokümantasyon hazırlığıdır. Hostinger satın alınmadı; VPS kurulmadı; Render veya canlı sistem değiştirilmedi; DNS değişmedi; gerçek veri taşınmadı. Bu adımların her biri için kullanıcıdan ayrıca açık onay alınmalıdır.
+
+**Doğrulama durumu:** İki yeni doküman GitHub dalında oluşturuldu ve tekrar okunarak doğrulandı. Bu adımda uygulama kodu değiştirilmedi ve otomatik test çalıştırılmadı. Dolayısıyla kod/test hazırlığı tamamlanmış veya geçişe hazır olarak işaretlenmemelidir.
+
+**Sıradaki öncelik:** Mevcut SQLite erişim katmanını ve test tabanını inceleyip PostgreSQL uyarlamasını küçük, test edilebilir parçalara ayırmak; önce yerel/CI test ortamını hazırlamak. Hostinger sunucusu veya canlı sistem kullanılmayacak.

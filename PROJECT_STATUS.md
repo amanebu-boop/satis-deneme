@@ -130,11 +130,11 @@ Her görevde:
 - [x] `SALES_DATABASE_URL` ile isteğe bağlı PostgreSQL backend eklendi; SQLite yerel/test varsayılanı olarak korundu.
 - [x] PostgreSQL için psycopg 3 bağımlılığı eklendi.
 - [x] Mevcut qmark SQL ifadeleri, PostgreSQL şema introspection, case-insensitive arama ve sıra alanları için uyumluluk katmanı eklendi.
-- [x] Sağlık endpoint'i yapılandırılmış veritabanı türünü dinamik raporluyor.
+- [x] Sağlık endpoint'i yapılandırılmış veritabanı türünü dinamik raporluyor ve veritabanı erişilemiyorsa HTTP 503 döndürüyor.
 - [x] PostgreSQL 17 hizmeti kullanan GitHub Actions entegrasyon testi eklendi.
 - [x] Non-root kullanıcıyla çalışan uygulama Dockerfile'ı ve gizli/yerel verileri build context dışında tutan `.dockerignore` eklendi.
-- [ ] Son teklif numarası değişikliklerinin CI sonucu bekleniyor.
-- [x] Teklif numarası sayacı SQLite ve PostgreSQL'de atomik `UPSERT ... RETURNING` ile güncellenecek şekilde düzeltildi; PostgreSQL ardışık numara testi eklendi. Eşzamanlı yük testi ayrıca yapılmalı.
+- [ ] Son teklif numarası, readiness ve eşzamanlılık testlerinin CI sonucu bekleniyor.
+- [x] Teklif numarası sayacı SQLite ve PostgreSQL'de atomik `UPSERT ... RETURNING` ile güncellenecek şekilde düzeltildi; PostgreSQL'de ardışık ve 12 paralel teklif numarası testi eklendi.
 - [ ] SQLite → PostgreSQL veri aktarım/geri alma aracı henüz yok.
 - [ ] Hostinger staging Compose dosyası ve sınırlı SSH dağıtım komutu henüz yok.
 - [ ] Üretim kimlik doğrulaması, yetkilendirme, yedek geri yükleme ve kabul testleri tamamlanmadı.

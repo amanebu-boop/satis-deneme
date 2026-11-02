@@ -424,3 +424,15 @@ Her görevde:
 - Test servisi `free` planda; uygulama SQLite veritabanını `/app/data/sales.db`, kullanıcı şablonlarını varsayılan `data/documents/` altında tutuyor. Render Free dosya sistemi yeniden başlatma, uyku ve dağıtımda silindiğinden test servisi kalıcı veri doğrulaması için uygun değil. Gerçek veriler için ücretli servis + `/app/data` kalıcı disk veya Render Postgres ve ayrı dosya saklama kararı gerekiyor.
 - Test servisinin günlüklerinde API çağrıları 200 OK; `/sw.js`, `/manifest.webmanifest` ve `/icon.svg` istekleri 404. Manifest ve ikon `web/` altında mevcut; `sw.js` dosyası bulunamadı. Statik dosya sunumu ayrıca düzeltilmeli.
 - Render bağlantısı üzerinden mevcut ortam değişkenlerinin adları/değerleri okunamıyor; `OPENAI_API_KEY` varlığı ve `OPENAI_DAILY_BUDGET_USD` yapılandırması bu incelemede doğrulanmadı.
+
+## 2026-11-02 — Canlı Render veri kalıcılığı denetimi
+
+- Kullanıcı onayıyla yalnızca salt-okunur Render incelemesi yapıldı. Canlı servis: `srv-dbgt4i8ae00c73dbid70`, dal `main`, plan `free`, Frankfurt, otomatik dağıtım açık.
+- Son canlı dağıtım `cc1aa476f749f2cbfb17e37378df415b4eab5157` commit'iyle 2026-11-01 19:17 UTC'de başarılı oldu. Canlı serviste ayar, kod veya dağıtım değişikliği yapılmadı.
+- Render çalışma alanında Postgres örneği bulunmadı. Servis ayrıntılarında kalıcı disk yapılandırması görünmüyor; 2026-10-28–2026-11-02 aralığında disk oluşturma/güncelleme/silme/geri yükleme olayı bulunmadı. Dolayısıyla kalıcı disk bağlı olduğuna dair kanıt yok.
+- Render Free web servislerinin yerel dosya sistemi yeniden dağıtım, yeniden başlatma veya 15 dakika boşta kalıp uykuya geçme durumlarında silinir; Free plan kalıcı disk desteklemez. Resmî belge: https://render.com/docs/free
+- Test ve canlı servislerin ikisi de Free planda. Test servisi Docker, canlı servis Python runtime kullanıyor. Her ikisi de gerçek verinin kalıcılığı açısından üretim engeli taşıyor.
+- Kodun kullandığı varsayılan veri konumları: SQLite `data/sales.db`; belge şablonu yüklemeleri `data/documents/`. Bu yollar kalıcı depolamaya bağlanmadıkça kayıt ve yüklemeler kaybolabilir.
+- Render çalışma alanında Postgres kaynağı listelenemedi; ortam değişkenlerini salt-okunur listeleyen bir Render aracı mevcut değil. Bu nedenle `OPENAI_API_KEY`, `OPENAI_DAILY_BUDGET_USD` ve veritabanı yolu değişkenlerinin canlı ortamda tanımlı olup olmadığı doğrulanamadı; gizli değerler okunmadı.
+- Metrik sorgusu için dönen CPU/bellek/HTTP/instance veri dizileri boştu; bu nedenle performans/istek hacmi hakkında sonuç çıkarılmadı.
+- Yayına hazır olmanın ön koşulu: veri kalıcılığı mimarisinin seçilmesi ve mevcut verinin kayıpsız taşınması. Alternatifler: ücretli mevcut web servisine `/app/data` kalıcı disk bağlayıp SQLite + dosya depolamayı sürdürmek; veya yönetilen Postgres'e geçip yüklenen dosyalar için kalıcı dosya depolama eklemek. İkinci seçenek veritabanı ölçeklenmesi açısından daha uygun; seçim ve taşıma planı onaysız uygulanmayacak.

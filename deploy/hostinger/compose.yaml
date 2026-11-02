@@ -1,0 +1,48 @@
+# Hostinger single-user application runtime.
+# Keep this file at /opt/satis/app/compose.yaml on the VPS.
+# Required /opt/satis/config/app.env values:
+#   SALES_DATABASE_URL=postgresql://satis_app:<password>@satis-postgres:5432/satis_db
+#   SALES_LOGIN_PASSWORD=<single-user password, at least 12 characters>
+#   SALES_API_TOKEN=<long random token for protected legacy API routes>
+# Required Compose variables:
+#   SALES_HOSTNAME=<application hostname>
+#   TRAEFIK_CERT_RESOLVER=<existing Traefik ACME resolver name>
+
+services:
+  app:
+    image: satis-app:hostinger
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: satis-app
+    restart: unless-stopped
+    init: true
+    env_file:
+      - /opt/satis/config/app.env
+    environment:
+      SALES_DOCUMENTS_PATH: /app/data/documents
+    volumes:
+      - /opt/satis/uploads:/app/data/documents
+    expose:
+      - "8000"
+    mem_limit: 1200m
+    cpus: 0.80
+    networks:
+      - satis-internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=satis-internal
+      - traefik.http.routers.satis-app.rule=Host(`${SALES_HOSTNAME}`)
+      - traefik.http.routers.satis-app.entrypoints=websecure
+      - traefik.http.routers.satis-app.tls=true
+      - traefik.http.routers.satis-app.tls.certresolver=${TRAEFIK_CERT_RESOLVER}
+      - traefik.http.services.satis-app.loadbalancer.server.port=8000
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  satis-internal:
+    external: true

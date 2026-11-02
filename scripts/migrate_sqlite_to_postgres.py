@@ -40,6 +40,12 @@ def migrate(source_path: Path, *, apply: bool) -> dict[str, int]:
     import psycopg
     from psycopg.rows import dict_row
 
+    if apply:
+        # Create/update the target schema from the same application schema code.
+        # This is only done after the operator explicitly supplies --apply.
+        from app import db
+        db.init_db()
+
     if not source_path.is_file():
         raise FileNotFoundError(f"SQLite source file does not exist: {source_path}")
 

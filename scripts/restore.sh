@@ -24,6 +24,7 @@ python /app/scripts/backup_crypto.py decrypt "objects-$BACKUP_STAMP.tar.gz.enc" 
 pg_restore --list "$WORK/postgres.dump" >/dev/null
 
 python - <<'PY'
+import os
 from app.storage import _bucket, _client
 
 client = _client()
@@ -37,7 +38,6 @@ pg_restore --clean --if-exists --no-owner --no-acl --dbname "$DATABASE_URL" "$WO
 
 python - "$WORK/objects.tar.gz" <<'PY'
 import sys
-import os
 import tarfile
 from app.storage import _bucket, _client
 

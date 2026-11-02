@@ -19,3 +19,28 @@ def test_migration_identifier_quotes_known_schema_names(identifier):
 def test_migration_identifier_rejects_unsafe_names(identifier):
     with pytest.raises(ValueError):
         migration.quote_identifier(identifier)
+
+
+
+def test_product_migration_orders_parent_before_child_independent_of_source_order():
+    rows = [
+        {"id": "child", "parent_product_id": "parent"},
+        {"id": "parent", "parent_product_id": None},
+    ]
+    ordered = migration.order_product_rows(rows)
+    assert [row["id"] for row in ordered] == ["parent", "child"]
+
+
+def test_product_migration_rejects_missing_parent():
+    rows = [{"id": "child", "parent_product_id": "missing"}]
+    with pytest.raises(RuntimeError, match="missing parent"):
+        migration.order_product_rows(rows)
+
+
+def test_product_migration_rejects_parent_cycles():
+    rows = [
+        {"id": "first", "parent_product_id": "second"},
+        {"id": "second", "parent_product_id": "first"},
+    ]
+    with pytest.raises(RuntimeError, match="cycle"):
+        migration.order_product_rows(rows)

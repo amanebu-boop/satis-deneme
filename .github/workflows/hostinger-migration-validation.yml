@@ -20,6 +20,7 @@ jobs:
       - run: python -m compileall -q app migrations scripts
       - run: bash -n scripts/backup.sh scripts/restore.sh
       - run: cp .env.hostinger.example .env && docker compose config --quiet
+      - run: docker build -t sales-hostinger-prep .
       - run: python -m pytest -q
 
   postgres-regression:

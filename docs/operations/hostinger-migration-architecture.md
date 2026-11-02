@@ -68,6 +68,6 @@ PostgreSQL connection support and a CI smoke test now exist, but this is not yet
 
 Minimize owner work. The assistant should implement repository changes and inspect CI results directly when connector permissions allow. Ask the owner only for actions that cannot be performed through available integrations, such as creating the first VPS-side deploy identity or authorizing a credential. Never request a private key or password in chat. Explain each unavoidable one-time action and batch it.
 
-## Database concurrency note\n\nAnnual quote sequence allocation previously read then updated a counter, which could issue duplicate numbers under concurrent requests. It now uses a single atomic `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` statement. A PostgreSQL integration test checks the first two sequence values; a concurrent stress test remains open.\n\n## Current boundary
+## Current boundary
 
 This branch is preparation only. It does not deploy, restart, migrate data, modify Render, or change DNS.

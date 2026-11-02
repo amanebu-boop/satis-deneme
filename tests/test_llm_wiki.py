@@ -269,3 +269,71 @@ def test_wiki_lexical_fallback_only_loads_matching_bounded_candidates(tmp_path, 
     assert result["retrieval"] == "local_lexical"
     assert len(result["results"]) <= 3
     assert all("büküm" in item["content"] for item in result["results"])
+
+
+def test_same_filename_wiki_replacement_rolls_back_on_chunk_failure(tmp_path, monkeypatch):
+    monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "wiki-atomic-replace.db"))
+    db.init_db()
+    llm_wiki.init_wiki()
+
+    old_id = "old-version"
+    new_id = "new-version"
+    llm_wiki._replace_uploaded_document_version(
+        "machine-manual.txt", old_id, "previous stable machine procedure"
+    )
+
+    original_upsert = llm_wiki._upsert_with_connection
+    calls = 0
+
+    def fail_after_metadata(connection, source_type, source_id, title, content):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("simulated chunk write failure")
+        return original_upsert(connection, source_type, source_id, title, content)
+
+    monkeypatch.setattr(llm_wiki, "_upsert_with_connection", fail_after_metadata)
+    with pytest.raises(RuntimeError, match="simulated chunk write failure"):
+        llm_wiki._replace_uploaded_document_version(
+            "machine-manual.txt", new_id, "replacement machine procedure"
+        )
+
+    with db.connect() as connection:
+        metadata = connection.execute(
+            "SELECT source_id FROM llm_wiki_documents WHERE source_type='uploaded_document_meta'"
+        ).fetchall()
+        old_chunks = connection.execute(
+            "SELECT content FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
+            (old_id + ":%",),
+        ).fetchall()
+        new_rows = connection.execute(
+            "SELECT COUNT(*) FROM llm_wiki_documents WHERE source_id LIKE ?",
+            (new_id + "%",),
+        ).fetchone()[0]
+
+    assert [row["source_id"] for row in metadata] == [old_id]
+    assert len(old_chunks) == 1
+    assert "previous stable" in old_chunks[0]["content"]
+    assert new_rows == 0
+
+    monkeypatch.setattr(llm_wiki, "_upsert_with_connection", original_upsert)
+    llm_wiki._replace_uploaded_document_version(
+        "machine-manual.txt", new_id, "replacement machine procedure"
+    )
+    with db.connect() as connection:
+        metadata = connection.execute(
+            "SELECT source_id FROM llm_wiki_documents WHERE source_type='uploaded_document_meta'"
+        ).fetchall()
+        old_chunks = connection.execute(
+            "SELECT COUNT(*) FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
+            (old_id + ":%",),
+        ).fetchone()[0]
+        new_chunks = connection.execute(
+            "SELECT content FROM llm_wiki_documents WHERE source_type='uploaded_document' AND source_id LIKE ?",
+            (new_id + ":%",),
+        ).fetchall()
+
+    assert [row["source_id"] for row in metadata] == [new_id]
+    assert old_chunks == 0
+    assert len(new_chunks) == 1
+    assert "replacement machine" in new_chunks[0]["content"]

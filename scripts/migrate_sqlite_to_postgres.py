@@ -164,10 +164,11 @@ def migrate(source_path: Path, *, apply: bool) -> dict[str, int]:
                             f"INSERT INTO {quote_identifier(table)} ({column_sql}) "
                             f"VALUES ({placeholders})"
                         )
-                        target.executemany(
-                            insert_sql,
-                            [tuple(row[column] for column in columns) for row in import_rows],
-                        )
+                        with target.cursor() as cursor:
+                            cursor.executemany(
+                                insert_sql,
+                                [tuple(row[column] for column in columns) for row in import_rows],
+                            )
 
                     # Restore the annual quote counter to at least the maximum quote number
                     # only when the source already contains a counter row; never guess IDs.

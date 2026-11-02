@@ -1,0 +1,49 @@
+# Hostinger teknik kurulum runbook'u
+
+**Kapsam:** Bu belge hazırlık ve staging runbook'udur. Hostinger hesabında işlem, satın alma, VPS kurulumu, DNS/canlı değişiklik ve gerçek veri taşıma bu aşamada yapılmaz.
+
+## 1. Hazırlanan servisler
+
+- FastAPI uygulaması: Python 3.11, Uvicorn; Docker içinde root olmayan kullanıcı.
+- PostgreSQL 16: yalnızca Compose iç ağına açık.
+- RustFS: S3 uyumlu nesne depolama; 9000/9001 portları host'a yayınlanmaz.
+- Nginx: ters proxy; test aşamasında yalnızca `127.0.0.1:8080` üzerinden erişilir.
+- Günlük yedekleme: PostgreSQL dump + RustFS nesne arşivi; AES-256-CBC/PBKDF2 ile şifreli, 14 günlük yerel saklama.
+
+RustFS imajı `.env.hostinger.example` içinde resmi dokümanlardaki x86 musl `v2.3.1` örneğine sabitlenmiştir. Satın alma/kurulum öncesi mimari ve daha yeni güvenlik sürümü yeniden kontrol edilmelidir.
+
+## 2. Staging başlatma (yalnızca ayrıca onaylanmış VPS veya geliştirici makinesi)
+
+1. `.env.hostinger.example` dosyasını `.env` olarak kopyalayın.
+2. `POSTGRES_PASSWORD`, `RUSTFS_ACCESS_KEY`, `RUSTFS_SECRET_KEY` ve `BACKUP_ENCRYPTION_PASSPHRASE` alanlarını güçlü, benzersiz sırlarla değiştirin. Access key için yalnızca büyük harf/rakam kullanın; PostgreSQL parolasını URL güvenli karakterlerle üretin.
+3. `.env` dosyasını Git'e eklemeyin.
+4. `docker compose config --quiet` ile yapılandırmayı doğrulayın.
+5. `docker compose build` ve `docker compose up -d` çalıştırın.
+6. Uygulama migration'ları başlangıçta Alembic ile çalıştırır; RustFS bucket'ı uygulama başlangıcında oluşturulur.
+7. `curl http://127.0.0.1:8080/health` sonucu `status=ok`, `database=postgresql`, `storage=s3` olmalıdır.
+8. `docker compose ps` ve logları kontrol edin. PostgreSQL ve RustFS host üzerinde doğrudan port yayınlamamalıdır.
+
+Bu yapılandırma HTTP test proxy'sidir; genel internete açılmaya veya canlı yayına hazır değildir. Domain, TLS sertifikası, HTTPS yönlendirmesi ve firewall kuralları ayrı hazırlık/onay kapısında yapılacaktır.
+
+## 3. Günlük yedekleme
+
+- `docs/hosting/hostinger-daily-backup.cron` içindeki cron satırını gerçek kurulum dizinine göre düzenleyin.
+- Hostinger VPS üzerinde günlük snapshot/backup özelliğini ayrıca etkinleştirin; panelde sıklık ve saklama süresini doğrulayın.
+- Mantıksal yedek `pg_dump` ve RustFS bucket içeriğini kapsar; `/backups` Docker volume'ünde şifreli tutulur.
+- Şifreleme parolası yedeklerle aynı klasöre veya Git'e yazılmaz; ayrı güvenli yerde saklanır.
+- Yedek işi günlük loglanır. Başarısızlıkta cron logu incelenir; yedek dosyası oluştu diye başarı varsayılmaz.
+- En az bir kez temiz bir test veritabanı ve boş test bucket'ına geri yükleme yapılmadan yedek kabul edilmez.
+
+## 4. Geri yükleme güvenliği
+
+`restore.sh` veritabanı nesnelerini temizleyip yeniden oluşturabilir. Yalnızca ayrı test hedefinde çalıştırın. Önce backup timestamp ve checksum doğrulanır. Komut `RESTORE_CONFIRM=YES` olmadan çalışmaz; hedef RustFS bucket doluysa varsayılan olarak durur. Dolu bucket üzerine birleştirme yalnızca ayrı inceleme sonrası `RESTORE_ALLOW_NONEMPTY_BUCKET=YES` ile yapılmalıdır.
+
+## 5. Açık üretim engelleri
+
+- Uygulamada gerçek kullanıcı giriş/OIDC akışı ve üretim düzeyi rol/erişim kontrolleri henüz tamamlanmış değildir.
+- HTTPS/TLS ve public Nginx port eşlemesi bu aşamada yoktur.
+- RustFS tek VPS/tek disk üzerinde çalışırsa yüksek erişilebilirlik sağlamaz; Hostinger snapshot/backup bağımsız geri dönüş katmanı olarak doğrulanmalıdır.
+- PostgreSQL CI smoke testi vardır; tüm iş akışlarının PostgreSQL üzerinde tam kabul testi ve dosya depolama uçtan uca testi henüz tamamlanmamıştır.
+- Mevcut SQLite verisi ve belgeler taşınmamıştır. Gerçek veri taşıma için dry-run, checksum ve kayıt mutabakatı ayrıca gerekir.
+
+Bu maddeler kapanmadan canlı geçiş yapılmaz.

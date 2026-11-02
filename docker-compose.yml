@@ -40,7 +40,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -54,8 +54,8 @@ services:
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
       RUSTFS_VOLUMES: /data
-      RUSTFS_ADDRESS: :9000
-      RUSTFS_CONSOLE_ADDRESS: :9001
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
       RUSTFS_CONSOLE_ENABLE: 'true'
     volumes:
       - rustfs_data:/data
@@ -63,7 +63,7 @@ services:
       - 9000
       - 9001
     healthcheck:
-      test: [CMD, curl, -sf, http://127.0.0.1:9000/health]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:9000/health"]
       interval: 10s
       timeout: 5s
       retries: 6

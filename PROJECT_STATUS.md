@@ -1,6 +1,6 @@
 # Satış Projesi — Durum ve Devam Dosyası
 
-> Son güncelleme: 2026-10-29  
+> Son güncelleme: 2026-11-02  
 > Depo: https://github.com/amanebu-boop/satis-deneme  
 > Ana dal: `main`  
 > Daha önce paylaşılan canlı adres: https://satis-deneme.onrender.com  
@@ -112,7 +112,7 @@ Her görevde:
 - [x] Ana daldan bağımsız `infra/github-hostinger-pipeline` dalı oluşturuldu.
 - [x] GitHub-hosted runner üzerinde test çalıştırmak için `.github/workflows/hostinger-migration-checks.yml` eklendi. Python 3.11 ve belge entegrasyon testleri için LibreOffice kurulur; ardından `python -m pytest -q` çalıştırılır.
 - [x] Hedef mimari ve güvenlik sınırları `docs/operations/hostinger-migration-architecture.md` dosyasına yazıldı.
-- [ ] GitHub Actions test çalışmasının gerçek sonucu alınmalı; henüz başarılı olduğu iddia edilmemeli.
+- [x] GitHub Actions test ve container-build çalışması `41459517303` başarıyla tamamlandı.
 - [ ] SQLite bağımlı `app/db.py` için PostgreSQL uyumlu veri erişim katmanı ve şema geçişleri geliştirilmeli.
 - [ ] SQLite → PostgreSQL aktarım aracı ve veri bütünlüğü doğrulamaları hazırlanmalı.
 - [ ] Yüklenen belgeler için kalıcı depolama ve geri yükleme testi tamamlanmalı.
@@ -133,10 +133,10 @@ Her görevde:
 - [x] Sağlık endpoint'i yapılandırılmış veritabanı türünü dinamik raporluyor.
 - [x] PostgreSQL 17 hizmeti kullanan GitHub Actions entegrasyon testi eklendi.
 - [x] Non-root kullanıcıyla çalışan uygulama Dockerfile'ı ve gizli/yerel verileri build context dışında tutan `.dockerignore` eklendi.
-- [ ] En son commit üzerindeki CI ve Docker image build sonucu henüz doğrulanmadı.
-- [ ] PostgreSQL eşzamanlı teklif numarası üretimi için yarış koşulu testi eklenmeli; mevcut sayaç mantığı gözden geçirilmeli.
+- [ ] Son teklif numarası değişikliklerinin CI sonucu bekleniyor.
+- [x] Teklif numarası sayacı SQLite ve PostgreSQL'de atomik `UPSERT ... RETURNING` ile güncellenecek şekilde düzeltildi; PostgreSQL ardışık numara testi eklendi. Eşzamanlı yük testi ayrıca yapılmalı.
 - [ ] SQLite → PostgreSQL veri aktarım/geri alma aracı henüz yok.
 - [ ] Hostinger staging Compose dosyası ve sınırlı SSH dağıtım komutu henüz yok.
 - [ ] Üretim kimlik doğrulaması, yetkilendirme, yedek geri yükleme ve kabul testleri tamamlanmadı.
 
-**Test kanıtı:** GitHub Actions çalışması `41459143233` içindeki test adımı PostgreSQL 17 servisiyle `23 passed, 1 warning` sonucu verdi. Aynı çalışmanın genel durumu daha sonraki commit tarafından iptal edildiği için bu sonuç, test adımının başarılı çıktısıdır; son dal başının tamamlanmış CI sonucu değildir.
+**Test kanıtı:** GitHub Actions çalışması `41459517303` genel olarak `success` tamamlandı. Python test işi ve non-root Docker image build işi başarıyla geçti. Önceki PostgreSQL entegrasyon test çıktısı `23 passed, 1 warning` idi; son teklif numarası değişikliği için yeni CI çalışması ayrıca bekleniyor.

@@ -18,12 +18,8 @@ mkdir -p "$BACKUP_DIR"
 pg_dump --format=custom --no-owner --no-acl "$DATABASE_URL" --file "$WORK/postgres.dump"
 python /app/scripts/backup_objects.py "$WORK/objects.tar.gz"
 
-openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
-  -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
-  -in "$WORK/postgres.dump" -out "$BACKUP_DIR/postgres-$STAMP.dump.enc"
-openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
-  -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
-  -in "$WORK/objects.tar.gz" -out "$BACKUP_DIR/objects-$STAMP.tar.gz.enc"
+python /app/scripts/backup_crypto.py encrypt "$WORK/postgres.dump" "$BACKUP_DIR/postgres-$STAMP.dump.enc"
+python /app/scripts/backup_crypto.py encrypt "$WORK/objects.tar.gz" "$BACKUP_DIR/objects-$STAMP.tar.gz.enc"
 
 (
   cd "$BACKUP_DIR"

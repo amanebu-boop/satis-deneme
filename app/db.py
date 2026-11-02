@@ -552,14 +552,13 @@ def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
     with connect() as connection:
         year = int(str(record["created_at"])[:4])
         sequence = connection.execute(
-            "SELECT last_number FROM quote_sequences WHERE quote_year = ?", (year,)
+            """INSERT INTO quote_sequences (quote_year, last_number) VALUES (?, 1)
+               ON CONFLICT(quote_year) DO UPDATE
+               SET last_number = quote_sequences.last_number + 1
+               RETURNING last_number""",
+            (year,),
         ).fetchone()
-        next_number = (int(sequence["last_number"]) + 1) if sequence else 1
-        connection.execute(
-            """INSERT INTO quote_sequences (quote_year, last_number) VALUES (?, ?)
-               ON CONFLICT(quote_year) DO UPDATE SET last_number = excluded.last_number""",
-            (year, next_number),
-        )
+        next_number = int(sequence["last_number"])
         quote_number = f"ERS-{year}-{next_number:04d}"
         connection.execute(
             """INSERT INTO quotations

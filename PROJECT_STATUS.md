@@ -113,10 +113,10 @@ Her görevde:
 - [x] GitHub-hosted runner üzerinde test çalıştırmak için `.github/workflows/hostinger-migration-checks.yml` eklendi. Python 3.11 ve belge entegrasyon testleri için LibreOffice kurulur; ardından `python -m pytest -q` çalıştırılır.
 - [x] Hedef mimari ve güvenlik sınırları `docs/operations/hostinger-migration-architecture.md` dosyasına yazıldı.
 - [x] GitHub Actions test ve container-build çalışması `41459517303` başarıyla tamamlandı.
-- [ ] SQLite bağımlı `app/db.py` için PostgreSQL uyumlu veri erişim katmanı ve şema geçişleri geliştirilmeli.
+- [x] `SALES_DATABASE_URL` ile isteğe bağlı PostgreSQL veri erişim katmanı eklendi; SQLite varsayılanı korundu. Tam CRUD ve hata eşleme kapsamı ayrıca genişletilmeli.
 - [x] SQLite → PostgreSQL aktarım aracı eklendi; varsayılan kuru çalışma, boş hedef zorunluluğu, şema/kolon kontrolü ve satır sayısı doğrulaması var.
 - [x] SQLite → PostgreSQL uçtan uca aktarım testi eklendi; PostgreSQL 17 CI üzerinde firma, kişi, ürün/opsiyon ilişkisi, görüşme, takip ve teklif kayıtlarını doğrular.
-- [ ] Yeni aktarım testi GitHub Actions üzerinde başarıyla tamamlanmalı; sonuç henüz doğrulanmadı.
+- [ ] Aktarım uçtan uca testi CI'da ilk çalıştırmada hata verdi: psycopg Connection üzerinde olmayan `executemany` kullanımı. Cursor üzerinden batch insert düzeltmesi commit `12575f7` ile eklendi; düzeltme sonrası CI sonucu doğrulanmayı bekliyor.
 - [ ] Yüklenen belgeler için kalıcı depolama ve geri yükleme testi tamamlanmalı.
 - [ ] Uygulama üretim kimlik doğrulaması/yetkilendirmesi ve güvenlik kontrollerinden geçirilmeli.
 - [ ] GitHub Actions ile Hostinger staging dağıtımı için sınırlı yetkili SSH kullanıcısı, sabit sunucu dağıtım komutu ve korumalı GitHub Environment hazırlanmalı.
@@ -135,13 +135,13 @@ Her görevde:
 - [x] Sağlık endpoint'i yapılandırılmış veritabanı türünü dinamik raporluyor ve veritabanı erişilemiyorsa HTTP 503 döndürüyor.
 - [x] PostgreSQL 17 hizmeti kullanan GitHub Actions entegrasyon testi eklendi.
 - [x] Non-root kullanıcıyla çalışan uygulama Dockerfile'ı ve gizli/yerel verileri build context dışında tutan `.dockerignore` eklendi.
-- [ ] Son teklif numarası, readiness ve eşzamanlılık testlerinin CI sonucu bekleniyor.
+- [x] Teklif numarası, readiness ve eşzamanlılık testleri eklendi. Son CI çalışmasında migration aktarım testindeki ayrı batch insert hatası dışında 35 test geçti; düzeltme sonrası tam CI sonucu bekleniyor.
 - [x] Teklif numarası sayacı SQLite ve PostgreSQL'de atomik `UPSERT ... RETURNING` ile güncellenecek şekilde düzeltildi; PostgreSQL'de ardışık ve 12 paralel teklif numarası testi eklendi.
 - [x] SQLite → PostgreSQL aktarım aracı ve PostgreSQL 17 üzerinde kuru çalışma + gerçek aktarım testi eklendi.
 - [ ] Aktarım testinin CI sonucu henüz doğrulanmadı; gerçek veriye uygulanmadı.
 - [ ] Hostinger staging Compose dosyası ve sınırlı SSH dağıtım komutu henüz yok.
 - [ ] Üretim kimlik doğrulaması, yetkilendirme, yedek geri yükleme ve kabul testleri tamamlanmadı.
 
-**Test kanıtı:** GitHub Actions çalışması `41459517303` genel olarak `success` tamamlandı. Python test işi ve non-root Docker image build işi başarıyla geçti. Önceki PostgreSQL entegrasyon test çıktısı `23 passed, 1 warning` idi. SQLite → PostgreSQL aktarım uçtan uca testi eklendi; bu yeni testin CI sonucu henüz doğrulanmadı.
+**Test kanıtı:** Önceki GitHub Actions çalışması `41459517303` başarıyla tamamlandı. Daha yeni çalışma `41462992982` içinde Docker image build başarılı; Python testleri `35 passed, 1 failed, 1 warning` ile sonuçlandı. Hata, migration aracının psycopg Connection üzerinde `executemany` çağırmasıydı. Cursor tabanlı düzeltme commit `12575f7` ile eklendi; bu düzeltmenin CI sonucu henüz doğrulanmadı.
 
 **PR:** Hazırlık değişiklikleri `#34` numaralı taslak PR üzerinden `main` dalına açıldı. PR merge edilmedi; canlı yayın, DNS ve gerçek veri aktarımı yapılmadı.

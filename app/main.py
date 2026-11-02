@@ -800,6 +800,8 @@ def browser_generate_template(
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    if not db.database_ready():
+        raise HTTPException(status_code=503, detail="Database unavailable")
     return {"status": "ok", "stage": "prototype", "storage": db.database_backend()}
 
 

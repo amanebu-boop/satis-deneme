@@ -8,7 +8,7 @@
 - PostgreSQL 16: yalnızca Compose iç ağına açık.
 - RustFS: S3 uyumlu nesne depolama; 9000/9001 portları host'a yayınlanmaz.
 - Nginx: ters proxy; test aşamasında yalnızca `127.0.0.1:8080` üzerinden erişilir.
-- Günlük yedekleme: PostgreSQL dump + RustFS nesne arşivi; AES-256-CBC/PBKDF2 ile şifreli, 14 günlük yerel saklama.
+- Günlük yedekleme: PostgreSQL dump + RustFS nesne arşivi; AES-256-GCM/PBKDF2 ile şifreli, 14 günlük yerel saklama.
 
 RustFS imajı `.env.hostinger.example` içinde resmi dokümanlardaki x86 musl `v2.3.1` örneğine sabitlenmiştir. Satın alma/kurulum öncesi mimari ve daha yeni güvenlik sürümü yeniden kontrol edilmelidir.
 

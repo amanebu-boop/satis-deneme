@@ -28,7 +28,7 @@ Use GitHub-hosted automation as the control plane so the owner's personal comput
 
 ## Blocking application compatibility issue
 
-The application has an opt-in PostgreSQL backend, but is not yet ready for production deployment.
+The application has an opt-in PostgreSQL backend and database-aware health check, but is not yet ready for production deployment.
 
 - `app/db.py` retains SQLite for local/test use and now has an opt-in PostgreSQL backend through `SALES_DATABASE_URL` using psycopg 3.
 - Schema setup and migrations use SQLite-specific `PRAGMA table_info`, `executescript`, and SQLite DDL.
@@ -43,7 +43,7 @@ PostgreSQL connection support and a CI smoke test now exist, but this is not yet
 ## Required implementation sequence
 
 1. Baseline: GitHub Actions run `41459517303` completed successfully; both the Python/PostgreSQL test job and non-root Docker image build job passed. The earlier test log showed 23 passed, 1 warning. Re-run the latest branch head before merging.
-2. Database layer: atomic annual quote-number allocation now uses an UPSERT with RETURNING on both supported backends; a PostgreSQL sequential-number test is added. Still add concurrent load, full CRUD, migration, and error-mapping coverage.
+2. Database layer: atomic annual quote-number allocation now uses an UPSERT with RETURNING on both supported backends; PostgreSQL sequential and 12-way concurrent-number tests are added. A database-aware readiness probe now returns HTTP 503 if the database is unavailable. Still add full CRUD, migration, and error-mapping coverage.
 3. Data migration: write a repeatable, dry-run-capable SQLite-to-PostgreSQL export/import tool; preserve IDs, quote numbers, relationships, currencies, and timestamps; verify row counts and referential integrity. Never run against production data without explicit approval and a tested backup.
 4. File storage: use a configurable persistent document root; verify upload, download, generated XLSX/PDF, and backup/restore behavior.
 5. Runtime: non-root application Dockerfile and healthcheck are added; CI successfully built the image. Still add resource limits, runtime Compose definition, readiness behavior, and staging image verification. Keep PostgreSQL private.

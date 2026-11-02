@@ -29,6 +29,7 @@ def test_postgresql_backend_schema_and_core_records(monkeypatch):
             "phone_numbers": [],
         })
         assert db.get_company(company_id)["name"] == company["name"]
+        assert [item["id"] for item in db.list_companies(search="postgresql")] == [company_id]
 
         product_id = str(uuid4())
         product = db.create_product({

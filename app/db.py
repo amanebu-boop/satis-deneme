@@ -1,6 +1,8 @@
 import json
 import os
 import sqlite3
+from typing import Any
+from app import db_backend
 from uuid import uuid4
 from pathlib import Path
 from typing import Any
@@ -12,7 +14,9 @@ def database_path() -> Path:
     return Path(os.environ.get("SALES_DATABASE_PATH", DEFAULT_DATABASE_PATH))
 
 
-def connect() -> sqlite3.Connection:
+def connect():
+    if db_backend.is_postgres_configured():
+        return db_backend.Connection()
     path = database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path, timeout=10)
@@ -183,6 +187,20 @@ def init_db() -> None:
                 connection.execute(f"ALTER TABLE companies ADD COLUMN {column} {definition}")
 
 
+
+def initialize() -> None:
+    """Initialize the configured database; PostgreSQL schema is versioned by Alembic."""
+    if not db_backend.is_postgres_configured():
+        init_db()
+        return
+    from alembic import command
+    from alembic.config import Config
+
+    config_path = Path(__file__).resolve().parent.parent / "alembic.ini"
+    config = Config(str(config_path))
+    command.upgrade(config, "head")
+
+
 def _company_record(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
     record = dict(row)
     for key in ("authorized_people", "phone_numbers"):
@@ -314,7 +332,7 @@ def list_company_contacts(company_id: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def _save_meeting_products(connection: sqlite3.Connection, meeting_id: str, products: list[dict[str, Any]]) -> None:
+def _save_meeting_products(connection: Any, meeting_id: str, products: list[dict[str, Any]]) -> None:
     connection.execute("DELETE FROM meeting_products WHERE meeting_id = ?", (meeting_id,))
     for item in products:
         connection.execute(

@@ -126,3 +126,17 @@ Kurallar:
 - Hostinger — VPS yedekleme ve geri yükleme: https://www.hostinger.com/support/1583232-how-to-back-up-or-restore-a-vps-at-hostinger/
 - Hostinger — VPS lokasyonları: https://www.hostinger.com/support/1583267-where-are-hostinger-servers-located/
 - RustFS — Docker kurulumu ve tek düğüm/tek disk sınırlaması: https://docs.rustfs.com/en/installation/container
+
+
+## 11. Geliştirme dalındaki teknik uygulama
+
+Aşağıdaki bileşenler `infra/hostinger-migration-prep` dalına eklendi:
+- SQLAlchemy 2 + psycopg PostgreSQL erişim adaptörü; SQLite yerel backend olarak korunur.
+- Alembic başlangıç migration köprüsü. İlk sürüm mevcut idempotent şema oluşturucuyu çağırır; bundan sonraki şema değişiklikleri gerçek Alembic revision dosyalarıyla yapılmalıdır.
+- `app/storage.py`: yerel/S3 depolama seçimi. RustFS için path-style S3, başlangıçta bucket kontrolü ve oluşturma.
+- `template_documents.py`: şablon metadata/kaynaklarının RustFS'e kaydı, listeleme ve oluşturulan belge nesnelerinin saklanması.
+- Dockerfile ve Compose: FastAPI, PostgreSQL 16, RustFS, Nginx. Nginx yalnızca loopback `127.0.0.1:8080` test erişimi sağlar.
+- Sağlık kontrolü PostgreSQL/SQLite ve seçilen depolama backend'ini sorgular.
+- Günlük mantıksal yedek: PostgreSQL dump + RustFS nesneleri; AES-256-GCM ve PBKDF2 ile şifreli; 14 gün saklama. Cron şablonu 02.00 UTC değil, sunucunun yerel saatine göre 02.00 çalışır.
+
+Bu altyapı kod hazırlığıdır; gerçek Hostinger kurulumu veya yedek/restore tatbikatı yapılmış değildir.

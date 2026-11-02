@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -64,6 +65,8 @@ def test_sqlite_to_postgres_migration_dry_run_and_apply(tmp_path: Path, monkeypa
 
     result = migrate_sqlite_to_postgres(source_path, target_url, apply=True)
     assert result["verified"] is True
+    with sqlite3.connect(source_path) as original_source:
+        assert original_source.execute("SELECT count(*) FROM companies").fetchone()[0] == 1
     engine = create_engine(target_url)
     try:
         with engine.connect() as connection:

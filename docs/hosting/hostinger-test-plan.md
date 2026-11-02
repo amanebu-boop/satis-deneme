@@ -153,3 +153,22 @@ Aşağıdakilerden biri varsa canlıya geçilmez:
 - Günlük yedekleme etkinliği ve başarısı doğrulanmamış.
 - Kritik/yüksek güvenlik bulgusu açık.
 - Render geri dönüş planı ve kullanıcı onayı yok.
+
+
+## 12. Geliştirme dalı uygulama/test durumu
+
+- [x] SQLAlchemy/psycopg PostgreSQL adaptörü eklendi.
+- [x] Alembic başlangıç migration köprüsü eklendi.
+- [x] Yerel ve RustFS S3 depolama adaptörü eklendi.
+- [x] Dockerfile, Compose, Nginx loopback proxy ve ortam değişkeni örneği eklendi.
+- [x] PostgreSQL SQL çeviri ve repository smoke testleri eklendi.
+- [x] Şifreli günlük backup/restore betikleri ve cron şablonu eklendi.
+- [ ] Son commit için GitHub Actions'ın tüm job'ları başarılı.
+- [ ] Docker image gerçek build.
+- [ ] RustFS servis uçtan uca testi.
+- [ ] PostgreSQL üzerinde tüm iş akışları regresyonu.
+- [ ] Şifreli backup/restore tatbikatı.
+- [ ] TLS, kimlik doğrulama/yetkilendirme ve güvenlik sertleştirmesi.
+- [ ] Gerçek veri taşıma provası.
+
+**Önceki CI koşusu (AES-GCM ve son Compose düzeltmelerinden önce):** SQLite 25 passed, 2 skipped, 1 warning; PostgreSQL 5 passed. Bu sonuç yeni commit'lere otomatik olarak mal edilmemelidir.

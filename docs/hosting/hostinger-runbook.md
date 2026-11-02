@@ -15,13 +15,16 @@ RustFS imajı `.env.hostinger.example` içinde resmi dokümanlardaki x86 musl `v
 ## 2. Staging başlatma (yalnızca ayrıca onaylanmış VPS veya geliştirici makinesi)
 
 1. `.env.hostinger.example` dosyasını `.env` olarak kopyalayın.
-2. `POSTGRES_PASSWORD`, `RUSTFS_ACCESS_KEY`, `RUSTFS_SECRET_KEY` ve `BACKUP_ENCRYPTION_PASSPHRASE` alanlarını güçlü, benzersiz sırlarla değiştirin. Access key için yalnızca büyük harf/rakam kullanın; PostgreSQL parolasını URL güvenli karakterlerle üretin.
+2. `POSTGRES_PASSWORD`, `RUSTFS_ACCESS_KEY`, `RUSTFS_SECRET_KEY`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` ve `BACKUP_ENCRYPTION_PASSPHRASE` alanlarını güçlü, benzersiz sırlarla değiştirin. RustFS yönetici access key'i yalnızca büyük harf/rakam kullanmalı; PostgreSQL parolasını URL güvenli karakterlerle üretin.
 3. `.env` dosyasını Git'e eklemeyin.
 4. `docker compose config --quiet` ile yapılandırmayı doğrulayın.
-5. `docker compose build` ve `docker compose up -d` çalıştırın.
-6. Uygulama migration'ları başlangıçta Alembic ile çalıştırır; RustFS bucket'ı uygulama başlangıcında oluşturulur.
-7. `curl http://127.0.0.1:8080/health` sonucu `status=ok`, `database=postgresql`, `storage=s3` olmalıdır.
-8. `docker compose ps` ve logları kontrol edin. PostgreSQL ve RustFS host üzerinde doğrudan port yayınlamamalıdır.
+5. Önce yalnızca RustFS'i başlatın: `docker compose up -d rustfs`.
+6. Yönetim konsolu host üzerinde yalnızca `127.0.0.1:9001` adresine bağlıdır. Yönetici bilgisayarından SSH tüneli açın (`ssh -L 9001:127.0.0.1:9001 kullanici@sunucu`) ve `http://127.0.0.1:9001` üzerinden bağlanın.
+7. RustFS yönetici hesabıyla bucket'ı oluşturun; uygulama için yalnızca bu bucket üzerinde gerekli listeleme/okuma/yazma/silme izinleri olan ayrı bir servis hesabı oluşturun. `S3_ACCESS_KEY` ve `S3_SECRET_KEY` alanlarına bu servis hesabını yazın. Yönetici anahtarları uygulama konteynerine aktarılmaz.
+8. `docker compose build` ve `docker compose up -d` çalıştırın.
+9. Uygulama migration'ları başlangıçta Alembic ile çalıştırır ve önceden oluşturulmuş bucket erişimini doğrular.
+10. `curl http://127.0.0.1:8080/health` sonucu `status=ok`, `database=postgresql`, `storage=s3` olmalıdır.
+11. `docker compose ps` ve logları kontrol edin. PostgreSQL ve RustFS host üzerinde doğrudan port yayınlamamalıdır.
 
 Bu yapılandırma HTTP test proxy'sidir; genel internete açılmaya veya canlı yayına hazır değildir. Domain, TLS sertifikası, HTTPS yönlendirmesi ve firewall kuralları ayrı hazırlık/onay kapısında yapılacaktır.
 
@@ -43,6 +46,7 @@ Bu yapılandırma HTTP test proxy'sidir; genel internete açılmaya veya canlı 
 - Uygulamada gerçek kullanıcı giriş/OIDC akışı ve üretim düzeyi rol/erişim kontrolleri henüz tamamlanmış değildir.
 - HTTPS/TLS ve public Nginx port eşlemesi bu aşamada yoktur.
 - RustFS tek VPS/tek disk üzerinde çalışırsa yüksek erişilebilirlik sağlamaz; Hostinger snapshot/backup bağımsız geri dönüş katmanı olarak doğrulanmalıdır.
+- RustFS yönetici anahtarları yalnızca RustFS servisine verilir; uygulama ve yedekleme araçları bucket ile sınırlandırılmış servis hesabını kullanır.
 - PostgreSQL CI smoke testi vardır; tüm iş akışlarının PostgreSQL üzerinde tam kabul testi ve dosya depolama uçtan uca testi henüz tamamlanmamıştır.
 - Mevcut SQLite verisi ve belgeler taşınmamıştır. Gerçek veri taşıma için dry-run, checksum ve kayıt mutabakatı ayrıca gerekir.
 

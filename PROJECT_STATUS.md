@@ -1,6 +1,6 @@
 # Satış Projesi — Durum ve Devam Dosyası
 
-> Son güncelleme: 2026-10-29  
+> Son güncelleme: 2026-11-02  
 > Depo: https://github.com/amanebu-boop/satis-deneme  
 > Ana dal: `main`  
 > Daha önce paylaşılan canlı adres: https://satis-deneme.onrender.com  
@@ -105,3 +105,53 @@ Her görevde:
 - **GitHub dalı ve commit:**
 - **Render dağıtım durumu (doğrulandıysa):**
 - **Sıradaki tek öncelikli görev:**
+
+
+## 9. Hostinger yayın mimarisi ve uygulama hazırlığı (2026-11-02)
+
+**Kullanıcı tarafından onaylanan hedef:** Yayın sağlayıcısı tamamen Hostinger; uygulama Hostinger Linux VPS; veritabanı PostgreSQL; belgeler kalıcı depolama; günlük yedekleme. Mevcut Render servisi geçiş ve kabul testleri tamamlanana kadar geri dönüş noktası olarak korunur.
+
+### Geliştirme dalında oluşturulan altyapı
+- `infra/hostinger-migration-prep` dalında PostgreSQL bağlantısı için SQLAlchemy 2 + psycopg uyumluluk katmanı eklendi. SQLite yerel geliştirme varsayılanı olarak korundu.
+- Alembic yapılandırması, başlangıç şema migration köprüsü ve uygulama başlangıcında migration çalıştırma eklendi. İlk migration mevcut idempotent şema kurulumunu çağırır; sonraki şema değişiklikleri gerçek Alembic `op` migration'ları olarak yazılmalıdır.
+- Yerel dosya sistemi ve S3 uyumlu RustFS için depolama katmanı eklendi. Şablon yükleme/listeleme ve üretilen dosyaların S3'e yazılması uyarlandı.
+- Dockerfile: Python 3.11, LibreOffice, PostgreSQL istemci araçları, root olmayan uygulama kullanıcısı.
+- Docker Compose: FastAPI, PostgreSQL 16, RustFS ve Nginx. Nginx test portu yalnızca `127.0.0.1:8080` adresine bağlıdır; HTTPS/public port açılmadı.
+- Sağlık kontrolü veritabanı ve depolama bağımlılıklarını doğrular.
+- Günlük PostgreSQL + RustFS yedekleme betikleri, AES-256-GCM/PBKDF2 tabanlı şifreleme, 14 günlük yerel saklama ve kontrollü geri yükleme betiği eklendi.
+- SQLite → PostgreSQL taşıma aracı, SQLite Backup API ile tutarlı geçici kaynak kopyası alır; şema yükseltmelerini yalnızca kopyada çalıştırır ve kaynak dosyayı değiştirmez. Taşıma varsayılan olarak dry-run'dır.
+- Günlük 02.00 cron şablonu eklendi. Hostinger VPS panelindeki otomatik snapshot yedeği ayrıca etkinleştirilmeli ve doğrulanmalıdır.
+- GitHub Actions: SQLite regresyonu, PostgreSQL smoke testi, Python derleme, shell syntax ve Docker Compose yapılandırma doğrulaması.
+
+### Son doğrulama kaydı
+- GitHub Actions son başarılı koşu: 2 Kasım 2026, commit `e2bdf8574c7e0fba0ee80f3fb5e8bcada9d6b2a1`, workflow run `41412761295`. SQLite: **29 passed, 3 skipped, 1 warning**; PostgreSQL: **6 passed**.
+- Aynı koşuda Python compileall, backup/restore shell syntax, Docker Compose config ve Docker image build başarılı.
+- Son migration iyileştirmesi (SQLite kaynak DB'yi değiştirmeden geçici kopyada schema upgrade) bu koşuda doğrulandı.
+- RustFS gerçek servis uçtan uca testi, tüm PostgreSQL iş akışı regresyonu ve günlük backup/restore tatbikatı henüz yapılmadı.
+- Hostinger satın alma/VPS kurulumu, DNS, canlı değişiklik, Render değişikliği ve gerçek müşteri verisi taşıma yapılmadı.
+
+### Canlı geçişi engelleyen açık işler
+1. [x] Son CI yeşil: SQLite 29 passed / 3 skipped; PostgreSQL 6 passed; Docker build, Compose config, compileall ve shell syntax başarılı.
+2. [ ] Docker Compose servislerinin birlikte çalıştırılması ve gerçek servis health kontrolü (staging gerekli).
+3. [ ] PostgreSQL üzerinde firma, görüşme, ürün, teklif numarası, teklif/Excel/PDF ve KDV akışlarının tam regresyonu.
+4. [ ] RustFS gerçek S3 API put/get/head/list/delete ve yeniden başlatma kalıcılığı uçtan uca testi.
+5. [ ] Şifreli PostgreSQL + nesne yedeği üretimi ve temiz DB/bucket'a tam restore tatbikatı.
+6. [ ] Gerçek kullanıcı girişi/OIDC, rol ve erişim kontrolleri; HTTPS/TLS, firewall ve güvenlik taraması.
+7. [ ] Yük, disk doluluğu, servis kesintisi, yeniden başlatma ve rollback testleri.
+8. [ ] SQLite → PostgreSQL ve yerel dosya → RustFS taşıma provası, checksum ve kayıt mutabakatı.
+9. [ ] Hostinger satın alma, VPS staging, gerçek veri taşıma ve canlı DNS için ayrı onay kapıları.
+
+**İşlem sınırı:** Bütün geliştirme bu dalda kalır. `main`, Render, Hostinger hesabı, DNS ve gerçek veri değiştirilmez. Satın alma, sunucu kurulumu, gerçek veri taşıma ve canlı geçiş için ayrıca açık onay gerekir.
+
+**Draft PR:** https://github.com/amanebu-boop/satis-deneme/pull/33 (main'e birleştirilmedi).\n\n**Sıradaki öncelik:** Son SQLite kaynak-kopya migration değişikliğinin CI sonucunu doğrula; ardından Docker/RustFS staging ve güvenlik/backup kabul testlerini tamamla.
+
+
+### Son test kaydı — 2026-11-02
+- Dal: `infra/hostinger-migration-prep`
+- Commit: `e2bdf8574c7e0fba0ee80f3fb5e8bcada9d6b2a1`
+- Workflow run: `41412761295` — başarılı.
+- SQLite: 29 passed, 3 skipped, 1 warning.
+- PostgreSQL: 6 passed.
+- Docker image build, Compose config, Python compileall ve backup/restore shell syntax: başarılı.
+- PR #33 açık, draft ve merge edilmedi. `main`, Render, DNS, Hostinger hesabı ve gerçek müşteri verisi değiştirilmedi.
+- Staging gerektiren RustFS E2E, tam iş akışı, restore drill, TLS/auth, yük ve rollback testleri henüz yapılmadı.

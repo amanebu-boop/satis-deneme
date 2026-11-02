@@ -22,13 +22,17 @@ from app import session_store
 from app.pricing import QuoteLine, calculate_quote
 from app.documents import render_quotation_html
 from app import template_documents
+from app import storage
+from app import db_backend
 from app.quote_excel import render_quote_excel
 from app.quote_pdf import convert_excel_to_pdf
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    db.init_db()
+    db.initialize()
+    if storage.is_s3():
+        storage.ensure_bucket()
     yield
 
 
@@ -36,8 +40,8 @@ app = FastAPI(
     title="Sales AI Platform API",
     version="0.3.0",
     description=(
-        "Prototype with SQLite persistence and an environment-configured shared API key. "
-        "Per-user authorization, tenant isolation, and production hardening are not implemented."
+        "Sales workspace with SQLite local development and PostgreSQL production support. "
+        "Production authentication, authorization, and tenant hardening remain required."
     ),
     lifespan=lifespan,
 )
@@ -747,21 +751,7 @@ async def browser_upload_template(request: Request, file: UploadFile = File(...)
 @app.get("/api/templates")
 def browser_list_templates(request: Request) -> list[dict]:
     _require_browser_session(request)
-    root = template_documents.storage_root()
-    results = []
-    for meta_path in root.glob("*.json"):
-        try:
-            record = __import__("json").loads(meta_path.read_text(encoding="utf-8"))
-            if (root / f"{record.get('id', '')}.source").is_file():
-                results.append({
-                    "id": record["id"], "name": record["name"],
-                    "format": record["format"], "fields": record["fields"],
-                    "size": record["size"],
-                })
-        except (OSError, ValueError, KeyError):
-            # Skip incomplete metadata; do not expose filesystem paths or raw errors.
-            continue
-    return sorted(results, key=lambda item: item["name"].casefold())
+    return template_documents.list_templates()
 
 
 @app.get("/api/templates/{template_id}")
@@ -800,7 +790,19 @@ def browser_generate_template(
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "stage": "prototype", "storage": "sqlite"}
+    try:
+        with db.connect() as connection:
+            connection.execute("SELECT 1").fetchone()
+        if storage.is_s3():
+            storage.check_health()
+        return {
+            "status": "ok",
+            "database": "postgresql" if db_backend.is_postgres_configured() else "sqlite",
+            "storage": storage.backend_name(),
+        }
+    except Exception as exc:
+        security_logger.error("health_check_failed dependency=%s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Application dependencies are unavailable") from exc
 
 
 @app.get("/")

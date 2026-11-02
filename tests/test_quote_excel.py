@@ -124,3 +124,54 @@ def test_template_excel_can_be_converted_to_pdf_when_libreoffice_is_installed():
     assert pdf_content.startswith(b"%PDF-")
     reader = PdfReader(BytesIO(pdf_content), strict=True)
     assert len(reader.pages) >= 1
+    rendered_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    assert "ERS-12345678" in rendered_text
+    assert "Örnek Sanayi A.Ş." in rendered_text
+    assert "Deneme Makinesi" in rendered_text
+    assert len(reader.pages) >= 2
+    second_page_text = reader.pages[1].extract_text() or ""
+    first_content = next((line.strip() for line in second_page_text.splitlines() if line.strip()), "")
+    assert first_content.startswith("7.")
+    assert "GARANTİ" in second_page_text.upper()
+    for page in reader.pages:
+        assert abs(float(page.mediabox.width) - 595.2756) < 1.0
+        assert abs(float(page.mediabox.height) - 841.8898) < 1.0
+
+    # The first page must use its printable height rather than leaving a large
+    # unused lower area. Check actual text positions, not only page dimensions.
+    first_page_y = []
+    reader.pages[0].extract_text(
+        visitor_text=lambda text, cm, tm, font_dict, font_size:
+            first_page_y.append(tm[5]) if text.strip() else None
+    )
+    assert first_page_y, "First page contains no extractable text"
+    assert min(first_page_y) < 180, f"First-page content ends too high: y={min(first_page_y):.1f}pt"
+
+
+def test_pdf_fallback_uses_a4_and_starts_second_page_at_section_seven(monkeypatch):
+    monkeypatch.setattr("app.quote_pdf.shutil.which", lambda _name: None)
+    workbook = quote_excel.render_quote_excel(sample_quote(), sample_company())
+    pdf = convert_excel_to_pdf(workbook)
+    reader = PdfReader(BytesIO(pdf), strict=True)
+
+    assert len(reader.pages) == 2
+    for page in reader.pages:
+        assert abs(float(page.mediabox.width) - 595.2756) < 1.0
+        assert abs(float(page.mediabox.height) - 841.8898) < 1.0
+
+    second_page_text = reader.pages[1].extract_text() or ""
+    assert "7." in second_page_text[:100]
+    assert "GARANTİ" in second_page_text.upper()
+
+
+def test_pdf_renderer_uses_workbook_template_when_libreoffice_is_missing(monkeypatch):
+    monkeypatch.setattr("app.quote_pdf.shutil.which", lambda _name: None)
+    workbook = quote_excel.render_quote_excel(sample_quote(), sample_company())
+    pdf = convert_excel_to_pdf(workbook)
+    reader = PdfReader(BytesIO(pdf), strict=True)
+    assert len(reader.pages) >= 1
+    text = "\\n".join(page.extract_text() or "" for page in reader.pages)
+    assert "ERS-12345678" in text
+    assert "Örnek Sanayi A.Ş." in text
+    assert "Deneme Makinesi" in text
+    assert pdf.startswith(b"%PDF-")

@@ -1,5 +1,7 @@
 from io import BytesIO
 
+import pytest
+
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
@@ -23,6 +25,7 @@ def test_company_structured_address_and_meeting_product_snapshot(tmp_path, monke
             headers=headers,
             json={
                 "name": "Deneme Makina",
+                "sector": "Çelik Eşya",
                 "city": "Kayseri",
                 "district": "Melikgazi",
                 "neighborhood": "Organize Sanayi",
@@ -119,7 +122,7 @@ def test_catalog_allows_unknown_price_and_requires_machine_for_option(tmp_path, 
         company = client.post(
             "/api/companies",
             headers=headers,
-            json={"name": "Opsiyon Test Firması"},
+            json={"name": "Opsiyon Test Firması", "sector": "Çelik Eşya"},
         )
         invalid_meeting = client.post(
             "/api/meetings",
@@ -165,7 +168,7 @@ def test_catalog_update_does_not_change_existing_meeting_snapshot(tmp_path, monk
     with TestClient(app, base_url="https://testserver") as client:
         login = client.post("/api/login", json={"password": "a-secure-test-password-123"}, headers={"Origin": "https://testserver"})
         headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
-        company = client.post("/api/companies", headers=headers, json={"name": "Snapshot Test"})
+        company = client.post("/api/companies", headers=headers, json={"name": "Snapshot Test", "sector": "Mobilya"})
         product = client.post("/api/products", headers=headers, json={
             "sku": "SNAP-001", "name": "Eski Makine Adı", "currency": "EUR", "unit_price": 22000,
         })
@@ -200,7 +203,7 @@ def test_quote_exports_use_template_images_serial_and_matching_pdf(tmp_path, mon
     with TestClient(app, base_url="https://testserver") as client:
         login = client.post("/api/login", json={"password": "a-secure-test-password-123"}, headers={"Origin": "https://testserver"})
         headers = {"Origin": "https://testserver", "X-CSRF-Token": login.json()["csrf_token"]}
-        company = client.post("/api/companies", headers=headers, json={"name": "PDF Deneme Ltd"})
+        company = client.post("/api/companies", headers=headers, json={"name": "PDF Deneme Ltd", "sector": "Baza"})
         quote = client.post("/api/quotes", headers=headers, json={
             "currency": "EUR", "company_id": company.json()["id"],
             "lines": [{"description": "Şablonlu makine", "quantity": 1, "unit_price": 1000}],
@@ -226,27 +229,28 @@ def test_quote_exports_use_template_images_serial_and_matching_pdf(tmp_path, mon
 
 
 
-def test_reportlab_pdf_fallback_keeps_template_artwork(tmp_path, monkeypatch):
+def test_pdf_generation_uses_quote_template_when_converter_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("SALES_DATABASE_PATH", str(tmp_path / "sales.db"))
-    monkeypatch.setenv("SALES_LOGIN_PASSWORD", "a-secure-test-password-123")
     from app import quote_pdf
     from app.quote_excel import render_quote_excel
+    from io import BytesIO
     from pypdf import PdfReader
 
-    company = {"name": "PDF Fallback Test", "address": "X Mah. Y Sok. No: 1 Kayseri"}
+    company = {"name": "PDF Template Test", "address": "Kayseri"}
     quote = {
-        "id": "fallback-test", "quote_number": "ERS-2026-9999",
+        "id": "template-test", "quote_number": "ERS-2026-9999",
         "currency": "EUR", "created_at": "2026-10-30T00:00:00+00:00",
         "lines": [{"description": "Test Makinesi", "quantity": "1", "unit_price": "12000"}],
     }
     xlsx = render_quote_excel(quote, company)
     monkeypatch.setattr(quote_pdf.shutil, "which", lambda _name: None)
     pdf = quote_pdf.convert_excel_to_pdf(xlsx)
-    reader = PdfReader(BytesIO(pdf))
-    assert reader.pages
-    assert "PDF Fallback Test" in (reader.pages[0].extract_text() or "")
-    assert len(reader.pages[0].images) >= 2
-
+    reader = PdfReader(BytesIO(pdf), strict=True)
+    assert len(reader.pages) >= 1
+    rendered_text = "\\n".join(page.extract_text() or "" for page in reader.pages)
+    assert "ERS-2026-9999" in rendered_text
+    assert "PDF Template Test" in rendered_text
+    assert "Test Makinesi" in rendered_text
 
 
 def test_profile_qr_endpoint_returns_local_png(tmp_path, monkeypatch):

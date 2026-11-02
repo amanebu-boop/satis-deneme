@@ -1,0 +1,52 @@
+name: Hostinger migration preparation
+
+on:
+  push:
+    branches: [infra/hostinger-migration-prep, integration/agent-hostinger-reconcile]
+  pull_request:
+    branches: [infra/hostinger-migration-prep]
+  workflow_dispatch:
+
+jobs:
+  sqlite-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[test]"
+      - run: python -m compileall -q app migrations scripts
+      - run: bash -n scripts/backup.sh scripts/restore.sh
+      - run: cp .env.hostinger.example .env && docker compose config --quiet
+      - run: docker build -t sales-hostinger-prep .
+      - run: python -m pytest -q
+
+  postgres-regression:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sales_test
+          POSTGRES_USER: sales
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sales -d sales_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://sales:test-password@localhost:5432/sales_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[test]"
+      - run: python -c "from app import db; db.initialize()"
+      - run: python -m pytest -q tests/test_hostinger_database_backend.py tests/test_postgres_smoke.py tests/test_sqlite_to_postgres_migration.py tests/test_postgres_agent_integration.py

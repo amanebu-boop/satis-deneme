@@ -1,0 +1,4 @@
+# Install on the Hostinger VPS only after the app stack is deployed and verified.
+# Run as root; change /opt/satis to the actual deployment directory.
+# Daily 02:00 server-local time; backup artifacts are encrypted and retained for 14 days.
+0 2 * * * cd /opt/satis && docker compose exec -T -u 0 app /app/scripts/backup.sh >> /var/log/satis-backup.log 2>&1

@@ -11,6 +11,8 @@ from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile
 
+from app import storage
+
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_ZIP_MEMBERS = 2_000
 MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
@@ -178,9 +180,16 @@ def render_template(suffix: str, data: bytes, values: dict[str, str]) -> bytes:
     return output.getvalue()
 
 
-def template_path(template_id: str) -> Path:
+def _validate_template_id(template_id: str) -> None:
     if not re.fullmatch(r"[0-9a-f]{32}", template_id):
         raise HTTPException(status_code=404, detail="Template not found")
+
+
+def template_path(template_id: str) -> Path:
+    """Return the local source path; S3 objects should be read with read_source()."""
+    _validate_template_id(template_id)
+    if storage.is_s3():
+        raise HTTPException(status_code=409, detail="Template is stored remotely")
     path = _inside_root(storage_root() / f"{template_id}.source")
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Template not found")
@@ -191,14 +200,32 @@ def metadata_path(template_id: str) -> Path:
     return _inside_root(storage_root() / f"{template_id}.json")
 
 
+def read_source(template_id: str) -> bytes:
+    _validate_template_id(template_id)
+    if storage.is_s3():
+        try:
+            return storage.get_bytes(f"templates/{template_id}.source")
+        except Exception as exc:
+            raise HTTPException(status_code=404, detail="Template not found") from exc
+    return template_path(template_id).read_bytes()
+
+
 def read_metadata(template_id: str) -> dict:
-    path = template_path(template_id)
-    meta = metadata_path(template_id)
-    if not meta.is_file():
-        raise HTTPException(status_code=404, detail="Template not found")
+    _validate_template_id(template_id)
     try:
+        if storage.is_s3():
+            if not storage.exists(f"templates/{template_id}.source"):
+                raise HTTPException(status_code=404, detail="Template not found")
+            raw = storage.get_bytes(f"templates/{template_id}.json")
+            return json.loads(raw.decode("utf-8"))
+        path = template_path(template_id)
+        meta = metadata_path(template_id)
+        if not meta.is_file():
+            raise HTTPException(status_code=404, detail="Template not found")
         return json.loads(meta.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except HTTPException:
+        raise
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=500, detail="Template metadata is unavailable") from exc
 
 
@@ -219,28 +246,76 @@ async def save_upload(upload: UploadFile) -> dict:
     fields = discover_fields(suffix, data)
     template_id = uuid4().hex
     name = safe_display_name(upload.filename)
-    source = _inside_root(storage_root() / f"{template_id}.source")
-    meta = metadata_path(template_id)
-    source.write_bytes(data)
-    try:
-        meta.write_text(json.dumps({
-            "id": template_id, "name": name, "format": suffix[1:],
-            "fields": fields, "size": len(data),
-        }, ensure_ascii=False), encoding="utf-8")
-    except Exception:
-        source.unlink(missing_ok=True)
-        raise
-    return {"id": template_id, "name": name, "format": suffix[1:], "fields": fields, "size": len(data)}
+    record = {
+        "id": template_id, "name": name, "format": suffix[1:],
+        "fields": fields, "size": len(data),
+    }
+    encoded = json.dumps(record, ensure_ascii=False).encode("utf-8")
+    if storage.is_s3():
+        source_key = f"templates/{template_id}.source"
+        metadata_key = f"templates/{template_id}.json"
+        storage.put_bytes(source_key, data)
+        try:
+            storage.put_bytes(metadata_key, encoded, "application/json; charset=utf-8")
+        except Exception:
+            storage.delete(source_key)
+            raise
+    else:
+        source = _inside_root(storage_root() / f"{template_id}.source")
+        meta = metadata_path(template_id)
+        source.write_bytes(data)
+        try:
+            meta.write_bytes(encoded)
+        except Exception:
+            source.unlink(missing_ok=True)
+            raise
+    return record
+
+
+def list_templates() -> list[dict]:
+    if storage.is_s3():
+        results = []
+        for key in storage.list_keys("templates/"):
+            if not key.endswith(".json"):
+                continue
+            try:
+                record = json.loads(storage.get_bytes(key).decode("utf-8"))
+                if storage.exists(f"templates/{record.get('id', '')}.source"):
+                    results.append({
+                        "id": record["id"], "name": record["name"],
+                        "format": record["format"], "fields": record["fields"],
+                        "size": record["size"],
+                    })
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError):
+                continue
+        return sorted(results, key=lambda item: item["name"].casefold())
+
+    root = storage_root()
+    results = []
+    for meta_path in root.glob("*.json"):
+        try:
+            record = json.loads(meta_path.read_text(encoding="utf-8"))
+            if (root / f"{record.get('id', '')}.source").is_file():
+                results.append({
+                    "id": record["id"], "name": record["name"],
+                    "format": record["format"], "fields": record["fields"],
+                    "size": record["size"],
+                })
+        except (OSError, ValueError, KeyError):
+            continue
+    return sorted(results, key=lambda item: item["name"].casefold())
 
 
 def generate_output(template_id: str, values: dict[str, str]) -> tuple[Path, str, str]:
     meta = read_metadata(template_id)
-    source = template_path(template_id)
-    data = source.read_bytes()
+    data = read_source(template_id)
     suffix = "." + meta["format"]
     rendered = render_template(suffix, data, values)
     output_id = uuid4().hex
-    output = _inside_root(storage_root() / f"{output_id}.output{suffix}")
+    output_name = f"{output_id}.output{suffix}"
+    output = _inside_root(storage_root() / output_name)
+    if storage.is_s3():
+        storage.put_bytes(f"outputs/{output_name}", rendered)
     output.write_bytes(rendered)
     name = Path(meta["name"]).stem[:100] or "document"
     return output, name + suffix, suffix

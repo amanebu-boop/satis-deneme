@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#292a2a">
+<title>Ajan Yönetimi — Satış</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#292a2a;background:#f7f6f2;--line:#e6e3dc;--muted:#737373;--gold:#c89b35}
+*{box-sizing:border-box}body{margin:0}.shell{max-width:1120px;margin:auto;padding:22px 18px 50px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}
+.brand{font-weight:800;letter-spacing:.02em}.brand span{color:var(--gold)}
+a{color:inherit;text-decoration:none}.back{font-size:13px;color:#725719}
+h1{font-size:25px;margin:0 0 5px}h2{font-size:16px;margin:0}
+.sub{font-size:13px;color:var(--muted);margin:0 0 18px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:5px;background:#efeee9;border:1px solid var(--line);border-radius:11px;margin-bottom:14px}
+.tabs button{border:0;background:transparent;padding:9px 13px;border-radius:8px;font:inherit;font-size:12px;color:#68645b}
+.tabs button.active{background:#fff;color:#292a2a;box-shadow:0 1px 4px #0001}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+button{cursor:pointer}.btn{border:1px solid #d8d4c9;background:#fff;border-radius:8px;padding:8px 12px;font:inherit;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px}
+.stat strong{display:block;font-size:23px}.stat span{font-size:11px;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.agent{appearance:none;width:100%;aspect-ratio:1/1;min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:9px;padding:clamp(12px,2vw,20px);border:1px solid var(--line);border-radius:12px;background:#fff;color:inherit;text-align:left;font:inherit;cursor:pointer;transition:border-color .16s ease,background .16s ease,box-shadow .16s ease,transform .16s ease}.agent:hover{border-color:#c9b16f;transform:translateY(-1px)}.agent:focus-visible{outline:3px solid #c89b3555;outline-offset:2px}.agent.selected{border:2px solid var(--gold);background:#fbf8ef;box-shadow:inset 0 0 0 2px #c89b3520,0 4px 14px #8d6a1a12}.agent-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}.agent-actions .btn{font-size:11px}.btn.primary{background:#292a2a;color:#fff;border-color:#292a2a}.report-output{overflow:auto;max-height:520px;background:#f7f6f2;border:1px solid var(--line);border-radius:8px;padding:14px;font-size:13px}.report-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.report-metric{background:#fff;border:1px solid var(--line);border-radius:8px;padding:11px}.report-metric strong{display:block;font-size:21px}.report-metric span{font-size:11px;color:var(--muted)}.report-group{margin-top:14px}.report-group h3{font-size:13px;margin:0 0 7px}.report-lines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.report-line{display:flex;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:8px 10px}.report-empty{padding:12px;background:#fff;border:1px solid var(--line);border-radius:8px;color:#6b5a34;font-size:12px;line-height:1.5}@media(max-width:650px){.report-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.report-lines{grid-template-columns:1fr}}
+.agent strong{display:block;font-size:14px;line-height:1.35;margin:0}.agent p{font-size:11px;line-height:1.45;color:var(--muted);margin:0}.agent .pill{margin-top:2px}
+.pill{display:inline-block;padding:4px 7px;border-radius:30px;background:#f0eee8;color:#6e5a2c;font-size:10px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:650}
+.wrap{overflow:auto}.empty{font-size:12px;color:var(--muted);padding:16px 0}.muted{color:var(--muted)}
+.section{display:none}.section.active{display:block}
+.notice{padding:11px 12px;background:#f8f6ef;border:1px solid #ece5d2;border-radius:9px;color:#6b5a34;font-size:12px;line-height:1.5;margin:0 0 14px}
+@media(max-width:650px){.shell{padding:16px 11px 30px}h1{font-size:22px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.agent{padding:11px}.agent strong{font-size:12px}.agent p{font-size:10px}.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.tabs button{padding:9px 4px;font-size:11px}.panel{padding:12px}table{min-width:560px}}
+.app-dialog{width:min(560px,calc(100% - 24px));max-height:86vh;overflow:auto;border:1px solid var(--line);border-radius:14px;padding:0;background:#fff;color:#292a2a;box-shadow:0 18px 60px #0004}.app-dialog::backdrop{background:#17171788;backdrop-filter:blur(2px)}.app-dialog-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}.app-dialog-body{padding:14px 16px;font-size:13px;line-height:1.6}.app-dialog-body pre{white-space:pre-wrap;background:#f7f6f2;padding:12px;border-radius:8px}.app-dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}.app-dialog-link{display:inline-block;margin-top:12px;color:#725719;text-decoration:underline;font-weight:650}@media(max-width:600px){.app-dialog{width:calc(100% - 18px)}}
+/* HTML tabanlı açılır seçim menüleri: tarayıcıya özgü native popup yerine tutarlı panel */
+select:not([hidden]){position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;min-height:1px!important;padding:0!important;border:0!important;clip:rect(0 0 0 0)!important;overflow:hidden!important}
+.html-select{position:relative;width:100%;min-width:0}
+.html-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:42px;padding:9px 12px;border:1px solid #d9e1eb;border-radius:9px;background:#fff;color:var(--ink);font:inherit;text-align:left;cursor:pointer;box-shadow:0 1px 2px #292a2a08}
+.html-select-trigger::after{content:"";width:8px;height:8px;flex:0 0 8px;border-right:1.7px solid #737373;border-bottom:1.7px solid #737373;transform:rotate(45deg) translateY(-2px);transition:transform .15s ease}
+.html-select.open .html-select-trigger{border-color:#b58a2b;box-shadow:0 0 0 3px #c89b3522}
+.html-select.open .html-select-trigger::after{transform:rotate(225deg) translate(-2px,-1px)}
+.html-select-menu{display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:30;max-height:230px;overflow-y:auto;padding:4px;border:1px solid #dfe4eb;border-radius:9px;background:#fff;box-shadow:0 10px 28px rgba(23,43,69,.16)}
+.html-select.open .html-select-menu{display:block}
+.html-select-option{display:block;width:100%;padding:9px 10px;border:0;border-radius:6px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.html-select-option:hover,.html-select-option:focus-visible{background:#f2f4f6;outline:none}
+.html-select-option[aria-selected="true"]{background:#f4f0e5;color:#725719;font-weight:700}
+.html-select-option:disabled{color:#98a1ad;cursor:not-allowed}
+@media(max-width:640px){.html-select-trigger{min-height:38px;padding:8px 10px}.html-select-menu{max-height:200px}.html-select-option{padding:10px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header><a class="brand" href="/">satış<span>.</span></a><nav style="display:flex;gap:14px;align-items:center"><a class="back" href="/">← Satış ekranına dön</a></nav></header>
+<h1>Ajan yönetimi</h1>
+<p class="sub">Ajan altyapısının durumu, görev kayıtları, onaylar ve denetim geçmişi.</p>
+<p class="notice">Raporlama ve analiz görevleri doğrudan çalışır. Teklif oluşturma gibi kayıt değiştiren işlemler Onay Merkezi'nden onay gerektirir.</p>
+<div class="grid">
+<div class="stat"><strong id="stat-agents">—</strong><span>Kayıtlı ajan</span></div>
+<div class="stat"><strong id="stat-enabled">—</strong><span>Etkin ajan</span></div>
+<div class="stat"><strong id="stat-pending">—</strong><span>Bekleyen onay</span></div>
+<div class="stat"><strong id="stat-runs">—</strong><span>Görev kaydı</span></div>
+</div>
+<nav class="tabs" aria-label="Ajan yönetimi bölümleri">
+<button class="active" data-tab="overview">Genel Bakış</button>
+<button data-tab="agents">Ajanlar</button>
+<button data-tab="approvals">Onay Merkezi</button>
+<button data-tab="history">İşlem Geçmişi</button>
+<button data-tab="rules">İş Kuralları</button>
+</nav>
+<section class="section active" id="section-overview">
+<div class="panel"><div class="panel-head"><h2>Ajan durumu</h2><button class="btn" id="refresh">Yenile</button></div><div class="cards" id="overview-agents"><p class="empty">Yükleniyor…</p></div></div>
+<div class="panel"><div class="panel-head"><h2>Yapay zekâ kullanımı ve maliyet</h2><button class="btn" id="usage-refresh">Yenile</button></div><p class="muted" id="ai-usage-status">Kullanım verileri yükleniyor…</p><div class="report-summary" id="ai-usage-summary"></div><div class="wrap"><table><thead><tr><th>Ajan</th><th>Giden · Giriş</th><th>Gelen · Çıkış</th><th>Önbellekli giriş</th><th>Akıl yürütme</th><th>AI isteği</th><th>Ajan görevi</th><th>Maliyet (USD)</th></tr></thead><tbody id="ai-usage-agents"></tbody></table></div><p class="muted">Maliyet, API yanıtındaki gerçek token kullanımına ve seçili modelin yayımlanmış standart fiyatına göre hesaplanır. Ajanların kendi içindeki veri işlemleri yapay zekâ çağrısı değildir; bu nedenle token üretmez. Ortak yönlendirme kullanımı ayrı gösterilir.</p></div>
+<div class="panel"><h2>Son hareketler</h2><div class="wrap"><table><thead><tr><th>Tarih</th><th>İşlem</th><th>Ajan</th><th>Aktör</th></tr></thead><tbody id="overview-audit"></tbody></table></div></div>
+</section>
+<section class="section" id="section-agents"><div class="panel"><div class="panel-head"><h2>Kayıtlı ajanlar</h2><span class="muted" id="agent-count"></span></div><div class="cards" id="agent-list"></div></div><div class="panel"><h2>Teklif Ajanı · Görüşmeden teklif taslağı</h2><p class="muted">Bu işlem yalnızca Teklif Ajanı tarafından yürütülür; Denetim Ajanı görevinden bağımsızdır. Görüşmede seçilmiş ürünler teklif taslağına aktarılır. Gerçek teklif kaydı, onay verildikten sonra ayrı adımda oluşturulur.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><select id="meeting-select" style="min-width:220px;flex:1;padding:9px;border:1px solid var(--line);border-radius:8px"><option value="">Görüşme seçin</option></select><button class="btn primary" id="prepare-meeting-quote">Teklif taslağını hazırla</button></div><div class="report-output" id="meeting-quote-preview">Henüz taslak hazırlanmadı.</div></div><div class="panel"><div class="panel-head"><h2>Ajan görev sonucu</h2><span class="muted">Salt-okunur raporlar</span></div><div class="report-output" id="report-output">Rapor henüz çalıştırılmadı.</div></div></section>
+<section class="section" id="section-approvals"><div class="panel"><h2>Onay kayıtları</h2><div class="wrap"><table><thead><tr><th>İşlem</th><th>Ajan</th><th>Durum</th><th>Talep</th><th>Son tarih</th><th>İçerik</th><th>İşlem</th></tr></thead><tbody id="approval-list"></tbody></table></div></div></section>
+<section class="section" id="section-history"><div class="panel"><h2>Görev geçmişi</h2><div class="wrap"><table><thead><tr><th>Tarih</th><th>Ajan</th><th>Görev</th><th>Durum</th><th>Talep eden</th></tr></thead><tbody id="run-list"></tbody></table></div></div><div class="panel"><h2>Denetim kayıtları</h2><div class="wrap"><table><thead><tr><th>Tarih</th><th>Olay</th><th>Ajan</th><th>Aktör</th><th>Detay</th></tr></thead><tbody id="audit-list"></tbody></table></div></div></section>
+<section class="section" id="section-rules"><div class="panel"><h2>İş kuralları</h2><div class="wrap"><table><thead><tr><th>Kural</th><th>Değer</th><th>Son güncelleme</th></tr></thead><tbody id="rule-list"></tbody></table></div></div></section>
+<p class="sub" id="page-message" role="status" aria-live="polite"></p>
+</div>
+<dialog class="app-dialog" id="app-dialog"><div class="app-dialog-head"><strong id="app-dialog-title">Bilgi</strong><button class="btn" id="app-dialog-close">Kapat</button></div><div class="app-dialog-body" id="app-dialog-body"></div><div class="app-dialog-actions" id="app-dialog-actions"></div></dialog>
+<script>
+const $=id=>document.getElementById(id);
+const safe=value=>value==null||value===""?"—":String(value);
+function appDialog(title,message,options={}){return new Promise(resolve=>{const d=$("app-dialog"),b=$("app-dialog-body"),a=$("app-dialog-actions");$("app-dialog-title").textContent=title;b.replaceChildren();const p=document.createElement("p");p.textContent=message;b.append(p);if(options.detail){const pre=document.createElement("pre");pre.textContent=options.detail;b.append(pre);}if(options.linkUrl){const link=document.createElement("a");link.className="app-dialog-link";link.href=options.linkUrl;link.target="_blank";link.rel="noopener";link.textContent=options.linkText||"PDF önizlemeyi aç";b.append(link);}a.replaceChildren();d.returnValue="false";d.addEventListener("close",()=>resolve(d.returnValue==="true"),{once:true});const cancel=document.createElement("button");cancel.className="btn";cancel.textContent=options.cancelText||"Kapat";cancel.onclick=()=>d.close("false");a.append(cancel);if(options.confirmText){const yes=document.createElement("button");yes.className="btn primary";yes.textContent=options.confirmText;yes.onclick=()=>d.close("true");a.append(yes);}d.oncancel=()=>{d.returnValue="false";};d.showModal();});}function showAppInfo(title,message,options={}){return appDialog(title,message,options);}
+function cell(row,value){const td=document.createElement("td");td.textContent=safe(value);row.append(td);return td;}
+function tr(parent,values){const row=document.createElement("tr");values.forEach(v=>cell(row,v));parent.append(row);return row;}
+function emptyRow(parent,cols,message){parent.replaceChildren();const row=document.createElement("tr"),td=document.createElement("td");td.colSpan=cols;td.className="empty";td.textContent=message;row.append(td);parent.append(row);}
+function date(value){if(!value)return "—";const d=new Date(value);return Number.isNaN(d.getTime())?value:d.toLocaleString("tr-TR");}
+const AGENT_TASKS={company:["directory_overview","data_quality"],product:["catalog_overview","catalog_health"],meeting:["activity_overview","follow_up_review"],quotation:["pipeline_overview"],reporting:["sales_overview","period_summary"],audit:["audit_overview","anomaly_review"]};const TASK_LABELS={directory_overview:"Firma rehberi özeti",data_quality:"Firma veri kalitesi",catalog_overview:"Ürün kataloğu özeti",catalog_health:"Ürün kataloğu kontrolü",activity_overview:"Görüşme hareketleri özeti",follow_up_review:"Gecikmiş takip kontrolü",pipeline_overview:"Teklif süreci özeti",sales_overview:"Genel satış özeti",period_summary:"Dönemsel satış özeti",audit_overview:"Denetim kayıtları özeti",anomaly_review:"Denetim anomali kontrolü"};function card(agent){const el=document.createElement("article");el.className="agent"+(agent.enabled?" selected":"");el.tabIndex=0;el.setAttribute("role","group");el.setAttribute("aria-label",agent.name+(agent.enabled?" etkin":" pasif")+". Durumu değiştirmek için karta dokunun.");el.addEventListener("click",event=>{if(event.target===el||!event.target.closest("button"))changeAgentState(agent.id,!agent.enabled);});el.addEventListener("keydown",event=>{if(event.target===el&&(event.key==="Enter"||event.key===" ")){event.preventDefault();changeAgentState(agent.id,!agent.enabled);}});const title=document.createElement("strong");title.textContent=agent.name;const desc=document.createElement("p");desc.textContent=agent.description;const state=document.createElement("span");state.className="pill";state.textContent=agent.enabled?"Etkin":"Pasif";el.append(title,desc,state);if(agent.enabled&&AGENT_TASKS[agent.id]){const actions=document.createElement("div");actions.className="agent-actions";actions.addEventListener("click",event=>event.stopPropagation());AGENT_TASKS[agent.id].forEach(task=>{const run=document.createElement("button");run.type="button";run.className="btn primary";run.textContent=TASK_LABELS[task];run.addEventListener("click",()=>runAgentTask(agent.id,task));actions.append(run);});el.append(actions);}return el;}
+async function api(path){const r=await fetch(path,{credentials:"same-origin",cache:"no-store"});if(r.status===401){location.assign("/");throw new Error("Oturum gerekli");}if(!r.ok)throw new Error("Veriler alınamadı ("+r.status+")");return r.json();}
+async function mutate(path,payload){const csrf=await api("/api/csrf");const r=await fetch(path,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf.csrf_token},body:JSON.stringify(payload)});if(r.status===401){location.assign("/");throw new Error("Oturum gerekli");}const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.detail||"İşlem başarısız ("+r.status+")");return data;}
+async function prepareMeetingQuotation(){const meetingId=$("meeting-select").value;if(!meetingId){$("page-message").textContent="Önce görüşme seçin.";return;}try{$("meeting-quote-preview").textContent="Taslak hazırlanıyor…";const result=await mutate("/api/meetings/"+encodeURIComponent(meetingId)+"/quotation-draft",{});const p=result.preview;const lines=p.lines.map((x,i)=>(i+1)+". "+x.description+" · "+x.quantity+" adet × "+x.unit_price+" "+p.currency).join("\n");const detail=p.company_name+"\n"+p.line_count+" ürün satırı\n"+lines+"\nAra toplam: "+p.subtotal+" "+p.currency;$("meeting-quote-preview").textContent=detail+"\nDurum: onay bekliyor";$("page-message").textContent="Taslak önizlemesi hazırlandı. Onay Merkezi'nden karar verebilirsiniz.";await showAppInfo("Teklif taslağı önizlemesi","Önizleme hazırlandı ve Onay Merkezi'ne gönderildi.",{detail:detail+"\nOnay süresi: "+date(result.expires_at)});document.querySelector('[data-tab="approvals"]').click();await load();}catch(e){$("meeting-quote-preview").textContent=e.message||"Taslak hazırlanamadı.";$("page-message").textContent=e.message||"İşlem başarısız.";await showAppInfo("Taslak hazırlanamadı",e.message||"İşlem başarısız.");}}
+async function reviewApproval(id,decision,payload){try{await mutate("/api/agent-approvals/"+encodeURIComponent(id)+"/review",{decision,current_payload:payload});const message=decision==="approved"?"Onay verildi. Teklif oluşturma işlemi ayrı düğmeyle başlatılabilir.":"Onay talebi reddedildi.";$("page-message").textContent=message;await showAppInfo(decision==="approved"?"İşlem onaylandı":"İşlem reddedildi",message);await load();}catch(e){$("page-message").textContent=e.message||"Onay işlemi başarısız." ;await showAppInfo("Onay işlemi başarısız",e.message||"İşlem başarısız.");}}
+async function executeApproval(id){try{const result=await mutate("/api/agent-approvals/"+encodeURIComponent(id)+"/execute",{});const message=result.status==="already_executed"?"Bu onaydan teklif daha önce oluşturulmuş.":"Teklif oluşturuldu: "+result.quote_number+" · "+result.line_count+" satır · "+result.total+" "+result.currency;$("page-message").textContent=message;await showAppInfo("Teklif hazır",message,{linkUrl:"/api/quotes/"+encodeURIComponent(result.quotation_id)+"/pdf",linkText:"Mevcut Erşen Makina şablonuyla PDF önizlemesini aç"});await load();}catch(e){$("page-message").textContent=e.message||"Teklif oluşturulamadı.";await showAppInfo("Teklif oluşturulamadı",e.message||"İşlem başarısız.");}}
+async function changeAgentState(agentId,enabled){try{await mutate("/api/agents/"+encodeURIComponent(agentId)+"/status",{enabled});$("page-message").textContent=enabled?"Ajan etkinleştirildi.":"Ajan pasife alındı.";await load();}catch(e){$("page-message").textContent=e.message||"İşlem başarısız." ;await showAppInfo("Ajan ayarı değiştirilemedi",e.message||"İşlem başarısız.");}}
+function addReportMetric(parent,label,value){const box=document.createElement("div");box.className="report-metric";const strong=document.createElement("strong");strong.textContent=Number(value||0).toLocaleString("tr-TR");const span=document.createElement("span");span.textContent=label;box.append(strong,span);parent.append(box);}
+function reportLabel(value){const labels={draft:"Taslak",sent:"Gönderildi",approved:"Onaylandı",rejected:"Reddedildi",accepted:"Kabul edildi",pending:"Bekliyor",completed:"Tamamlandı",cancelled:"İptal edildi",open:"Açık",closed:"Kapalı",in_progress:"Devam ediyor",unknown:"Belirtilmemiş"};return labels[String(value).toLowerCase()]||String(value).replaceAll("_"," ");}
+function addReportGroup(parent,title,data,unit){const section=document.createElement("section");section.className="report-group";const heading=document.createElement("h3");heading.textContent=title;section.append(heading);const lines=document.createElement("div");lines.className="report-lines";const entries=Object.entries(data||{});if(!entries.length){const empty=document.createElement("p");empty.className="muted";empty.textContent="Kayıt bulunmuyor.";section.append(empty);}else{entries.forEach(([key,value])=>{const line=document.createElement("div");line.className="report-line";const name=document.createElement("span");name.textContent=reportLabel(key);const count=document.createElement("strong");count.textContent=Number(value||0).toLocaleString("tr-TR")+(unit?" "+unit:"");line.append(name,count);lines.append(line);});section.append(lines);}parent.append(section);}
+function renderAiUsage(data,agents){
+ const root=$("ai-usage-summary"),body=$("ai-usage-agents");root.replaceChildren();body.replaceChildren();
+ const configured=data.provider_configured;
+ const totals=data.totals||{};
+ const baseStatus=configured
+  ?"OpenAI API anahtarı sunucuda tanımlı · Model: "+data.model
+  :"OpenAI API anahtarı tanımlı değil · Gerçek API çağrısı ve faturalandırma yapılmadı.";
+ const budget=data.daily_budget||{};
+ const budgetStatus=budget.configuration_error
+  ?" · Günlük harcama limiti hatalı tanımlı; yeni AI çağrıları durduruldu."
+  :budget.enabled
+   ?" · Günlük bütçe: "+budget.spent_usd+" / "+budget.limit_usd+" USD · Kalan: "+budget.remaining_usd+" USD"
+   :" · Günlük harcama limiti ayarlanmamış.";
+ $("ai-usage-status").textContent=baseStatus+(Number(totals.unpriced_requests||0)>0
+  ?" · "+totals.unpriced_requests+" isteğin model fiyatı tanımlı değil; toplam maliyete eklenmedi."
+  :Number(totals.requests||0)===0&&configured?" · Henüz API kullanımı kaydı yok.":"")+budgetStatus;
+ const money=value=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:6,maximumFractionDigits:6}).format(Number(value||0));
+ addReportMetric(root,"Toplam giriş tokenı",totals.input_tokens||0);
+ addReportMetric(root,"Toplam çıkış tokenı",totals.output_tokens||0);
+ addReportMetric(root,"API isteği",totals.requests||0);
+ const costMetric=document.createElement("div");costMetric.className="report-metric";const costValue=document.createElement("strong");costValue.textContent=money(totals.cost_usd||0);const costLabel=document.createElement("span");costLabel.textContent="Tahmini toplam maliyet";costMetric.append(costValue,costLabel);root.append(costMetric);
+ const rows=new Map((data.agents||[]).map(x=>[x.agent_id,x]));
+ const ordered=[...agents,{id:"assistant",name:"Genel asistan",enabled:false},{id:"assistant_shared",name:"Ortak ajan yönlendirme",enabled:false}];
+ ordered.forEach(agent=>{
+  const x=rows.get(agent.id)||{};
+  const row=document.createElement("tr");
+  [agent.name,x.input_tokens||0,x.output_tokens||0,x.cached_input_tokens||0,x.reasoning_tokens||0,x.requests||0,
+   Number(x.unpriced_requests||0)>0?"Fiyat tanımsız":money(x.cost_usd||0)].forEach((value,index)=>{if(index===6)return;cell(row,typeof value==="number"?Number(value).toLocaleString("tr-TR"):value);});
+  cell(row,Number(data.execution_counts?.[agent.id]||0).toLocaleString("tr-TR"));
+  cell(row,Number(x.unpriced_requests||0)>0?"Fiyat tanımsız":money(x.cost_usd||0));
+  body.append(row);
+ });
+ if(!ordered.length)emptyRow(body,7,"Henüz ajan bulunmuyor.");
+}
+function renderSalesReport(data){const root=$("report-output");root.replaceChildren();const totals=[["Firma",data.companies],["Görüşme",data.meetings],["Ürün",data.products],["Teklif",data.quotations]];const summary=document.createElement("div");summary.className="report-summary";totals.forEach(([label,value])=>addReportMetric(summary,label,value));root.append(summary);const allZero=totals.every(([,value])=>Number(value||0)===0)&&!Object.values(data.quotations_by_status||{}).some(Number)&&!Object.values(data.quotations_by_currency||{}).some(Number)&&!Object.values(data.follow_ups_by_status||{}).some(Number);if(allZero){const empty=document.createElement("p");empty.className="report-empty";empty.textContent="Henüz raporlanacak satış verisi bulunmuyor. Firma, görüşme, ürün veya teklif kaydı eklendiğinde bu rapor ilgili sayıları burada gösterecek.";root.append(empty);}addReportGroup(root,"Tekliflerin durumuna göre dağılım",data.quotations_by_status,"teklif");addReportGroup(root,"Tekliflerin para birimine göre dağılım",data.quotations_by_currency,"teklif");addReportGroup(root,"Takip görevlerinin durumu",data.follow_ups_by_status,"görev");}
+function renderAgentOutput(agentId,taskType,data){if(agentId==="reporting"&&taskType==="sales_overview"){renderSalesReport(data);return;}const root=$("report-output");root.replaceChildren();const heading=document.createElement("h3");heading.textContent=TASK_LABELS[taskType]||"Ajan sonucu";root.append(heading);const labels={companies:"Firma sayısı",contacts:"Yetkili kişi sayısı",companies_with_meetings:"Görüşme yapılan firma",companies_with_open_follow_ups:"Açık takibi olan firma",products:"Ürün sayısı",products_by_type:"Ürün türlerine göre dağılım",products_by_currency:"Para birimlerine göre dağılım",linked_options:"Ana ürüne bağlı opsiyon",meetings:"Görüşme sayısı",meetings_by_type:"Görüşme türlerine göre dağılım",meeting_product_lines:"Görüşmelerdeki ürün satırı",meetings_with_products:"Ürün içeren görüşme",quotations:"Teklif sayısı",quotations_by_status:"Teklif durumları",quotation_value_by_currency:"Para birimine göre teklif toplamı",missing_sector:"Sektörü eksik firma",missing_city:"Şehri eksik firma",missing_address:"Adresi eksik firma",missing_phone:"Telefonu eksik firma",duplicate_name_groups:"Yinelenen firma unvanı grubu",missing_description:"Açıklaması eksik ürün",invalid_integer_price:"Tam sayı olmayan fiyat",invalid_currency:"Geçersiz para birimi",options_without_parent:"Ana makineye bağlı olmayan opsiyon",options_with_non_machine_parent:"Makine dışı ürüne bağlı opsiyon",overdue_count:"Gecikmiş açık takip",due_within_7_days_count:"7 gün içinde vadesi gelen takip",overdue:"Gecikmiş görevler",due_soon:"Yaklaşan görevler",failed_or_blocked_runs:"Başarısız/engellenmiş görevler",rejected_or_expired_approvals:"Reddedilen/süresi dolan onaylar",pending_approvals_past_expiry:"Süresi geçmiş bekleyen onay",failure_events:"Hata olayları"};Object.entries(data||{}).filter(([k])=>k!=="report"&&k!=="scope").forEach(([key,value])=>{const line=document.createElement("div");line.className="report-line";const name=document.createElement("span");name.textContent=labels[key]||key;const val=document.createElement("strong");if(Array.isArray(value)){val.textContent=value.map(item=>typeof item==="object"?[item.company_name,item.title,item.due_date].filter(Boolean).join(" · "):String(item)).join(" | ")||"Kayıt yok";}else if(value&&typeof value==="object"){val.textContent=Object.entries(value).map(([k,v])=>k+": "+(v&&typeof v==="object"?JSON.stringify(v):v)).join(" · ");}else{val.textContent=String(value);}line.append(name,val);root.append(line);});}async function runAgentTask(agentId,taskType){try{let inputData={};if(agentId==="reporting"&&taskType==="period_summary"){const today=new Date();const monthStart=new Date(today.getFullYear(),today.getMonth(),1);const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");const dateFrom=window.prompt("Başlangıç tarihi (YYYY-MM-DD)",iso(monthStart));if(dateFrom===null)return;const dateTo=window.prompt("Bitiş tarihi (YYYY-MM-DD)",iso(today));if(dateTo===null)return;inputData={date_from:dateFrom.trim(),date_to:dateTo.trim()};}document.querySelector('[data-tab="agents"]').click();$("report-output").textContent="İşlem hazırlanıyor…";$("report-output").scrollIntoView({behavior:"smooth",block:"center"});const run=await mutate("/api/agent-runs",{agent_id:agentId,task_type:taskType,input_data:inputData,idempotency_key:agentId+"-"+taskType+"-"+crypto.randomUUID()});const result=await mutate("/api/agent-runs/"+encodeURIComponent(run.id)+"/execute",{});renderAgentOutput(agentId,taskType,result.output||{});$("page-message").textContent=(TASK_LABELS[taskType]||"Ajan görevi")+" tamamlandı.";await load();}catch(e){$("report-output").textContent="Görev çalıştırılamadı: "+(e.message||"Bilinmeyen hata");$("page-message").textContent=e.message||"Görev çalıştırılamadı.";await showAppInfo("Ajan görevi tamamlanamadı",e.message||"Bilinmeyen hata");}}
+async function load(){
+$("page-message").textContent="Veriler yükleniyor…";
+try{
+const [agents,rules,runs,approvals,audit,meetings,usage]=await Promise.all([api("/api/agents"),api("/api/agent-rules"),api("/api/agent-runs"),api("/api/agent-approvals"),api("/api/agent-audit"),api("/api/meetings"),api("/api/agent-ai-usage")]);
+$("stat-agents").textContent=agents.length;$("stat-enabled").textContent=agents.filter(x=>x.enabled).length;$("stat-pending").textContent=approvals.filter(x=>x.status==="pending").length;$("stat-runs").textContent=runs.length;renderAiUsage(usage,agents);
+$("agent-count").textContent=agents.length+" ajan";$("agent-list").replaceChildren(...agents.map(card));$("overview-agents").replaceChildren(...agents.map(card));const meetingSelect=$("meeting-select"),selectedMeeting=meetingSelect.value;meetingSelect.replaceChildren(new Option("Görüşme seçin",""));meetings.forEach(m=>meetingSelect.add(new Option(m.company_name+" · "+date(m.meeting_date)+" · "+m.topic,m.id)));if([...meetingSelect.options].some(o=>o.value===selectedMeeting))meetingSelect.value=selectedMeeting;
+$("approval-list").replaceChildren();if(!approvals.length)emptyRow($("approval-list"),7,"Henüz onay talebi yok.");else approvals.forEach(x=>{const row=document.createElement("tr");[x.action_type,x.agent_name,x.status,x.requested_by,date(x.expires_at)].forEach(v=>cell(row,v));const detail=x.payload?.company_name?x.payload.company_name+" · "+(x.payload.line_count||0)+" ürün satırı · "+(x.payload.lines||[]).map(line=>line.description+" × "+line.quantity).join(", "):"—";cell(row,detail);const td=document.createElement("td");if(x.status==="pending"){const yes=document.createElement("button");yes.className="btn primary";yes.textContent="Onayla";yes.addEventListener("click",()=>reviewApproval(x.id,"approved",x.payload));const no=document.createElement("button");no.className="btn";no.textContent="Reddet";no.style.marginLeft="5px";no.addEventListener("click",()=>reviewApproval(x.id,"rejected",x.payload));td.append(yes,no);}else if(x.status==="approved"&&x.action_type==="quotation.create_from_meeting"){const run=document.createElement("button");run.className="btn primary";run.textContent="Teklifi oluştur";run.addEventListener("click",()=>executeApproval(x.id));td.append(run);}else{td.textContent=x.status==="approved"?"Onaylandı": "—";}row.append(td);$("approval-list").append(row);});
+$("run-list").replaceChildren();if(!runs.length)emptyRow($("run-list"),5,"Henüz görev kaydı yok.");else runs.forEach(x=>tr($("run-list"),[date(x.created_at),x.agent_name,x.task_type,x.status,x.requested_by]));
+$("audit-list").replaceChildren();if(!audit.length)emptyRow($("audit-list"),5,"Henüz denetim kaydı yok.");else audit.forEach(x=>tr($("audit-list"),[date(x.created_at),x.event_type,x.agent_id,x.actor,JSON.stringify(x.details)]));
+$("overview-audit").replaceChildren();if(!audit.length)emptyRow($("overview-audit"),4,"Henüz hareket yok.");else audit.slice(0,6).forEach(x=>tr($("overview-audit"),[date(x.created_at),x.event_type,x.agent_id,x.actor]));
+$("rule-list").replaceChildren();if(!rules.length)emptyRow($("rule-list"),3,"Kural kaydı yok.");else rules.forEach(x=>tr($("rule-list"),[x.key,JSON.stringify(x.config),date(x.updated_at)]));
+$("page-message").textContent="Güncellendi.";
+}catch(e){$("page-message").textContent=e.message||"Bir hata oluştu.";}
+}
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".section").forEach(x=>x.classList.toggle("active",x.id==="section-"+b.dataset.tab));}));
+$("refresh").addEventListener("click",load);$("usage-refresh").addEventListener("click",load);$("app-dialog-close").addEventListener("click",()=> $("app-dialog").close());$("prepare-meeting-quote").addEventListener("click",prepareMeetingQuotation);
+(async()=>{try{const s=await api("/api/session");if(!s.authenticated){location.assign("/");return;}await load();}catch(e){$("page-message").textContent=e.message||"Oturum doğrulanamadı.";}})();
+/* Görünür select alanlarını HTML menüsü olarak çiz; gerçek select değer ve form entegrasyonu için korunur. */
+(function(){
+ const nativeSelects=[...document.querySelectorAll("select:not([hidden])")];
+ function enhance(select){
+  if(select.dataset.htmlSelect==="1"||select.multiple)return;
+  select.dataset.htmlSelect="1";
+  const wrap=document.createElement("div");wrap.className="html-select";
+  const trigger=document.createElement("button");trigger.type="button";trigger.className="html-select-trigger";trigger.setAttribute("aria-haspopup","listbox");trigger.setAttribute("aria-expanded","false");
+  const label=document.createElement("span");trigger.append(label);
+  const menu=document.createElement("div");menu.className="html-select-menu";menu.setAttribute("role","listbox");
+  select.parentNode.insertBefore(wrap,select);wrap.append(trigger,menu,select);
+  select.classList.add("html-select-native");
+  function refresh(){
+   const chosen=select.options[select.selectedIndex];label.textContent=chosen?chosen.textContent:"Seçim yapın";
+   menu.replaceChildren();
+   [...select.options].forEach((option,index)=>{
+    const item=document.createElement("button");item.type="button";item.className="html-select-option";item.textContent=option.textContent;item.disabled=option.disabled;item.setAttribute("role","option");item.setAttribute("aria-selected",String(index===select.selectedIndex));
+    item.addEventListener("click",()=>{select.selectedIndex=index;select.dispatchEvent(new Event("input",{bubbles:true}));select.dispatchEvent(new Event("change",{bubbles:true}));refresh();close();trigger.focus();});
+    menu.append(item);
+   });
+   trigger.disabled=select.disabled;wrap.classList.toggle("disabled",select.disabled);
+  }
+  function close(){wrap.classList.remove("open");trigger.setAttribute("aria-expanded","false");}
+  trigger.addEventListener("click",()=>{const opening=!wrap.classList.contains("open");document.querySelectorAll(".html-select.open").forEach(el=>{el.classList.remove("open");el.querySelector(".html-select-trigger")?.setAttribute("aria-expanded","false");});if(opening){wrap.classList.add("open");trigger.setAttribute("aria-expanded","true");}});
+  select.addEventListener("change",refresh);
+  select.addEventListener("input",refresh);
+  new MutationObserver(refresh).observe(select,{childList:true,subtree:true,attributes:true,characterData:true});
+  refresh();
+ }
+ nativeSelects.forEach(enhance);
+ document.addEventListener("click",event=>{if(!event.target.closest(".html-select"))document.querySelectorAll(".html-select.open").forEach(w=>{w.classList.remove("open");w.querySelector(".html-select-trigger")?.setAttribute("aria-expanded","false");});});
+ document.addEventListener("keydown",event=>{if(event.key==="Escape")document.querySelectorAll(".html-select.open").forEach(w=>{w.classList.remove("open");w.querySelector(".html-select-trigger")?.setAttribute("aria-expanded","false");});});
+})();
+
+</script>
+</body>
+</html>

@@ -29,12 +29,16 @@ pg_restore --list "$WORK/postgres.dump" >/dev/null
 pg_restore --clean --if-exists --no-owner --no-acl --dbname "$DATABASE_URL" "$WORK/postgres.dump"
 
 python - "$WORK/objects.tar.gz" <<'PY'
-import os
 import sys
+import os
 import tarfile
 from app.storage import _bucket, _client
 
 client = _client()
+paginator = client.get_paginator("list_objects_v2")
+existing = [obj["Key"] for page in paginator.paginate(Bucket=_bucket()) for obj in page.get("Contents", [])]
+if existing and os.environ.get("RESTORE_ALLOW_NONEMPTY_BUCKET") != "YES":
+    raise SystemExit("Target bucket is not empty. Use a new empty bucket or set RESTORE_ALLOW_NONEMPTY_BUCKET=YES after review.")
 with tarfile.open(sys.argv[1], "r:gz") as archive:
     for member in archive:
         if not member.isfile() or member.name.startswith("/") or ".." in member.name.split("/"):

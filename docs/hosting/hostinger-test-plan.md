@@ -161,14 +161,15 @@ Aşağıdakilerden biri varsa canlıya geçilmez:
 - [x] Alembic başlangıç migration köprüsü eklendi.
 - [x] Yerel ve RustFS S3 depolama adaptörü eklendi.
 - [x] Dockerfile, Compose, Nginx loopback proxy ve ortam değişkeni örneği eklendi.
-- [x] PostgreSQL SQL çeviri ve repository smoke testleri eklendi.
-- [x] Şifreli günlük backup/restore betikleri ve cron şablonu eklendi.
-- [ ] Son commit için GitHub Actions'ın tüm job'ları başarılı.
-- [ ] Docker image gerçek build.
+- [x] PostgreSQL SQL çeviri, repository ve sentetik SQLite → PostgreSQL taşıma testleri eklendi.
+- [x] Yerel belge → RustFS dry-run/checksum taşıma aracı ve testleri eklendi.
+- [x] AES-GCM şifreli günlük backup/restore betikleri, checksum ve cron şablonu eklendi.
+- [x] CI Docker image build, Compose config, Python compile ve shell syntax kontrolleri geçti.
+- [ ] Son SQLite kaynak-kopya migration iyileştirmesi için CI sonucu bekleniyor.
 - [ ] RustFS servis uçtan uca testi.
 - [ ] PostgreSQL üzerinde tüm iş akışları regresyonu.
 - [ ] Şifreli backup/restore tatbikatı.
 - [ ] TLS, kimlik doğrulama/yetkilendirme ve güvenlik sertleştirmesi.
 - [ ] Gerçek veri taşıma provası.
 
-**Önceki CI koşusu (AES-GCM ve son Compose düzeltmelerinden önce):** SQLite 25 passed, 2 skipped, 1 warning; PostgreSQL 5 passed. Bu sonuç yeni commit'lere otomatik olarak mal edilmemelidir.
+**Son başarılı CI (commit `2eedc4d53957c2226ad64114a727c4b50577ec37`):** SQLite 29 passed, 3 skipped, 1 warning; PostgreSQL 6 passed. Docker image build ve Compose config başarılı. Sonraki migration kaynak-kopya değişikliği ayrıca test bekliyor.

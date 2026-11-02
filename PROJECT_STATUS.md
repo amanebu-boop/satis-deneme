@@ -119,6 +119,7 @@ Her görevde:
 - Docker Compose: FastAPI, PostgreSQL 16, RustFS ve Nginx. Nginx test portu yalnızca `127.0.0.1:8080` adresine bağlıdır; HTTPS/public port açılmadı.
 - Sağlık kontrolü veritabanı ve depolama bağımlılıklarını doğrular.
 - Günlük PostgreSQL + RustFS yedekleme betikleri, AES-256-GCM/PBKDF2 tabanlı şifreleme, 14 günlük yerel saklama ve kontrollü geri yükleme betiği eklendi.
+- SQLite → PostgreSQL taşıma aracı, SQLite Backup API ile tutarlı geçici kaynak kopyası alır; şema yükseltmelerini yalnızca kopyada çalıştırır ve kaynak dosyayı değiştirmez. Taşıma varsayılan olarak dry-run'dır.
 - Günlük 02.00 cron şablonu eklendi. Hostinger VPS panelindeki otomatik snapshot yedeği ayrıca etkinleştirilmeli ve doğrulanmalıdır.
 - GitHub Actions: SQLite regresyonu, PostgreSQL smoke testi, Python derleme, shell syntax ve Docker Compose yapılandırma doğrulaması.
 

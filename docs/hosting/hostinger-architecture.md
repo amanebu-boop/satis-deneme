@@ -133,7 +133,7 @@ Kurallar:
 Aşağıdaki bileşenler `infra/hostinger-migration-prep` dalına eklendi:
 - SQLAlchemy 2 + psycopg PostgreSQL erişim adaptörü; SQLite yerel backend olarak korunur.
 - Alembic başlangıç migration köprüsü. İlk sürüm mevcut idempotent şema oluşturucuyu çağırır; bundan sonraki şema değişiklikleri gerçek Alembic revision dosyalarıyla yapılmalıdır.
-- `app/storage.py`: yerel/S3 depolama seçimi. RustFS için path-style S3, başlangıçta bucket kontrolü ve oluşturma.
+- `app/storage.py`: yerel/S3 depolama seçimi. RustFS için path-style S3; bucket yönetici tarafından önceden oluşturulur ve uygulama yalnızca bucket'a sınırlandırılmış servis hesabıyla erişir.
 - `template_documents.py`: şablon metadata/kaynaklarının RustFS'e kaydı, listeleme ve oluşturulan belge nesnelerinin saklanması.
 - Dockerfile ve Compose: FastAPI, PostgreSQL 16, RustFS, Nginx. Nginx yalnızca loopback `127.0.0.1:8080` test erişimi sağlar.
 - Sağlık kontrolü PostgreSQL/SQLite ve seçilen depolama backend'ini sorgular.

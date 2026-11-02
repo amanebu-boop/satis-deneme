@@ -1,11 +1,11 @@
 import json
 import os
 import sqlite3
-from typing import Any
-from app import db_backend
-from uuid import uuid4
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
+
+from app import db_backend
 
 DEFAULT_DATABASE_PATH = "data/sales.db"
 

@@ -69,7 +69,7 @@ class Result:
 def _translate(sql: str, parameters: Any):
     statement = sql.strip()
     if statement.upper().startswith("PRAGMA TABLE_INFO("):
-        match = re.search(r"PRAGMA\\s+table_info\\(['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?\\)", statement, re.I)
+        match = re.search(r"PRAGMA\s+table_info\(['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?\)", statement, re.I)
         if not match:
             raise ValueError("Unsupported PRAGMA table_info statement")
         table = match.group(1)
@@ -79,9 +79,9 @@ def _translate(sql: str, parameters: Any):
             "ORDER BY ordinal_position"
         )
         return statement, {"table_name": table}
-    statement = re.sub(r"\\s+COLLATE\\s+NOCASE", "", statement, flags=re.I)
-    statement = re.sub(r"\\bLIKE\\b", "ILIKE", statement, flags=re.I)
-    statement = re.sub(r"\\browid\\b", "ctid", statement, flags=re.I)
+    statement = re.sub(r"\s+COLLATE\s+NOCASE", "", statement, flags=re.I)
+    statement = re.sub(r"\bLIKE\b", "ILIKE", statement, flags=re.I)
+    statement = re.sub(r"\browid\b", "ctid", statement, flags=re.I)
     if isinstance(parameters, dict):
         return statement, parameters
     values = tuple(parameters or ())
@@ -93,7 +93,7 @@ def _translate(sql: str, parameters: Any):
         index += 1
         return f":{key}"
 
-    statement = re.sub(r"\\?", replace, statement)
+    statement = re.sub(r"\?", replace, statement)
     if index != len(values):
         raise ValueError(f"SQL placeholder mismatch: expected {index}, received {len(values)}")
     return statement, {f"p{i}": value for i, value in enumerate(values)}

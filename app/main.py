@@ -747,21 +747,7 @@ async def browser_upload_template(request: Request, file: UploadFile = File(...)
 @app.get("/api/templates")
 def browser_list_templates(request: Request) -> list[dict]:
     _require_browser_session(request)
-    root = template_documents.storage_root()
-    results = []
-    for meta_path in root.glob("*.json"):
-        try:
-            record = __import__("json").loads(meta_path.read_text(encoding="utf-8"))
-            if (root / f"{record.get('id', '')}.source").is_file():
-                results.append({
-                    "id": record["id"], "name": record["name"],
-                    "format": record["format"], "fields": record["fields"],
-                    "size": record["size"],
-                })
-        except (OSError, ValueError, KeyError):
-            # Skip incomplete metadata; do not expose filesystem paths or raw errors.
-            continue
-    return sorted(results, key=lambda item: item["name"].casefold())
+    return template_documents.list_templates()
 
 
 @app.get("/api/templates/{template_id}")

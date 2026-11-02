@@ -15,7 +15,7 @@ RustFS imajı `.env.hostinger.example` içinde resmi dokümanlardaki x86 musl `v
 ## 2. Staging başlatma (yalnızca ayrıca onaylanmış VPS veya geliştirici makinesi)
 
 1. `.env.hostinger.example` dosyasını `.env` olarak kopyalayın.
-2. `POSTGRES_PASSWORD`, `RUSTFS_ACCESS_KEY`, `RUSTFS_SECRET_KEY`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` ve `BACKUP_ENCRYPTION_PASSPHRASE` alanlarını güçlü, benzersiz sırlarla değiştirin. RustFS yönetici access key'i yalnızca büyük harf/rakam kullanmalı; PostgreSQL parolasını URL güvenli karakterlerle üretin.
+2. `POSTGRES_PASSWORD`, `RUSTFS_ACCESS_KEY`, `RUSTFS_SECRET_KEY`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `SALES_API_TOKEN`, `SALES_LOGIN_PASSWORD` ve `BACKUP_ENCRYPTION_PASSPHRASE` alanlarını güçlü, benzersiz sırlarla değiştirin. RustFS yönetici access key'i yalnızca büyük harf/rakam kullanmalı; PostgreSQL parolasını URL güvenli karakterlerle üretin.
 3. `.env` dosyasını Git'e eklemeyin.
 4. `docker compose config --quiet` ile yapılandırmayı doğrulayın.
 5. Önce yalnızca RustFS'i başlatın: `docker compose up -d rustfs`.

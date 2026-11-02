@@ -53,6 +53,15 @@ def database_backend() -> str:
     return "postgresql" if os.environ.get("SALES_DATABASE_URL") else "sqlite"
 
 
+def database_ready() -> bool:
+    try:
+        with connect() as connection:
+            connection.execute("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+
 def connect():
     database_url = os.environ.get("SALES_DATABASE_URL")
     if database_url:

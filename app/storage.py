@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import Iterable
+from botocore.config import Config
 
 
 def backend_name() -> str:
@@ -32,6 +32,7 @@ def _client():
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
         use_ssl=os.environ.get("S3_USE_SSL", "false").lower() == "true",
+        config=Config(s3={"addressing_style": "path"}),
     )
 
 
@@ -80,3 +81,21 @@ def list_keys(prefix: str) -> list[str]:
 
 def reset_client_for_tests() -> None:
     _client.cache_clear()
+
+
+def ensure_bucket() -> None:
+    """Create the configured bucket once when the S3-compatible service is ready."""
+    client = _client()
+    bucket = _bucket()
+    try:
+        client.head_bucket(Bucket=bucket)
+    except Exception as exc:
+        status = getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+        code = str(getattr(exc, "response", {}).get("Error", {}).get("Code", ""))
+        if status not in {404, 400} and code not in {"404", "NoSuchBucket", "NotFound"}:
+            raise
+        client.create_bucket(Bucket=bucket)
+
+
+def check_health() -> None:
+    _client().head_bucket(Bucket=_bucket())

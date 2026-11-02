@@ -47,3 +47,12 @@ Bu yapılandırma HTTP test proxy'sidir; genel internete açılmaya veya canlı 
 - Mevcut SQLite verisi ve belgeler taşınmamıştır. Gerçek veri taşıma için dry-run, checksum ve kayıt mutabakatı ayrıca gerekir.
 
 Bu maddeler kapanmadan canlı geçiş yapılmaz.
+
+## 6. SQLite ve belge taşıma provası
+
+1. Önce PostgreSQL şemasının Alembic ile kurulduğunu ve hedef tabloların boş olduğunu doğrulayın.
+2. SQLite veri raporu: `python scripts/migrate_sqlite_to_postgres.py --source data/sales.db`.
+3. Yerel belge raporu: RustFS ortam değişkenlerini ayarladıktan sonra `python scripts/migrate_local_documents_to_s3.py --source data/documents`.
+4. Dry-run raporundaki tablo sayıları, SHA-256 özetleri, dosya sayıları ve byte toplamlarını kaynakla karşılaştırın.
+5. Gerçek taşıma gerekiyorsa ayrı bakım penceresi, geri dönüş yedeği ve açık onaydan sonra yalnızca hedef ortamda `--apply` kullanın. Bu araçlar kaynak veriyi silmez.
+6. Taşıma sonrası firma/görüşme/teklif sayıları, ürün ilişkileri, dosya indirme ve Excel/PDF çıktıları kullanıcı kabul testinden geçirilmelidir.

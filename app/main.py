@@ -28,7 +28,7 @@ from app.quote_pdf import convert_excel_to_pdf
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    db.init_db()
+    db.initialize()
     yield
 
 
@@ -36,8 +36,8 @@ app = FastAPI(
     title="Sales AI Platform API",
     version="0.3.0",
     description=(
-        "Prototype with SQLite persistence and an environment-configured shared API key. "
-        "Per-user authorization, tenant isolation, and production hardening are not implemented."
+        "Sales workspace with SQLite local development and PostgreSQL production support. "
+        "Production authentication, authorization, and tenant hardening remain required."
     ),
     lifespan=lifespan,
 )

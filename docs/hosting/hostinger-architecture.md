@@ -140,3 +140,10 @@ Aşağıdaki bileşenler `infra/hostinger-migration-prep` dalına eklendi:
 - Günlük mantıksal yedek: PostgreSQL dump + RustFS nesneleri; AES-256-GCM ve PBKDF2 ile şifreli; 14 gün saklama. Cron şablonu 02.00 UTC değil, sunucunun yerel saatine göre 02.00 çalışır.
 
 Bu altyapı kod hazırlığıdır; gerçek Hostinger kurulumu veya yedek/restore tatbikatı yapılmış değildir.
+
+
+## 12. Veri taşıma araçları
+
+- `scripts/migrate_sqlite_to_postgres.py`: SQLite tabloları için önce dry-run raporu ve SHA-256 özetleri üretir. Hedef şemanın önceden Alembic ile kurulmuş ve tüm uygulama tablolarının boş olması gerekir. Yazma yalnızca `--apply` ile yapılır; kayıt sayısı ve tablo checksum'ları transaction içinde doğrulanır. Ürün opsiyon ebeveyn ilişkileri üstten alta kopyalanır; döngü tespit edilirse işlem durur.
+- `scripts/migrate_local_documents_to_s3.py`: yerel `.source`, `.json` ve `.output.*` dosyalarını RustFS anahtarlarına eşler; varsayılan dry-run'dır. `--apply` sırasında SHA-256 doğrulaması yapar ve mevcut farklı nesnenin üzerine yazmaz.
+- Her iki araç da kaynak SQLite dosyasını veya yerel dosyaları silmez. Dry-run raporu, kayıt mutabakatı ve ayrıca kullanıcı onayı olmadan gerçek müşteri verisi taşınmaz.

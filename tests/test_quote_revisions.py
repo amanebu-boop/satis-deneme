@@ -65,3 +65,34 @@ def test_revision_rejects_unknown_source(tmp_path, monkeypatch):
     import pytest
     with pytest.raises(ValueError, match="Source quotation not found"):
         db.create_quotation(_quote("orphan-revision"), revision_of="missing-source")
+
+
+def test_excel_document_prints_shared_quote_number_and_revision():
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    from app.quote_excel import render_quote_excel
+
+    content = render_quote_excel(
+        {
+            "id": "quote-revision",
+            "quote_number": "ERS-2026-0001-R02",
+            "quote_group_number": "ERS-2026-0001",
+            "revision": 2,
+            "currency": "EUR",
+            "created_at": "2026-11-06T10:00:00+00:00",
+            "lines": [{
+                "description": "Test makine",
+                "quantity": "1",
+                "unit_price": "100",
+                "line_total": "100.00",
+            }],
+        },
+        None,
+    )
+    workbook = load_workbook(BytesIO(content), data_only=False)
+    try:
+        assert workbook["Teklif"]["D13"].value == "ERS-2026-0001 / R02"
+    finally:
+        workbook.close()

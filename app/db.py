@@ -169,6 +169,9 @@ def init_db() -> None:
                 "UPDATE quotations SET quote_number = ? WHERE id = ?",
                 ("ERS-OLD-" + str(legacy["id"])[:8].upper(), legacy["id"]),
             )
+        connection.execute(
+            "UPDATE quotations SET quote_group_number = quote_number WHERE quote_group_number IS NULL"
+        )
         quotation_columns = {row["name"] for row in connection.execute("PRAGMA table_info(quotations)")}
         for obsolete_column in ("discount_rate", "discount_amount"):
             if obsolete_column in quotation_columns:
@@ -602,7 +605,7 @@ def create_quotation(record: dict[str, Any], revision_of: str | None = None) -> 
                 raise ValueError("A revision must stay linked to the original company")
             if source["currency"] != record["currency"]:
                 raise ValueError("A revision must keep the original currency")
-            group_number = source.get("quote_group_number") or source["quote_number"]
+            group_number = source["quote_group_number"] or source["quote_number"]
             sequence = connection.execute(
                 """INSERT INTO quote_revision_sequences (quote_group_number, last_revision)
                    SELECT ?, COALESCE(MAX(revision), 0) + 1

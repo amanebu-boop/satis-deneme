@@ -97,6 +97,8 @@ def init_db() -> None:
                 id TEXT PRIMARY KEY,
                 quote_number TEXT UNIQUE,
                 revision INTEGER NOT NULL DEFAULT 0,
+                quote_group_number TEXT,
+                revision_of TEXT REFERENCES quotations(id) ON DELETE SET NULL,
                 company_id TEXT REFERENCES companies(id) ON DELETE SET NULL,
                 currency TEXT NOT NULL CHECK(length(currency) = 3),
                 subtotal TEXT NOT NULL,
@@ -109,6 +111,10 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS quote_sequences (
                 quote_year INTEGER PRIMARY KEY,
                 last_number INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS quote_revision_sequences (
+                quote_group_number TEXT PRIMARY KEY,
+                last_revision INTEGER NOT NULL
             );
             CREATE TABLE IF NOT EXISTS quotation_lines (
                 id TEXT PRIMARY KEY,
@@ -140,7 +146,20 @@ def init_db() -> None:
             connection.execute("ALTER TABLE quotations ADD COLUMN quote_number TEXT")
         if "revision" not in quotation_columns:
             connection.execute("ALTER TABLE quotations ADD COLUMN revision INTEGER NOT NULL DEFAULT 0")
+        if "quote_group_number" not in quotation_columns:
+            connection.execute("ALTER TABLE quotations ADD COLUMN quote_group_number TEXT")
+        if "revision_of" not in quotation_columns:
+            connection.execute("ALTER TABLE quotations ADD COLUMN revision_of TEXT REFERENCES quotations(id) ON DELETE SET NULL")
+        connection.execute(
+            "UPDATE quotations SET quote_group_number = quote_number WHERE quote_group_number IS NULL"
+        )
         connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_quotations_number ON quotations(quote_number)")
+        connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_quotations_group_revision ON quotations(quote_group_number, revision)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_quotations_revision_of ON quotations(revision_of)"
+        )
         # Existing drafts keep stable legacy identifiers; new drafts receive sequential annual numbers.
         legacy_rows = connection.execute(
             "SELECT id FROM quotations WHERE quote_number IS NULL ORDER BY created_at, id"
@@ -150,6 +169,9 @@ def init_db() -> None:
                 "UPDATE quotations SET quote_number = ? WHERE id = ?",
                 ("ERS-OLD-" + str(legacy["id"])[:8].upper(), legacy["id"]),
             )
+        connection.execute(
+            "UPDATE quotations SET quote_group_number = quote_number WHERE quote_group_number IS NULL"
+        )
         quotation_columns = {row["name"] for row in connection.execute("PRAGMA table_info(quotations)")}
         for obsolete_column in ("discount_rate", "discount_amount"):
             if obsolete_column in quotation_columns:
@@ -567,41 +589,86 @@ def update_product(product_id: str, record: dict[str, Any]) -> dict[str, Any] | 
     return {"id": product_id, **record}
 
 
-def create_quotation(record: dict[str, Any]) -> dict[str, Any]:
+def create_quotation(record: dict[str, Any], revision_of: str | None = None) -> dict[str, Any]:
+    """Persist a draft; revisions retain a shared display number and immutable history."""
+    stored = {**record}
     with connect() as connection:
-        year = int(str(record["created_at"])[:4])
-        sequence = connection.execute(
-            "SELECT last_number FROM quote_sequences WHERE quote_year = ?", (year,)
-        ).fetchone()
-        next_number = (int(sequence["last_number"]) + 1) if sequence else 1
-        connection.execute(
-            """INSERT INTO quote_sequences (quote_year, last_number) VALUES (?, ?)
-               ON CONFLICT(quote_year) DO UPDATE SET last_number = excluded.last_number""",
-            (year, next_number),
-        )
-        quote_number = f"ERS-{year}-{next_number:04d}"
+        if revision_of:
+            source = connection.execute(
+                """SELECT id, quote_number, quote_group_number, company_id, currency
+                   FROM quotations WHERE id = ?""",
+                (revision_of,),
+            ).fetchone()
+            if source is None:
+                raise ValueError("Source quotation not found")
+            if source["company_id"] != record.get("company_id"):
+                raise ValueError("A revision must stay linked to the original company")
+            if source["currency"] != record["currency"]:
+                raise ValueError("A revision must keep the original currency")
+            group_number = source["quote_group_number"] or source["quote_number"]
+            sequence = connection.execute(
+                """INSERT INTO quote_revision_sequences (quote_group_number, last_revision)
+                   SELECT ?, COALESCE(MAX(revision), 0) + 1
+                   FROM quotations
+                   WHERE COALESCE(quote_group_number, quote_number) = ?
+                   ON CONFLICT(quote_group_number) DO UPDATE
+                   SET last_revision = quote_revision_sequences.last_revision + 1
+                   RETURNING last_revision""",
+                (group_number, group_number),
+            ).fetchone()
+            revision = int(sequence["last_revision"])
+            quote_number = f"{group_number}-R{revision:02d}"
+            stored.update({
+                "quote_number": quote_number,
+                "quote_group_number": group_number,
+                "revision": revision,
+                "revision_of": revision_of,
+            })
+        else:
+            year = int(str(record["created_at"])[:4])
+            sequence = connection.execute(
+                "SELECT last_number FROM quote_sequences WHERE quote_year = ?", (year,)
+            ).fetchone()
+            next_number = (int(sequence["last_number"]) + 1) if sequence else 1
+            connection.execute(
+                """INSERT INTO quote_sequences (quote_year, last_number) VALUES (?, ?)
+                   ON CONFLICT(quote_year) DO UPDATE SET last_number = excluded.last_number""",
+                (year, next_number),
+            )
+            quote_number = f"ERS-{year}-{next_number:04d}"
+            stored.update({
+                "quote_number": quote_number,
+                "quote_group_number": quote_number,
+                "revision": 0,
+                "revision_of": None,
+            })
+
         connection.execute(
             """INSERT INTO quotations
-               (id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
-               VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (record["id"], quote_number, record.get("company_id"), record["currency"], record["subtotal"],
-             record["tax_rate"], record["tax_amount"], record["total"], record["status"], record["created_at"]),
+               (id, quote_number, quote_group_number, revision, revision_of,
+                company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (stored["id"], stored["quote_number"], stored["quote_group_number"],
+             stored["revision"], stored["revision_of"], stored.get("company_id"),
+             stored["currency"], stored["subtotal"], stored["tax_rate"],
+             stored["tax_amount"], stored["total"], stored["status"], stored["created_at"]),
         )
-        for line in record["lines"]:
+        for line in stored["lines"]:
             connection.execute(
                 """INSERT INTO quotation_lines
                    (id, quotation_id, description, quantity, unit_price, line_total)
                    VALUES (?, ?, ?, ?, ?, ?)""",
-                (line["id"], record["id"], line["description"], line["quantity"],
+                (line["id"], stored["id"], line["description"], line["quantity"],
                  line["unit_price"], line["line_total"]),
             )
-    return {**record, "quote_number": quote_number, "revision": 0}
+    return stored
 
 
 def get_quotation(quotation_id: str) -> dict[str, Any] | None:
     with connect() as connection:
         row = connection.execute(
-            """SELECT id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
+            """SELECT id, quote_number, quote_group_number, revision, revision_of,
+                      company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
                FROM quotations WHERE id = ?""",
             (quotation_id,),
         ).fetchone()
@@ -621,7 +688,8 @@ def get_quotation(quotation_id: str) -> dict[str, Any] | None:
 def list_quotations() -> list[dict[str, Any]]:
     with connect() as connection:
         rows = connection.execute(
-            """SELECT id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
+            """SELECT id, quote_number, quote_group_number, revision, revision_of,
+                      company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at
                FROM quotations ORDER BY created_at DESC, id DESC"""
         ).fetchall()
     return [dict(row) for row in rows]

@@ -2,9 +2,9 @@ name: Hostinger migration preparation
 
 on:
   push:
-    branches: [infra/hostinger-migration-prep, integration/agent-hostinger-reconcile]
+    branches: [infra/hostinger-migration-prep, integration/agent-hostinger-reconcile, feature/quote-revisions-hostinger]
   pull_request:
-    branches: [infra/hostinger-migration-prep]
+    branches: [main, infra/hostinger-migration-prep]
   workflow_dispatch:
 
 jobs:
@@ -49,4 +49,4 @@ jobs:
           cache: pip
       - run: pip install -e ".[test]"
       - run: python -c "from app import db; db.initialize()"
-      - run: python -m pytest -q tests/test_hostinger_database_backend.py tests/test_postgres_smoke.py tests/test_sqlite_to_postgres_migration.py tests/test_postgres_agent_integration.py
+      - run: python -m pytest -q tests/test_hostinger_database_backend.py tests/test_postgres_smoke.py tests/test_sqlite_to_postgres_migration.py tests/test_postgres_agent_integration.py tests/test_postgres_quote_revisions.py

@@ -465,9 +465,10 @@ def browser_execute_approved_action(approval_id: str, request: Request) -> dict:
         quote_number = f"ERS-{year}-{next_number:04d}"
         connection.execute(
             """INSERT INTO quotations
-               (id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
-               VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, 'draft', ?)""",
-            (quotation_id, quote_number, current_payload["company_id"], calculated["currency"],
+               (id, quote_number, quote_group_number, revision, revision_of,
+                company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, 'draft', ?)""",
+            (quotation_id, quote_number, quote_number, current_payload["company_id"], calculated["currency"],
              calculated["subtotal"], calculated["tax_rate"], calculated["tax_amount"], calculated["total"], created_at),
         )
         for line in calculated["lines"]:
@@ -900,7 +901,9 @@ def browser_list_quotes(request: Request) -> list[dict]:
         {
             "id": row["id"],
             "quote_number": row.get("quote_number"),
+            "quote_group_number": row.get("quote_group_number") or row.get("quote_number"),
             "revision": row.get("revision", 0),
+            "revision_of": row.get("revision_of"),
             "company_id": row.get("company_id"),
             "company_name": companies.get(row.get("company_id"), "Firma belirtilmedi"),
             "currency": row["currency"],
@@ -950,6 +953,57 @@ def browser_create_quote(payload: QuoteRequest, request: Request) -> dict:
         ],
     }
     return db.create_quotation(record)
+
+
+@app.get("/api/quotes/{quotation_id}")
+def browser_get_quote(quotation_id: str, request: Request) -> dict:
+    _require_browser_session(request)
+    record = db.get_quotation(quotation_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    if record.get("company_id"):
+        company = db.get_company(record["company_id"])
+        record["company_name"] = company["name"] if company else "Firma belirtilmedi"
+    return record
+
+
+@app.post("/api/quotes/{quotation_id}/revisions", status_code=201)
+def browser_create_quote_revision(quotation_id: str, payload: QuoteRequest, request: Request) -> dict:
+    session = _require_browser_session(request)
+    _require_csrf(request, session)
+    source = db.get_quotation(quotation_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source quotation not found")
+    if payload.company_id != source.get("company_id"):
+        raise HTTPException(status_code=422, detail="Revizyon aynı firmaya bağlı kalmalıdır.")
+    if payload.currency != source.get("currency"):
+        raise HTTPException(status_code=422, detail="Revizyonda para birimi değiştirilemez.")
+    calculated = calculate_quote(payload.lines, payload.currency)
+    record = {
+        "id": str(uuid4()),
+        "company_id": source.get("company_id"),
+        "currency": calculated["currency"],
+        "subtotal": calculated["subtotal"],
+        "tax_rate": calculated["tax_rate"],
+        "tax_amount": calculated["tax_amount"],
+        "total": calculated["total"],
+        "status": "draft",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "lines": [
+            {
+                "id": str(uuid4()),
+                "description": line.description,
+                "quantity": str(line.quantity),
+                "unit_price": str(line.unit_price),
+                "line_total": calculated["lines"][index]["line_total"],
+            }
+            for index, line in enumerate(payload.lines)
+        ],
+    }
+    try:
+        return db.create_quotation(record, revision_of=quotation_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 def _quote_filename_base(record: dict, company: dict | None) -> str:

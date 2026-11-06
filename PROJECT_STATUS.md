@@ -163,3 +163,14 @@ Her görevde:
 - LLM Wiki FTS5 is SQLite-specific; PostgreSQL uses the lexical fallback until a PostgreSQL-native full-text implementation is separately tested.
 - Hostinger CI must include PostgreSQL tests for agent initialization, `INSERT OR IGNORE` translation, AI usage identity columns and Wiki fallback before main readiness.
 - Live migration, DNS cutover and VPS activation remain separate approvals.
+
+
+## 10. Teklif revizyonları — Hostinger uyumlu geliştirme (2026-11-06)
+
+- Eski PR #3 doğrudan taşınmadı; mevcut ERS-YYYY-NNNN teklif numarası ve PostgreSQL şemasıyla uyumlu olacak şekilde yeniden düzenleniyor.
+- Her teklif ailesi ortak quote_group_number kullanır. Ana teklif R00, revizyonlar R01, R02 olarak saklanır; her kayıt için benzersiz quote_number korunur.
+- Revizyonlar önceki kaydı değiştirmez; revision_of ile kaynak kayda bağlanır.
+- SQLite başlangıç şeması ve Alembic PostgreSQL migration birlikte güncellenir.
+- İndirim alanı/hesabı eklenmez; miktar ve birim fiyat tam sayı, KDV mevcut sabit yüzde 20 kuralına bağlı kalır.
+- Geliştirme dalı: feature/quote-revisions-hostinger. CI tamamlanmadan ve ayrıca onay alınmadan main veya canlı ortam değiştirilmez.
+- Durum: Kod dalı oluşturuldu; CI doğrulaması bekleniyor.

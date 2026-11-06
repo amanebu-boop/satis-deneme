@@ -17,7 +17,7 @@ COPY app ./app
 COPY AGENTS.md ./AGENTS.md
 COPY AGENT_ARCHITECTURE.md ./AGENT_ARCHITECTURE.md
 COPY agents ./agents
-COPY docs/knowledge ./docs/knowledge
+COPY docs ./docs
 COPY scripts ./scripts
 COPY web ./web
 COPY templates ./templates

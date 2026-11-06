@@ -173,4 +173,9 @@ Her görevde:
 - SQLite başlangıç şeması ve Alembic PostgreSQL migration birlikte güncellenir.
 - İndirim alanı/hesabı eklenmez; miktar ve birim fiyat tam sayı, KDV mevcut sabit yüzde 20 kuralına bağlı kalır.
 - Geliştirme dalı: feature/quote-revisions-hostinger. CI tamamlanmadan ve ayrıca onay alınmadan main veya canlı ortam değiştirilmez.
-- Durum: Kod dalı oluşturuldu; CI doğrulaması bekleniyor.
+- Durum: PR #39, 6 Kasım 2026 tarihinde squash merge ile main dalına aktarıldı.
+- Main merge commit: f5395c904e717b11d686ed905c904b0e674545d8.
+- Python CI: 148 passed, 5 skipped, 1 warning.
+- Hostinger CI: SQLite 148 passed, 5 skipped; PostgreSQL 8 passed; Docker image build, Compose config, compileall ve backup/restore shell syntax başarılı.
+- Quote template validation workflow run 42179479850, LibreOffice kurulum adımında hâlâ in_progress; bu kontrol başarılı olarak işaretlenmedi.
+- Canlı dağıtım, Render deploy, Hostinger VPS, DNS ve müşteri verisi taşıma bu işlem kapsamında başlatılmadı. Render otomatik deploy durumu ayrıca doğrulanmalı.

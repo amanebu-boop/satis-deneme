@@ -465,9 +465,10 @@ def browser_execute_approved_action(approval_id: str, request: Request) -> dict:
         quote_number = f"ERS-{year}-{next_number:04d}"
         connection.execute(
             """INSERT INTO quotations
-               (id, quote_number, revision, company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
-               VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, 'draft', ?)""",
-            (quotation_id, quote_number, current_payload["company_id"], calculated["currency"],
+               (id, quote_number, quote_group_number, revision, revision_of,
+                company_id, currency, subtotal, tax_rate, tax_amount, total, status, created_at)
+               VALUES (?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, 'draft', ?)""",
+            (quotation_id, quote_number, quote_number, current_payload["company_id"], calculated["currency"],
              calculated["subtotal"], calculated["tax_rate"], calculated["tax_amount"], calculated["total"], created_at),
         )
         for line in calculated["lines"]:

@@ -6,7 +6,7 @@ Yerel bilgisayarda tek kullanıcı için geliştirilmekte olan satış çalışm
 
 ## Hızlı başlatma
 
-Adım adım kurulum için [Yerel deneme kılavuzuna](docs/operations/quickstart.md) bakın. Python 3.11+ gerekir.
+Python 3.11+ gerekir. Aşağıdaki komutlar yerel deneme ortamını kurar.
 
 Linux/macOS:
 
@@ -48,4 +48,4 @@ Tarayıcıda `http://127.0.0.1:8000/` adresini açın ve belirlediğiniz yerel p
 python -m pytest -q
 ```
 
-Daha ayrıntılı sınırlar ve yedekleme için [güvenlik notları](docs/security/document-templates.md) ve [yerel çalıştırma/yedekleme](docs/operations/hosting-and-backups.md) sayfalarına bakın. Telefon ve bilgisayar aynı Wi-Fi ağında olmalı. Bilgisayarın yerel IP adresini bulun (`ipconfig` / `hostname -I` / `ipconfig getifaddr en0`) ve telefonda `http://BILGISAYAR_IP:8000/` açın. Bu deneme modu HTTP kullandığından aynı Wi-Fi ağındaki trafik şifrelenmez; halka açık Wi-Fi kullanmayın, modemden port yönlendirmeyin ve gerçek müşteri verisi girmeyin.
+Hostinger yayın mimarisi ve güvenlik sınırları için [Hostinger mimari notlarına](docs/hosting/hostinger-architecture.md), kurulum, yedekleme ve geri yükleme adımları için [Hostinger runbook'una](docs/hosting/hostinger-runbook.md) bakın. Telefon ve bilgisayar aynı Wi-Fi ağında olmalı. Bilgisayarın yerel IP adresini bulun (`ipconfig` / `hostname -I` / `ipconfig getifaddr en0`) ve telefonda `http://BILGISAYAR_IP:8000/` açın. Bu deneme modu HTTP kullandığından aynı Wi-Fi ağındaki trafik şifrelenmez; halka açık Wi-Fi kullanmayın, modemden port yönlendirmeyin ve gerçek müşteri verisi girmeyin.

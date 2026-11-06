@@ -404,6 +404,7 @@ select:not([hidden]){position:absolute!important;opacity:0!important;pointer-eve
 <div class="panel">
   <div class="panel-head"><h2>Teklif taslağı oluştur</h2><span class="pill blue">Kaydedilebilir</span></div>
   <form id="quote-form" class="quote-form">
+    <input id="quote-revision-source" type="hidden" value="">
     <div class="location-picker"><label for="quote-company-search">Firma seçimi</label><input id="quote-company-search" type="search" placeholder="" autocomplete="off" aria-expanded="false" required><div id="quote-company-results" class="autocomplete-results"></div><select id="quote-company" hidden required><option value="">Firma seç</option></select></div>
     <section id="meeting-quote-picker" class="panel" hidden style="padding:12px"><div class="panel-head"><h3>Görüşmelerden makine seç</h3><span id="meeting-quote-count" class="pill">0 seçili</span></div><p class="footer-note">Aynı firmaya ait farklı görüşmelerdeki makineleri birlikte seçebilirsiniz.</p><div id="meeting-quote-options"></div><div class="actions" style="justify-content:flex-end;margin-top:10px"><button type="button" class="btn primary" id="apply-meeting-quote-selection" disabled>Seçilenleri teklife aktar</button></div></section>
     <input id="quote-currency" type="hidden" value="EUR"><p class="footer-note">Teklif para birimi EUR’dur. Fiyatlar KDV hariçtir; şablonda %20 KDV otomatik hesaplanır.</p>
@@ -1145,15 +1146,46 @@ async function loadQuotes(){
     const quotes=await response.json();renderDashboardQuotes(quotes);rows.replaceChildren();
     if(!quotes.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent="Henüz kayıtlı teklif yok.";tr.append(td);rows.append(tr);return;}
     for(const quote of quotes){const tr=document.createElement("tr");
-      for(const value of [(quote.quote_number||"Teklif")+" · "+quote.company_name, String(quote.created_at||"").slice(0,10), quote.total+" "+quote.currency]){const td=document.createElement("td");td.textContent=value;tr.append(td);}
+      const quoteLabel=(quote.quote_group_number||quote.quote_number||"Teklif")+" / R"+String(quote.revision||0).padStart(2,"0");
+      for(const value of [quoteLabel+" · "+quote.company_name, String(quote.created_at||"").slice(0,10), quote.total+" "+quote.currency]){const td=document.createElement("td");td.textContent=value;tr.append(td);}
       const action=document.createElement("td");action.style.whiteSpace="nowrap";action.style.display="flex";action.style.flexWrap="wrap";action.style.gap="10px";
       const preview=document.createElement("a");preview.href="/api/quotes/"+encodeURIComponent(quote.id)+"/document";preview.target="_blank";preview.rel="noopener";preview.textContent="Şablonlu PDF önizle";preview.className="link";
       const excel=document.createElement("a");excel.href="/api/quotes/"+encodeURIComponent(quote.id)+"/excel";excel.textContent="Excel indir";excel.className="link";
       const pdf=document.createElement("a");pdf.href="/api/quotes/"+encodeURIComponent(quote.id)+"/pdf?download=1";pdf.textContent="PDF indir";pdf.className="link";
       const remove=document.createElement("button");remove.type="button";remove.className="link quote-delete";remove.textContent="Sil";remove.setAttribute("aria-label",(quote.quote_number||"Teklifi")+" sil");remove.addEventListener("click",async()=>{if(!window.confirm((quote.quote_number||"Bu teklif")+" kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz."))return;remove.disabled=true;try{if(!csrfToken)await readCsrf();const result=await fetch("/api/quotes/"+encodeURIComponent(quote.id),{method:"DELETE",credentials:"same-origin",cache:"no-store",headers:{"X-CSRF-Token":csrfToken}});if(result.status===401){showLogin();return;}if(!result.ok){const body=await result.json().catch(()=>({}));throw new Error(body.detail||"Teklif silinemedi.");}await loadQuotes();}catch(error){window.alert(error.message||"Teklif silinemedi.");remove.disabled=false;}});
-      action.append(preview,excel,pdf,remove);tr.append(action);rows.append(tr);
+      const revise=document.createElement("button");revise.type="button";revise.className="link";revise.textContent="Revizyon oluştur";revise.addEventListener("click",()=>beginQuoteRevision(quote.id));
+      action.append(preview,excel,pdf,revise,remove);tr.append(action);rows.append(tr);
     }
   }catch(error){rows.replaceChildren();const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.textContent=error.message;tr.append(td);rows.append(tr);}
+}
+
+async function beginQuoteRevision(quotationId){
+  const message=document.getElementById("quote-message");
+  message.textContent="Teklif revizyonu yükleniyor…";
+  try{
+    const response=await fetch("/api/quotes/"+encodeURIComponent(quotationId),{credentials:"same-origin",cache:"no-store"});
+    if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
+    if(!response.ok)throw new Error("Teklif revizyon için yüklenemedi.");
+    const quote=await response.json();
+    document.getElementById("quote-revision-source").value=quote.id;
+    document.getElementById("quote-company").value=quote.company_id||"";
+    const company=allCompanies.find(item=>item.id===quote.company_id);
+    document.getElementById("quote-company-search").value=company?.name||quote.company_name||"";
+    const container=document.getElementById("quote-lines");
+    container.replaceChildren();
+    for(const line of quote.lines||[]){
+      addQuoteLine();
+      const row=container.lastElementChild;
+      row.querySelector(".line-description").value=line.description||"";
+      row.querySelector(".line-quantity").value=String(line.quantity||1);
+      row.querySelector(".line-price").value=String(line.unit_price||0);
+    }
+    if(!container.children.length)addQuoteLine();
+    document.getElementById("save-quote").textContent="Revizyonu kaydet";
+    message.textContent="Revizyon düzenleniyor: "+(quote.quote_group_number||quote.quote_number)+" / sonraki revizyon";
+    updateQuoteTotals();
+    document.getElementById("quote-form").scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(error){message.textContent=error.message||"Revizyon yüklenemedi.";}
 }
 let productCatalog=[],productEditId="";
 function updateProductParentOptions(selected=""){
@@ -1324,10 +1356,16 @@ document.getElementById("quote-form").addEventListener("submit",async event=>{
     const lines=[...document.querySelectorAll(".quote-line")].map(row=>({description:row.querySelector(".line-description").value.trim(),quantity:row.querySelector(".line-quantity").value,unit_price:row.querySelector(".line-price").value}));
     if(lines.some(line=>!line.description||!Number.isInteger(Number(line.quantity))||Number(line.quantity)<=0||!Number.isInteger(Number(line.unit_price))||Number(line.unit_price)<0))throw new Error("Kalem açıklamalarını, tam sayı miktarları ve tam sayı birim fiyatlarını kontrol et.");
     const companyId=document.getElementById("quote-company").value;if(!companyId)throw new Error("Teklif oluşturmak için firma seçmelisiniz.");const payload={company_id:companyId,currency:"EUR",lines};
-    const response=await fetch("/api/quotes",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
+    const revisionSource=document.getElementById("quote-revision-source").value;
+    const quoteUrl=revisionSource?("/api/quotes/"+encodeURIComponent(revisionSource)+"/revisions"):"/api/quotes";
+    const response=await fetch(quoteUrl,{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify(payload)});
     if(response.status===401){showLogin();throw new Error("Oturum sona erdi; tekrar giriş yap.");}
     if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.detail||"Teklif kaydedilemedi ("+response.status+")");}
-    const quote=await response.json();message.textContent="Teklif kaydedildi. Şablonlu Excel ve PDF dosyalarını istediğin zaman kayıtlı teklifler bölümünden indirebilirsin.";
+    const quote=await response.json();
+    document.getElementById("quote-revision-source").value="";
+    document.getElementById("save-quote").textContent="Teklifi kaydet";
+    const revisionLabel=(quote.quote_group_number||quote.quote_number)+" / R"+String(quote.revision||0).padStart(2,"0");
+    message.textContent=revisionSource?("Revizyon "+revisionLabel+" kaydedildi."):"Teklif "+revisionLabel+" kaydedildi.";
     await loadQuotes();
   }catch(error){message.textContent=error.message||"Teklif kaydedilemedi.";}
   finally{button.disabled=false;}

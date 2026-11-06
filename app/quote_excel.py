@@ -106,8 +106,9 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         workbook = load_workbook(TEMPLATE_PATH, data_only=False)
     try:
         sheet = workbook["Teklif"]
-        quote_number = str(quote.get("quote_number") or ("ERS-" + str(quote.get("id", ""))[:8].upper()))
-        sheet["D13"] = quote_number
+        quote_number = str(quote.get("quote_group_number") or quote.get("quote_number") or ("ERS-" + str(quote.get("id", ""))[:8].upper()))
+        revision = int(quote.get("revision") or 0)
+        sheet["D13"] = f"{quote_number} / R{revision:02d}"
         sheet["D14"] = quote_date
         sheet["D15"] = valid_until
         sheet["J14"] = validity_days

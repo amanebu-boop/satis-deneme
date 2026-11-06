@@ -106,10 +106,10 @@ def render_quote_excel(quote: dict, company: dict | None) -> bytes:
         workbook = load_workbook(TEMPLATE_PATH, data_only=False)
     try:
         sheet = workbook["Teklif"]
-        has_revision_group = bool(quote.get("quote_group_number"))
+        has_revision_metadata = "revision" in quote
         quote_number = str(quote.get("quote_group_number") or quote.get("quote_number") or ("ERS-" + str(quote.get("id", ""))[:8].upper()))
         revision = int(quote.get("revision") or 0)
-        sheet["D13"] = f"{quote_number} / R{revision:02d}" if has_revision_group else quote_number
+        sheet["D13"] = f"{quote_number} / R{revision:02d}" if has_revision_metadata else quote_number
         sheet["D14"] = quote_date
         sheet["D15"] = valid_until
         sheet["J14"] = validity_days

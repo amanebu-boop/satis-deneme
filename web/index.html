@@ -220,7 +220,7 @@ select:disabled{opacity:.65;cursor:not-allowed}
 
 
 /* HTML tabanlı açılır seçim menüleri: tarayıcıya özgü native popup yerine tutarlı panel */
-select:not([hidden]){position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;min-height:1px!important;padding:0!important;border:0!important;clip:rect(0 0 0 0)!important;overflow:hidden!important}
+select:not([hidden]):not([multiple]){position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;min-height:1px!important;padding:0!important;border:0!important;clip:rect(0 0 0 0)!important;overflow:hidden!important}
 .html-select{position:relative;width:100%;min-width:0}
 .html-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:42px;padding:9px 12px;border:1px solid #d9e1eb;border-radius:9px;background:#fff;color:var(--ink);font:inherit;text-align:left;cursor:pointer;box-shadow:0 1px 2px #292a2a08}
 .html-select-trigger::after{content:"";width:8px;height:8px;flex:0 0 8px;border-right:1.7px solid #737373;border-bottom:1.7px solid #737373;transform:rotate(45deg) translateY(-2px);transition:transform .15s ease}
